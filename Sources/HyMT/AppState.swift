@@ -92,6 +92,10 @@ final class AppState: NSObject, ObservableObject {
     @Published var modelsError: String?
     @Published var showCatalog: Bool = false
     @Published var updateStatus: String?
+    @Published var fallbackModels: [String] = []
+    @Published var fallbackModelsLoading: Bool = false
+    @Published var fallbackModelsError: String?
+    @Published var usingFallback: Bool = false
 
     // MARK: Dependencies
 
@@ -106,6 +110,7 @@ final class AppState: NSObject, ObservableObject {
     private var selectionTask: Task<Void, Never>?
     private var probeTask: Task<Void, Never>?
     private var modelsTask: Task<Void, Never>?
+    private var fallbackModelsTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     private var statusItem: NSStatusItem?
     private weak var mainWindow: NSWindow?
@@ -147,7 +152,16 @@ final class AppState: NSObject, ObservableObject {
         guard !didBootstrap else { return }
         didBootstrap = true
         debugLog("accessibility trusted: \(AXIsProcessTrusted())")
-        checkConnection()
+        let immediateWork = CommandLine.arguments.contains("--prefill")
+            || CommandLine.arguments.contains("--translate-clipboard")
+        if settings.warmUpOnLaunch {
+            connectAndLoadModels()
+            if settings.provider.isLocal, !immediateWork {
+                warmUpModel()
+            }
+        } else {
+            checkConnection()
+        }
 
         // Sparkle starts on the next run loop; refresh once so the update
         // toggles show the real state instead of their pre-start defaults.
@@ -182,10 +196,13 @@ final class AppState: NSObject, ObservableObject {
                 self?.checkForUpdates()
             }
         }
+        if arguments.contains("--load-fallback-models") {
+            loadFallbackModels()
+        }
         if let index = arguments.firstIndex(of: "--tab"), arguments.count > index + 1 {
             switch arguments[index + 1] {
             case "settings": tab = .settings
-            case "history": tab = .history
+            case "history": tab = settings.keepHistory ? .history : .translate
             default: tab = .translate
             }
         }
@@ -306,80 +323,161 @@ final class AppState: NSObject, ObservableObject {
         lastDurationMs = nil
         tokensPerSecond = nil
         debugLog("translate start: model=\(config.model) target=\(target.englishName) style=\(style.rawValue) tone=\(tone.rawValue) chars=\(trimmed.count)")
+        usingFallback = false
 
-        let started = Date()
-        let engine = "\(self.settings.provider.title) · \(config.model)"
+        let primaryEngine = "\(settings.provider.title) · \(config.model)"
+        let fallbackConfig = settings.fallbackConfig
+        let fallbackEngine = fallbackConfig.map {
+            "\(settings.fallbackProvider.title) · \($0.model) (fallback)"
+        }
 
         translationTask = Task { [weak self] in
             guard let self else { return }
+            let result: (text: String, warnings: Int, duration: Int)
+            var engine = primaryEngine
+
             do {
-                let stream = self.translator.stream(
+                result = try await self.performTranslation(
                     text: trimmed,
                     style: style,
                     tone: tone,
                     target: target,
-                    config: config
+                    config: config,
+                    generation: generation
                 )
-                var buffer = ""
-                for try await event in stream {
-                    if Task.isCancelled || self.currentGeneration != generation { return }
-                    switch event {
-                    case .chunk(let piece):
-                        buffer += piece
-                    case .stats(let tps):
-                        self.tokensPerSecond = tps
-                    case .progress(let completed, let total):
-                        self.translationCompleted = completed
-                        self.translationTotal = total
-                    case .warning:
-                        self.translationWarningCount += 1
-                    }
-                }
-                guard !Task.isCancelled, self.currentGeneration == generation else { return }
-
-                let duration = Int(Date().timeIntervalSince(started) * 1000)
-                self.translatedText = OutputSanitizer.clean(buffer)
-                self.translationCompleted = self.translationTotal
-                self.debugLog("translate done in \(duration) ms: \(self.translatedText)")
-                self.isTranslating = false
-                if self.translationWarningCount > 0 {
-                    self.errorMessage = L10n.format(
-                        "Some lines could not be translated (%d); they are left in the source language.",
-                        self.settings.interfaceLanguage,
-                        self.translationWarningCount
-                    )
-                }
-                self.lastDurationMs = duration
-                self.lastCompletedKey = key
-                self.backendStatus = .ready
-                self.probeMessage = L10n.t("Connection works.", self.settings.interfaceLanguage)
-
-                if self.settings.keepHistory {
-                    self.history.add(HistoryEntry(
-                        sourceText: trimmed,
-                        translatedText: self.translatedText.trimmingCharacters(in: .whitespacesAndNewlines),
-                        sourceCode: self.sourceLanguage.code,
-                        targetCode: target.code,
-                        style: style,
-                        tone: tone,
-                        engine: engine,
-                        durationMs: duration
-                    ))
-                }
+            } catch is CancellationError {
+                return
             } catch {
-                guard self.currentGeneration == generation else { return }
-                self.isTranslating = false
-                if error is CancellationError { return }
-                self.debugLog("translate error: \(error.localizedDescription)")
-                let language = self.settings.interfaceLanguage
-                let message = (error as? TranslationError)?.message(language) ?? error.localizedDescription
-                self.errorMessage = message
-                if let translationError = error as? TranslationError,
-                   case .connection = translationError {
-                    self.backendStatus = .error(message)
+                guard self.currentGeneration == generation, !Task.isCancelled else { return }
+                let primaryError = error
+                if let fallbackConfig, !Self.sameBackend(config, fallbackConfig) {
+                    self.debugLog("primary failed, using fallback: \(error.localizedDescription)")
+                    self.usingFallback = true
+                    self.translationCompleted = 0
+                    self.translationTotal = 0
+                    self.translationWarningCount = 0
+                    self.tokensPerSecond = nil
+                    do {
+                        result = try await self.performTranslation(
+                            text: trimmed,
+                            style: style,
+                            tone: tone,
+                            target: target,
+                            config: fallbackConfig,
+                            generation: generation
+                        )
+                        engine = fallbackEngine ?? engine
+                    } catch is CancellationError {
+                        return
+                    } catch {
+                        self.isTranslating = false
+                        self.usingFallback = false
+                        self.presentTranslationError(error, generation: generation)
+                        return
+                    }
+                } else {
+                    self.isTranslating = false
+                    self.presentTranslationError(primaryError, generation: generation)
+                    return
                 }
             }
+
+            guard !Task.isCancelled, self.currentGeneration == generation else { return }
+            let duration = result.duration
+            self.translatedText = result.text
+            self.translationCompleted = self.translationTotal
+            self.translationWarningCount = result.warnings
+            self.debugLog("translate done in \(duration) ms: \(self.translatedText)")
+            self.isTranslating = false
+            if result.warnings > 0 {
+                self.errorMessage = L10n.format(
+                    "Some lines could not be translated (%d); they are left in the source language.",
+                    self.settings.interfaceLanguage,
+                    result.warnings
+                )
+            }
+            self.lastDurationMs = duration
+            self.lastCompletedKey = key
+            self.backendStatus = .ready
+            self.probeMessage = L10n.t(
+                self.usingFallback ? "Fallback provider works." : "Connection works.",
+                self.settings.interfaceLanguage
+            )
+
+            if self.settings.keepHistory {
+                self.history.add(HistoryEntry(
+                    sourceText: trimmed,
+                    translatedText: self.translatedText.trimmingCharacters(in: .whitespacesAndNewlines),
+                    sourceCode: self.sourceLanguage.code,
+                    targetCode: target.code,
+                    style: style,
+                    tone: tone,
+                    engine: engine,
+                    durationMs: duration
+                ))
+            }
         }
+    }
+
+    private func performTranslation(
+        text: String,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        target: Language,
+        config: BackendConfig,
+        generation: UUID
+    ) async throws -> (text: String, warnings: Int, duration: Int) {
+        let started = Date()
+        let stream = translator.stream(
+            text: text,
+            style: style,
+            tone: tone,
+            target: target,
+            config: config
+        )
+        var buffer = ""
+        var warnings = 0
+        for try await event in stream {
+            if Task.isCancelled || currentGeneration != generation {
+                throw CancellationError()
+            }
+            switch event {
+            case .chunk(let piece):
+                buffer += piece
+            case .stats(let tps):
+                tokensPerSecond = tps
+            case .progress(let completed, let total):
+                translationCompleted = completed
+                translationTotal = total
+            case .warning:
+                warnings += 1
+            }
+        }
+        if Task.isCancelled || currentGeneration != generation {
+            throw CancellationError()
+        }
+        return (
+            OutputSanitizer.clean(buffer),
+            warnings,
+            Int(Date().timeIntervalSince(started) * 1000)
+        )
+    }
+
+    private func presentTranslationError(_ error: Error, generation: UUID) {
+        guard currentGeneration == generation else { return }
+        if error is CancellationError { return }
+        debugLog("translate error: \(error.localizedDescription)")
+        let language = settings.interfaceLanguage
+        let message = (error as? TranslationError)?.message(language) ?? error.localizedDescription
+        errorMessage = message
+        if let translationError = error as? TranslationError,
+           case .connection = translationError {
+            backendStatus = .error(message)
+        }
+    }
+
+    private static func sameBackend(_ lhs: BackendConfig, _ rhs: BackendConfig) -> Bool {
+        lhs.kind == rhs.kind && lhs.baseURL == rhs.baseURL && lhs.model == rhs.model
     }
 
     private func retranslateIfPossible() {
@@ -589,6 +687,54 @@ final class AppState: NSObject, ObservableObject {
         }
     }
 
+    func loadFallbackModels() {
+        let language = settings.interfaceLanguage
+        let provider = settings.fallbackProvider
+        let config = settings.fallbackProbeConfig
+
+        fallbackModelsTask?.cancel()
+        fallbackModelsLoading = true
+        fallbackModelsError = nil
+
+        if provider.requiresKey && config.apiKey.isEmpty {
+            fallbackModelsLoading = false
+            fallbackModelsError = L10n.format(
+                "Enter the API key for %@ in Settings first.",
+                language,
+                provider.title
+            )
+            return
+        }
+
+        fallbackModelsTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let models = try await Probe.models(config)
+                guard !Task.isCancelled else { return }
+                self.fallbackModels = models.sorted()
+                self.fallbackModelsLoading = false
+                if models.isEmpty {
+                    self.fallbackModelsError = L10n.t("The server returned no models.", language)
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.fallbackModelsLoading = false
+                self.fallbackModels = []
+                self.fallbackModelsError = (error as? TranslationError)?.message(language) ?? error.localizedDescription
+            }
+        }
+    }
+
+    private func warmUpModel() {
+        guard settings.warmUpOnLaunch, settings.provider.isLocal else { return }
+        let config = settings.snapshot
+        Task { [weak self] in
+            guard let self else { return }
+            let ok = await self.translator.warmUp(config: config)
+            self.debugLog("warm-up \(config.model): \(ok)")
+        }
+    }
+
     private func runProbe() async {
         backendStatus = .checking
         let language = settings.interfaceLanguage
@@ -753,6 +899,17 @@ final class AppState: NSObject, ObservableObject {
             }
             .store(in: &cancellables)
 
+        settings.$keepHistory
+            .dropFirst()
+            .sink { [weak self] keep in
+                guard let self else { return }
+                if !keep, self.tab == .history {
+                    self.tab = .translate
+                }
+                self.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
         settings.$provider
             .dropFirst()
             .sink { [weak self] _ in
@@ -760,6 +917,14 @@ final class AppState: NSObject, ObservableObject {
                 self?.providerModelsSource = nil
                 self?.modelsError = nil
                 self?.scheduleProbe()
+            }
+            .store(in: &cancellables)
+        settings.$fallbackProvider
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.fallbackModels = []
+                self?.fallbackModelsError = nil
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
         settings.$apiKey

@@ -56,6 +56,32 @@ final class AppSettings: ObservableObject {
         didSet { store(model, Keys.model) }
     }
 
+    // MARK: Fallback provider
+
+    @Published var fallbackEnabled: Bool {
+        didSet { store(fallbackEnabled, Keys.fallbackEnabled) }
+    }
+    @Published var fallbackProvider: Provider {
+        didSet {
+            store(fallbackProvider.rawValue, Keys.fallbackProvider)
+            guard oldValue != fallbackProvider else { return }
+            if fallbackBaseURL.isEmpty || fallbackBaseURL == oldValue.baseURL {
+                fallbackBaseURL = fallbackProvider.baseURL
+            }
+            fallbackAPIKey = Keychain.read(fallbackProvider.keyAccount)
+            fallbackModel = ""
+        }
+    }
+    @Published var fallbackAPIKey: String {
+        didSet { Keychain.write(fallbackAPIKey, account: fallbackProvider.keyAccount) }
+    }
+    @Published var fallbackBaseURL: String {
+        didSet { store(fallbackBaseURL, Keys.fallbackBaseURL) }
+    }
+    @Published var fallbackModel: String {
+        didSet { store(fallbackModel, Keys.fallbackModel) }
+    }
+
     // MARK: Generation
 
     @Published var temperature: Double {
@@ -95,6 +121,9 @@ final class AppSettings: ObservableObject {
     @Published var keepHistory: Bool {
         didSet { store(keepHistory, Keys.keepHistory) }
     }
+    @Published var warmUpOnLaunch: Bool {
+        didSet { store(warmUpOnLaunch, Keys.warmUpOnLaunch) }
+    }
     @Published var interfaceLanguage: AppLanguage {
         didSet { store(interfaceLanguage.rawValue, Keys.interfaceLanguage) }
     }
@@ -127,6 +156,10 @@ final class AppSettings: ObservableObject {
         static let backend = "hymt.backend"
         static let baseURL = "hymt.baseURL"
         static let model = "hymt.model"
+        static let fallbackEnabled = "hymt.fallbackEnabled"
+        static let fallbackProvider = "hymt.fallbackProvider"
+        static let fallbackBaseURL = "hymt.fallbackBaseURL"
+        static let fallbackModel = "hymt.fallbackModel"
         static let temperature = "hymt.temperature"
         static let topP = "hymt.topP"
         static let topK = "hymt.topK"
@@ -137,6 +170,7 @@ final class AppSettings: ObservableObject {
         static let hotKey = "hymt.hotKey"
         static let showInMenuBar = "hymt.showInMenuBar"
         static let keepHistory = "hymt.keepHistory"
+        static let warmUpOnLaunch = "hymt.warmUpOnLaunch"
         static let interfaceLanguage = "hymt.interfaceLanguage"
         static let selectionHotKey = "hymt.selectionHotKey"
         static let lastStyle = "hymt.lastStyle"
@@ -154,6 +188,14 @@ final class AppSettings: ObservableObject {
         self.apiKey = Keychain.read(provider.keyAccount)
         self.baseURL = storedBaseURL
         self.model = defaults.string(forKey: Keys.model) ?? "hy-mt2:7b"
+
+        let fallbackProvider = defaults.string(forKey: Keys.fallbackProvider)
+            .flatMap(Provider.init(rawValue:)) ?? .ollama
+        self.fallbackEnabled = defaults.object(forKey: Keys.fallbackEnabled) as? Bool ?? false
+        self.fallbackProvider = fallbackProvider
+        self.fallbackAPIKey = Keychain.read(fallbackProvider.keyAccount)
+        self.fallbackBaseURL = defaults.string(forKey: Keys.fallbackBaseURL) ?? fallbackProvider.baseURL
+        self.fallbackModel = defaults.string(forKey: Keys.fallbackModel) ?? ""
 
         let temperature = defaults.object(forKey: Keys.temperature) as? Double ?? 0.7
         let topP = defaults.object(forKey: Keys.topP) as? Double ?? 0.6
@@ -176,6 +218,7 @@ final class AppSettings: ObservableObject {
         }
         self.showInMenuBar = defaults.object(forKey: Keys.showInMenuBar) as? Bool ?? true
         self.keepHistory = defaults.object(forKey: Keys.keepHistory) as? Bool ?? true
+        self.warmUpOnLaunch = defaults.object(forKey: Keys.warmUpOnLaunch) as? Bool ?? true
         self.interfaceLanguage = AppLanguage(rawValue: defaults.string(forKey: Keys.interfaceLanguage) ?? "") ?? .system
         if let data = defaults.data(forKey: Keys.selectionHotKey),
            let combo = try? JSONDecoder().decode(KeyCombo.self, from: data) {
@@ -210,6 +253,44 @@ final class AppSettings: ObservableObject {
             baseURL: normalizedBaseURL,
             model: model.trimmingCharacters(in: .whitespacesAndNewlines),
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines),
+            temperature: temperature,
+            topP: topP,
+            topK: topK,
+            repetitionPenalty: repetitionPenalty,
+            contextWindow: contextWindow
+        )
+    }
+
+    var normalizedFallbackBaseURL: String {
+        var value = fallbackBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while value.hasSuffix("/") { value.removeLast() }
+        return value.isEmpty ? fallbackProvider.baseURL : value
+    }
+
+    var fallbackConfig: BackendConfig? {
+        let value = fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard fallbackEnabled, !value.isEmpty else { return nil }
+        return BackendConfig(
+            kind: fallbackProvider.kind,
+            baseURL: normalizedFallbackBaseURL,
+            model: value,
+            apiKey: Keychain.read(fallbackProvider.keyAccount)
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+            temperature: temperature,
+            topP: topP,
+            topK: topK,
+            repetitionPenalty: repetitionPenalty,
+            contextWindow: contextWindow
+        )
+    }
+
+    var fallbackProbeConfig: BackendConfig {
+        BackendConfig(
+            kind: fallbackProvider.kind,
+            baseURL: normalizedFallbackBaseURL,
+            model: fallbackModel.trimmingCharacters(in: .whitespacesAndNewlines),
+            apiKey: Keychain.read(fallbackProvider.keyAccount)
+                .trimmingCharacters(in: .whitespacesAndNewlines),
             temperature: temperature,
             topP: topP,
             topK: topK,

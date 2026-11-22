@@ -735,6 +735,55 @@ final class TranslationService {
         return earliest
     }
 
+    /// Loads a local model into memory (Ollama, LM Studio, oMLX, llama.cpp).
+    /// The response itself is irrelevant; a 200 means the model is warm.
+    func warmUp(config: BackendConfig) async -> Bool {
+        guard !config.model.isEmpty else { return false }
+        let url: URL?
+        let body: [String: Any]
+        switch config.kind {
+        case .ollama:
+            url = URL(string: config.baseURL + "/api/chat")
+            body = [
+                "model": config.model,
+                "messages": [["role": "user", "content": "Hello"]],
+                "stream": false,
+                "keep_alive": "30m",
+                "options": [
+                    "temperature": 0.0,
+                    "num_predict": 1,
+                    "num_ctx": 512
+                ] as [String: Any]
+            ]
+        case .openAI:
+            url = openAIEndpoint(base: config.baseURL, path: "chat/completions")
+            body = [
+                "model": config.model,
+                "messages": [["role": "user", "content": "Hello"]],
+                "stream": false,
+                "temperature": 0.0,
+                "max_tokens": 1
+            ]
+        }
+        guard let url else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 180
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !config.apiKey.isEmpty {
+            request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            return (response as? HTTPURLResponse)?.statusCode == 200
+        } catch {
+            return false
+        }
+    }
+
     // MARK: - Ollama
 
     @discardableResult

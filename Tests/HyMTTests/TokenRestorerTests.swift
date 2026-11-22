@@ -85,4 +85,22 @@ final class TokenRestorerTests: XCTestCase {
             "gpt-oss-120b — ~3000 tokens per second"
         )
     }
+
+    func testUnicodeHyphenInModelIDIsRestored() {
+        let source = "Hy-MT2 7B model"
+        let translated = "Hy\u{2011}MT2 7B model"
+        XCTAssertEqual(
+            TokenRestorer.restore(source: source, translated: translated),
+            "Hy-MT2 7B model"
+        )
+    }
+
+    func testSourceUnicodeHyphenSurvives() {
+        let source = "Hy\u{2011}MT2 7B model"
+        let translated = "Hy-MT2 7B model"
+        XCTAssertEqual(
+            TokenRestorer.restore(source: source, translated: translated),
+            "Hy\u{2011}MT2 7B model"
+        )
+    }
 }

@@ -3,28 +3,31 @@
     <channel>
         <title>DeepL-oFM</title>
         <item>
-            <title>1.0.6</title>
-            <pubDate>Sun, 22 Nov 2026 13:34:29 +0100</pubDate>
+            <title>1.0.7</title>
+            <pubDate>Sun, 22 Nov 2026 14:46:27 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
-            <sparkle:version>6</sparkle:version>
-            <sparkle:shortVersionString>1.0.6</sparkle:shortVersionString>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.0.7</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.0.6
+            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.0.7
 
-Automatic updates with Sparkle 2, a manual **Check for Updates…** button, and a
-drag-and-drop signed DMG.
+Fallback provider, automatic preload, better Groq support and wider text.
 
-- Sparkle 2 with a signed appcast and EdDSA update signatures; daily checks.
-- Optional automatic download and installation.
-- The About window shows whether the app is up to date.
-- DMG contains an **Applications** shortcut; drag the app to install.
-- Signed and notarized DMG and app bundle.
+- **Fallback provider/model**: if the primary provider fails, the same text is
+  retried automatically with the fallback you choose. The status bar shows a
+  “fallback” chip.
+- **Load the translator at launch**: connects to the provider, refreshes the
+  model list and warms up a local model. Can be disabled in Behavior.
+- **Groq fix**: Unicode hyphens in model IDs (`Hy‑MT2`) no longer make the app
+  discard a valid translation and fall back to the untranslated source.
+- **History tab** disappears when “Keep translation history” is off.
+- **Typography**: wider text panes and larger line spacing.
+- Signed and notarized DMG with an Applications shortcut; Sparkle update feed.
 
-The base model is still Hy-MT2 7B via Ollama; use 30B-A3B or a cloud model for
-publication-quality long texts.
+If you are on 1.0.6, this is the first update delivered through Sparkle.
 ]]></description>
-            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.6/DeepL-oFM-1.0.6.dmg" length="3203792" type="application/octet-stream" sparkle:edSignature="r+r6aZ+NhcOOSVX/RZnl6XhmvTKuCpDOWadDlmw1xGAniLVaC8eIeCuE64MbVGrpNngqEqHGv2tItK+gf67MDw=="/>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.7/DeepL-oFM-1.0.7.dmg" length="3253413" type="application/octet-stream" sparkle:edSignature="WvFr1Z+2nl4qJtKGt+Nmis45rd+DfXoo1OaVlcJ1wKX7zGRNvwATxjwxi6oOsjdsBqfhQJGod5Y/p1f4ugGQBQ=="/>
         </item>
     </channel>
 </rss>

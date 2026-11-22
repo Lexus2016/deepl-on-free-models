@@ -283,19 +283,19 @@ struct SourcePane: View {
                     Text(L10n.t("Enter or paste text…", language))
                         .font(.system(size: 17))
                         .foregroundStyle(Theme.tertiary)
-                        .padding(.top, 18)
-                        .padding(.leading, 18)
+                        .padding(.top, 16)
+                        .padding(.leading, 16)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: binding)
                     .font(.system(size: 17))
-                    .lineSpacing(5)
+                    .lineSpacing(7)
                     .foregroundStyle(Theme.text)
                     .scrollContentBackground(.hidden)
                     .scrollIndicators(.hidden)
-                    .padding(.leading, 12)
-                    .padding(.trailing, 32)
-                    .padding(.vertical, 10)
+                    .padding(.leading, 10)
+                    .padding(.trailing, 28)
+                    .padding(.vertical, 12)
                     .focused($focused)
 
                 VStack {
@@ -394,7 +394,7 @@ struct TargetPane: View {
                         HStack(alignment: .top, spacing: 1) {
                             Text(app.translatedText)
                                 .font(.system(size: 17))
-                                .lineSpacing(5)
+                                .lineSpacing(7)
                                 .foregroundStyle(Theme.text)
                                 .textSelection(.enabled)
                             if app.isTranslating {
@@ -406,8 +406,8 @@ struct TargetPane: View {
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 16)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 14)
                     }
                     .scrollIndicators(.hidden)
                 }

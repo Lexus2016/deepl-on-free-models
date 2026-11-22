@@ -15,9 +15,9 @@ and any OpenAI-compatible server.
 > Not affiliated with DeepL SE. “DeepL-oFM” describes the interface style
 > (“on Free Models”); it is an independent open-source project.
 
-![Translation](docs/screenshot.png)
+![Translation](docs/screenshot-en.png)
 
-![Settings](docs/settings.png)
+![Settings](docs/settings-en.png)
 
 ## Features
 
@@ -34,6 +34,10 @@ and any OpenAI-compatible server.
 - Visible **Copy** button: puts Markdown, HTML and RTF on the clipboard at once.
 - **Automatic updates** through Sparkle 2: a daily signed-feed check, a manual
   **Check for Updates…** button, and an optional fully automatic install.
+- **Optional fallback provider and model.** If the primary provider fails, the
+  same text is retried automatically with the fallback you choose.
+- **Preload at launch.** Connects to the provider, refreshes its model list and
+  warms up a local model; can be turned off in Settings.
 - History with search, copy and delete.
 - System text-to-speech for the original and the translation.
 - Interface in **English, Ukrainian and Russian** (follows the system by default).
@@ -189,7 +193,7 @@ English — the language Hy-MT2 was trained on.
 
 ## Updates
 
-![Updates](docs/updates.png)
+![Updates](docs/updates-en.png)
 
 The app uses **Sparkle 2** with a signed appcast:
 
@@ -204,6 +208,17 @@ The app uses **Sparkle 2** with a signed appcast:
 
 The appcast is generated with Sparkle’s `generate_appcast` and committed to the
 repository, so the update history is auditable.
+
+## Fallback and startup
+
+- **Fallback provider** (Settings → Fallback provider): enable it, choose a
+  provider, server address, API key and model. The key is the same Keychain
+  item as that provider's primary key. If the primary request fails
+  (connection, HTTP error, missing model), the same text is restarted with the
+  fallback and the status bar shows **fallback**.
+- **Load the translator at launch** (Settings → Behavior): connects to the
+  provider, refreshes its model list and warms up a local model. Turn it off to
+  keep only the passive connection check.
 
 ## Formatting and progress
 

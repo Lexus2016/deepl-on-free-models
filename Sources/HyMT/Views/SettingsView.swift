@@ -41,6 +41,7 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     connectionCard
+                    fallbackCard.id("fallback")
                     if app.providerModelsSource == settings.provider || app.modelsLoading || app.modelsError != nil {
                         providerModelsCard
                     }
@@ -59,8 +60,17 @@ struct SettingsView: View {
             .scrollIndicators(.hidden)
             .onAppear {
                 let arguments = CommandLine.arguments
-                guard arguments.contains("--scroll-hotkey") || arguments.contains("--scroll-about") else { return }
-                let target = arguments.contains("--scroll-about") ? "about" : "hotkey"
+                guard arguments.contains("--scroll-hotkey")
+                    || arguments.contains("--scroll-about")
+                    || arguments.contains("--scroll-fallback") else { return }
+                let target: String
+                if arguments.contains("--scroll-about") {
+                    target = "about"
+                } else if arguments.contains("--scroll-fallback") {
+                    target = "fallback"
+                } else {
+                    target = "hotkey"
+                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         proxy.scrollTo(target, anchor: .top)
@@ -256,6 +266,134 @@ struct SettingsView: View {
         return app.providerModels.filter { $0.localizedCaseInsensitiveContains(needle) }
     }
 
+    private var fallbackCard: some View {
+        SettingsCard(
+            title: L10n.t("Fallback provider", language),
+            subtitle: L10n.t("Used automatically when the primary provider fails.", language)
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(
+                    L10n.t("Use a fallback provider", language),
+                    isOn: $settings.fallbackEnabled
+                )
+                .toggleStyle(.switch)
+                .font(.system(size: 12.5))
+                .foregroundStyle(Theme.text)
+
+                if settings.fallbackEnabled {
+                    FieldRow(label: L10n.t("Provider", language)) {
+                        Picker("", selection: $settings.fallbackProvider) {
+                            ForEach(Provider.allCases) { provider in
+                                Text(L10n.t(provider.title, language)).tag(provider)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(width: 220)
+                    }
+
+                    FieldRow(label: L10n.t("Server address", language)) {
+                        TextInput(
+                            placeholder: settings.fallbackProvider.baseURL,
+                            text: $settings.fallbackBaseURL,
+                            monospaced: true
+                        )
+                    }
+
+                    FieldRow(label: L10n.t("API key", language)) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack(spacing: 8) {
+                                SecureField(L10n.t("API key", language), text: $settings.fallbackAPIKey)
+                                    .textFieldStyle(.plain)
+                                    .font(.system(size: 12.5, design: .monospaced))
+                                    .foregroundStyle(Theme.text)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                            .fill(Theme.editor)
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                            .strokeBorder(Theme.border, lineWidth: 1)
+                                    )
+                                if let url = settings.fallbackProvider.keyURL {
+                                    Link(L10n.t("Get key ↗", language), destination: url)
+                                        .font(.system(size: 11.5))
+                                        .foregroundStyle(Theme.accent)
+                                }
+                            }
+                            Text(L10n.t("Uses the Keychain key for this provider.", language))
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(Theme.tertiary)
+                        }
+                    }
+
+                    FieldRow(label: L10n.t("Model", language)) {
+                        HStack(spacing: 8) {
+                            TextInput(
+                                placeholder: settings.fallbackProvider.isLocal ? "hy-mt2:7b" : "model-id",
+                                text: $settings.fallbackModel,
+                                monospaced: true
+                            )
+                            Button {
+                                app.loadFallbackModels()
+                            } label: {
+                                HStack(spacing: 6) {
+                                    if app.fallbackModelsLoading {
+                                        ProgressView().controlSize(.mini)
+                                    }
+                                    Text(L10n.t("Load models", language))
+                                        .font(.system(size: 11.5, weight: .medium))
+                                }
+                                .foregroundStyle(Theme.text)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                        .fill(Theme.chromeRaised)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                        .strokeBorder(Theme.border, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .focusEffectDisabled()
+                            .disabled(app.fallbackModelsLoading)
+                        }
+                    }
+
+                    if let error = app.fallbackModelsError {
+                        Text(error)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.danger)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if !app.fallbackModels.isEmpty {
+                        FieldRow(label: L10n.t("Choose model", language)) {
+                            Picker("", selection: $settings.fallbackModel) {
+                                Text(L10n.t("Choose a model", language)).tag("")
+                                ForEach(app.fallbackModels, id: \.self) { model in
+                                    Text(model).tag(model)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .frame(maxWidth: 360, alignment: .leading)
+                        }
+                    }
+
+                    Text(L10n.t("If the primary provider fails, the same text is retried with these settings.", language))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
     private var providerModelsCard: some View {
         SettingsCard(
             title: L10n.t("Models on the server", language),
@@ -432,6 +570,16 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
                     .foregroundStyle(Theme.text)
                     .font(.system(size: 12.5))
+
+                Toggle(L10n.t("Load the translator at launch", language), isOn: $settings.warmUpOnLaunch)
+                    .toggleStyle(.switch)
+                    .foregroundStyle(Theme.text)
+                    .font(.system(size: 12.5))
+
+                Text(L10n.t("Connects to the provider, refreshes the model list and warms up a local model.", language))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Theme.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Toggle(L10n.t("Menu bar icon", language), isOn: $settings.showInMenuBar)
                     .toggleStyle(.switch)

@@ -52,7 +52,9 @@ struct TopBar: View {
             logo
 
             HStack(spacing: 4) {
-                ForEach(AppState.Tab.allCases) { tab in
+                ForEach(AppState.Tab.allCases.filter { tab in
+                    tab != .history || app.settings.keepHistory
+                }) { tab in
                     tabButton(tab)
                 }
             }
@@ -99,7 +101,9 @@ struct TopBar: View {
                 Button(L10n.t("Check for Updates…", language)) {
                     app.checkForUpdates()
                 }
-                Button(L10n.t("History", language)) { app.tab = .history }
+                if app.settings.keepHistory {
+                    Button(L10n.t("History", language)) { app.tab = .history }
+                }
                 Button(L10n.t("Settings", language)) { app.tab = .settings }
             } label: {
                 Image(systemName: "ellipsis")
@@ -205,6 +209,14 @@ struct StatusBar: View {
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.secondary)
                 .lineLimit(1)
+
+            if app.usingFallback {
+                SmallChip(
+                    text: L10n.t("fallback", language),
+                    color: Theme.warning,
+                    background: Theme.warning.opacity(0.12)
+                )
+            }
 
             Spacer(minLength: 12)
 

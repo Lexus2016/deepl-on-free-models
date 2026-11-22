@@ -28,7 +28,9 @@ enum TokenRestorer {
 
         var result = translated
         for (sourceMatch, translatedMatch) in zip(sourceTokens, translatedTokens).reversed() {
-            result.replaceSubrange(translatedMatch.range, with: sourceMatch.token)
+            // Preserve the source spelling, including Unicode hyphens.
+            let sourceToken = String(source[sourceMatch.range])
+            result.replaceSubrange(translatedMatch.range, with: sourceToken)
         }
         return result
     }
@@ -48,10 +50,20 @@ enum TokenRestorer {
 
     private static func matches(in text: String) -> [Match] {
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-        let nsRange = NSRange(text.startIndex..., in: text)
-        return regex.matches(in: text, range: nsRange).compactMap { match in
-            guard var range = Range(match.range, in: text) else { return nil }
-            var token = String(text[range])
+        // Models often replace ASCII hyphens with U+2010/U+2011 in model ids
+        // (Hy‑MT2). Normalize them only for matching; restore the source text.
+        let normalized = text
+            .replacingOccurrences(of: "\u{2010}", with: "-")
+            .replacingOccurrences(of: "\u{2011}", with: "-")
+            .replacingOccurrences(of: "\u{2012}", with: "-")
+            .replacingOccurrences(of: "\u{2013}", with: "-")
+            .replacingOccurrences(of: "\u{2014}", with: "-")
+            .replacingOccurrences(of: "\u{2212}", with: "-")
+        let nsRange = NSRange(normalized.startIndex..., in: normalized)
+        return regex.matches(in: normalized, range: nsRange).compactMap { match in
+            guard let normalizedRange = Range(match.range, in: normalized),
+                  var range = Range(match.range, in: text) else { return nil }
+            var token = String(normalized[normalizedRange])
             let originalCount = token.count
 
             // A URL at the end of a sentence must not swallow the full stop.
