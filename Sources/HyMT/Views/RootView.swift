@@ -1,11 +1,9 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct RootView: View {
     @EnvironmentObject private var app: AppState
     @Environment(\.openWindow) private var openWindow
-    @State private var dropTargeted = false
     @State private var escapeMonitor: Any?
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
@@ -56,55 +54,6 @@ struct RootView: View {
             }
             .frame(width: 0, height: 0)
         )
-        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $dropTargeted) { providers in
-            guard let provider = providers.first else { return false }
-            provider.loadItem(
-                forTypeIdentifier: UTType.fileURL.identifier,
-                options: nil
-            ) { item, _ in
-                let url: URL?
-                if let data = item as? Data {
-                    url = URL(dataRepresentation: data, relativeTo: nil)
-                } else if let value = item as? URL {
-                    url = value
-                } else {
-                    url = nil
-                }
-                guard let url else { return }
-                DispatchQueue.main.async {
-                    app.files.select(url: url, language: app.settings.interfaceLanguage)
-                    app.tab = .files
-                }
-            }
-            return true
-        }
-        .overlay {
-            if dropTargeted {
-                ZStack {
-                    Color.black.opacity(0.55)
-                    VStack(spacing: 10) {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 32, weight: .light))
-                            .foregroundStyle(Theme.text)
-                        Text(L10n.t("Drop a file to translate", language))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Theme.text)
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 22)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Theme.chromeRaised)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Theme.accent.opacity(0.6), lineWidth: 1)
-                    )
-                }
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-            }
-        }
         .task {
             app.bootstrap()
         }
@@ -165,7 +114,6 @@ struct TopBar: View {
                 }) { tab in
                     tabButton(tab)
                 }
-                fileMenu
             }
 
             Spacer(minLength: 12)
@@ -243,42 +191,6 @@ struct TopBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.border).frame(height: 1)
         }
-    }
-
-    private var fileMenu: some View {
-        Menu {
-            Button(L10n.t("Translate file…", language)) {
-                app.tab = .files
-                app.files.chooseFile(language: language)
-            }
-            Button(L10n.t("Save translation…", language)) {
-                app.files.saveOutput(language: language)
-            }
-            .disabled(app.files.outputURL == nil)
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 12, weight: .medium))
-                Text(L10n.t("File", language))
-                    .font(.system(size: 12.5, weight: .medium))
-            }
-            .foregroundStyle(app.tab == .files ? Theme.text : Theme.secondary)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
-            .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(app.tab == .files ? Theme.chromeRaised : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(app.tab == .files ? Theme.border : Color.clear, lineWidth: 1)
-            )
-            .contentShape(Rectangle())
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help(L10n.t("Translate file…", language))
     }
 
     private var logo: some View {

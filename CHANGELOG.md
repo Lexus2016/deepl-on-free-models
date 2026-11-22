@@ -4,6 +4,14 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.1] — 2026-11-22
+
+### Changed
+
+- File translation lives only in the **Files** tab. The redundant in-window
+  File menu and the global drop target on the translation view were removed, so
+  a document can no longer be dropped into the text/chat screen.
+
 ## [1.1.0] — 2026-11-22
 
 ### Added
@@ -169,6 +177,7 @@ All notable changes to DeepL-oFM. The format follows
 - Initial native SwiftUI translator with Hy-MT2 7B through Ollama.
 - Two-pane translation, history, hotkeys and Ukrainian/Russian/English UI.
 
+[1.1.1]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.1.0
 [1.0.10]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.10
 [1.0.9]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.9
