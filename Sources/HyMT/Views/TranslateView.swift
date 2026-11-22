@@ -341,11 +341,29 @@ struct TargetPane: View {
                 if app.translatedText.isEmpty && app.errorMessage == nil {
                     VStack(spacing: 10) {
                         if app.isTranslating {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text(L10n.t("Translating…", language))
+                            if app.translationTotal > 0 {
+                                ProgressView(
+                                    value: Double(app.translationCompleted),
+                                    total: Double(max(app.translationTotal, 1))
+                                )
+                                .progressViewStyle(.linear)
+                                .tint(Theme.accent)
+                                .frame(width: 220)
+                                Text(L10n.format(
+                                    "Translating… %d of %d",
+                                    language,
+                                    app.translationCompleted,
+                                    app.translationTotal
+                                ))
                                 .font(.system(size: 12.5))
                                 .foregroundStyle(Theme.tertiary)
+                            } else {
+                                ProgressView()
+                                    .controlSize(.small)
+                                Text(L10n.t("Translating…", language))
+                                    .font(.system(size: 12.5))
+                                    .foregroundStyle(Theme.tertiary)
+                            }
                         } else {
                             Image(systemName: "character.bubble")
                                 .font(.system(size: 22, weight: .light))
@@ -423,7 +441,11 @@ struct TargetPane: View {
                     PaneAction(icon: "arrow.clockwise", help: L10n.t("Translate again", language)) {
                         app.translate(force: true)
                     },
-                    PaneAction(icon: copied ? "checkmark" : "doc.on.doc", help: L10n.t("Copy translation", language)) {
+                    PaneAction(
+                        icon: copied ? "checkmark" : "doc.on.doc",
+                        help: L10n.t("Copy translation (Markdown + formatting)", language),
+                        title: L10n.t("Copy", language)
+                    ) {
                         app.copyTranslation()
                         withAnimation(.easeOut(duration: 0.15)) { copied = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
@@ -447,6 +469,7 @@ struct PaneAction: Identifiable {
     let id = UUID()
     let icon: String
     let help: String
+    var title: String? = nil
     let action: () -> Void
 }
 
@@ -466,7 +489,32 @@ struct PaneFooter: View {
                 .foregroundStyle(Theme.tertiary)
                 .monospacedDigit()
             ForEach(right) { item in
-                IconButton(systemName: item.icon, help: item.help, action: item.action)
+                if let title = item.title {
+                    Button(action: item.action) {
+                        HStack(spacing: 6) {
+                            Image(systemName: item.icon)
+                                .font(.system(size: 11, weight: .semibold))
+                            Text(title)
+                                .font(.system(size: 11.5, weight: .medium))
+                        }
+                        .foregroundStyle(Theme.text)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .fill(Theme.chromeRaised)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .strokeBorder(Theme.border, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+                    .help(item.help)
+                } else {
+                    IconButton(systemName: item.icon, help: item.help, action: item.action)
+                }
             }
         }
         .padding(.horizontal, 12)

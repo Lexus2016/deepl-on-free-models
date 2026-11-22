@@ -45,6 +45,9 @@ final class AppState: NSObject, ObservableObject {
     @Published var sourceText: String = ""
     @Published var translatedText: String = ""
     @Published var isTranslating: Bool = false
+    @Published var translationCompleted: Int = 0
+    @Published var translationTotal: Int = 0
+    @Published var translationWarningCount: Int = 0
     @Published var errorMessage: String?
     @Published var tokensPerSecond: Double?
     @Published var lastDurationMs: Int?
@@ -262,6 +265,9 @@ final class AppState: NSObject, ObservableObject {
         isTranslating = true
         errorMessage = nil
         translatedText = ""
+        translationCompleted = 0
+        translationTotal = 0
+        translationWarningCount = 0
         lastDurationMs = nil
         tokensPerSecond = nil
         debugLog("translate start: model=\(config.model) target=\(target.englishName) style=\(style.rawValue) tone=\(tone.rawValue) chars=\(trimmed.count)")
@@ -279,21 +285,35 @@ final class AppState: NSObject, ObservableObject {
                     target: target,
                     config: config
                 )
+                var buffer = ""
                 for try await event in stream {
                     if Task.isCancelled || self.currentGeneration != generation { return }
                     switch event {
                     case .chunk(let piece):
-                        self.translatedText += piece
+                        buffer += piece
                     case .stats(let tps):
                         self.tokensPerSecond = tps
+                    case .progress(let completed, let total):
+                        self.translationCompleted = completed
+                        self.translationTotal = total
+                    case .warning:
+                        self.translationWarningCount += 1
                     }
                 }
                 guard !Task.isCancelled, self.currentGeneration == generation else { return }
 
                 let duration = Int(Date().timeIntervalSince(started) * 1000)
-                self.translatedText = OutputSanitizer.clean(self.translatedText)
+                self.translatedText = OutputSanitizer.clean(buffer)
+                self.translationCompleted = self.translationTotal
                 self.debugLog("translate done in \(duration) ms: \(self.translatedText)")
                 self.isTranslating = false
+                if self.translationWarningCount > 0 {
+                    self.errorMessage = L10n.format(
+                        "Some lines could not be translated (%d); they are left in the source language.",
+                        self.settings.interfaceLanguage,
+                        self.translationWarningCount
+                    )
+                }
                 self.lastDurationMs = duration
                 self.lastCompletedKey = key
                 self.backendStatus = .ready
@@ -394,14 +414,12 @@ final class AppState: NSObject, ObservableObject {
     func copyTranslation() {
         let text = translatedText
         guard !text.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        ClipboardWriter.copy(text)
     }
 
     func copySource() {
         guard !sourceText.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(sourceText, forType: .string)
+        ClipboardWriter.copy(sourceText)
     }
 
     func speakSource() {

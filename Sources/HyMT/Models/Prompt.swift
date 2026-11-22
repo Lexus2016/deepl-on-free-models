@@ -56,6 +56,7 @@ enum TranslationTone: String, Codable, CaseIterable, Identifiable {
 /// the model has no default system prompt.
 enum PromptBuilder {
 
+
     static func styleDescriptor(_ style: TranslationStyle) -> String {
         switch style {
         case .auto, .natural:
@@ -73,38 +74,69 @@ enum PromptBuilder {
         }
     }
 
-    static func instruction(style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
+    static func instruction(
+        style: TranslationStyle,
+        tone: TranslationTone,
+        targetLanguage: String
+    ) -> String {
+        let base: String
         if style == .auto && tone == .standard {
-            return "Translate the following text into \(targetLanguage). Note that you should only output the translated result without any additional explanation:"
+            base = "Translate the following text into \(targetLanguage). Note that you should only output the translated result without any additional explanation:"
+        } else {
+            var descriptor = styleDescriptor(style)
+            if tone != .standard, let suffix = toneSuffix(tone) {
+                descriptor += "; \(suffix)"
+            }
+            base = "Please translate the following text into \(targetLanguage). Note that the translation style must strictly conform to [\(descriptor)]:"
         }
-
-        var descriptor = styleDescriptor(style)
-        if tone != .standard, let suffix = toneSuffix(tone) {
-            descriptor += "; \(suffix)"
-        }
-        return "Please translate the following text into \(targetLanguage). Note that the translation style must strictly conform to [\(descriptor)]:"
+        return base
     }
 
-    static func prompt(text: String, style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
-        instruction(style: style, tone: tone, targetLanguage: targetLanguage) + "\n\n" + text
+    static func prompt(
+        text: String,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        targetLanguage: String
+    ) -> String {
+        instruction(
+            style: style,
+            tone: tone,
+            targetLanguage: targetLanguage
+        ) + "\n\n" + text
     }
 
     /// Headings and list items are translated on their own, so they need a
     /// stricter instruction: the regular prompt sometimes treats a lone word
     /// as part of the instruction and leaks chat-template tokens.
-    static func headingInstruction(style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
+    static func headingInstruction(
+        style: TranslationStyle,
+        tone: TranslationTone,
+        targetLanguage: String
+    ) -> String {
+        let base: String
         if style == .auto && tone == .standard {
-            return "Translate this heading into \(targetLanguage). Output only the translated heading, without any additional explanation:"
+            base = "Translate this heading into \(targetLanguage). Output only the translated heading, without any additional explanation:"
+        } else {
+            var descriptor = styleDescriptor(style)
+            if tone != .standard, let suffix = toneSuffix(tone) {
+                descriptor += "; \(suffix)"
+            }
+            base = "Please translate this heading into \(targetLanguage). Note that the translation style must strictly conform to [\(descriptor)] and output only the translated heading:"
         }
-        var descriptor = styleDescriptor(style)
-        if tone != .standard, let suffix = toneSuffix(tone) {
-            descriptor += "; \(suffix)"
-        }
-        return "Please translate this heading into \(targetLanguage). Note that the translation style must strictly conform to [\(descriptor)] and output only the translated heading:"
+        return base
     }
 
-    static func headingPrompt(text: String, style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
-        headingInstruction(style: style, tone: tone, targetLanguage: targetLanguage) + "\n\n" + text
+    static func headingPrompt(
+        text: String,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        targetLanguage: String
+    ) -> String {
+        headingInstruction(
+            style: style,
+            tone: tone,
+            targetLanguage: targetLanguage
+        ) + "\n\n" + text
     }
 
     static func preview(style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {

@@ -3,6 +3,8 @@ import Foundation
 enum TranslationEvent: Sendable {
     case chunk(String)
     case stats(tokensPerSecond: Double?)
+    case progress(Int, Int)
+    case warning
 }
 
 enum TranslationError: LocalizedError {
@@ -52,34 +54,31 @@ struct TextChunk {
 enum TextChunker {
     static let limit = 3200
 
-    private struct Block {
-        let text: String
-        let separator: String
-    }
-
-    /// Always split at structural boundaries, not only for very long texts:
-    /// paragraphs (blank lines) and list items keep their original separators.
-    /// The model is unreliable when a prompt contains blank lines, so each
-    /// block is translated on its own and the app rejoins the result.
+    /// One chunk per source line: line breaks and blank lines are reproduced
+    /// exactly in the result. Long lines are additionally split by sentences,
+    /// but their pieces are rejoined with spaces so the line stays one line.
     static func chunks(from text: String) -> [TextChunk] {
-        let blocks = splitBlocks(text)
+        let lines = text.components(separatedBy: "\n")
         var result: [TextChunk] = []
+        var pendingLineBreaks = 0
+        var started = false
 
-        for (index, block) in blocks.enumerated() {
-            let blockSeparator = index == 0 ? "" : block.separator
-            let lines = block.text
-                .components(separatedBy: "\n")
-                .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            let logical = logicalLines(block.text)
-            let hasListMarkers = lines.contains(where: isListItem)
-
-            if hasListMarkers || (lines.count > 1 && logical.count > 2) {
-                for (lineIndex, line) in logical.enumerated() {
-                    append(line, separator: lineIndex == 0 ? blockSeparator : "\n", to: &result)
-                }
-            } else {
-                append(normalizeParagraph(block.text), separator: blockSeparator, to: &result)
+        for line in lines {
+            let content = line.trimmingCharacters(in: .whitespaces)
+            if content.isEmpty {
+                if started { pendingLineBreaks += 1 }
+                continue
             }
+
+            let separator: String
+            if result.isEmpty {
+                separator = ""
+            } else {
+                separator = String(repeating: "\n", count: max(1, pendingLineBreaks + 1))
+            }
+            append(line, separator: separator, to: &result)
+            started = true
+            pendingLineBreaks = 0
         }
 
         if result.isEmpty {
@@ -91,10 +90,9 @@ enum TextChunker {
     private static func append(_ text: String, separator: String, to result: inout [TextChunk]) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let prefix = result.isEmpty ? "" : separator
 
         if trimmed.count <= limit {
-            result.append(TextChunk(text: trimmed, separatorBefore: prefix))
+            result.append(TextChunk(text: trimmed, separatorBefore: result.isEmpty ? "" : separator))
             return
         }
 
@@ -102,105 +100,12 @@ enum TextChunker {
         for (index, piece) in pieces.enumerated() {
             let pieceText = piece.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !pieceText.isEmpty else { continue }
-            let pieceSeparator = index == 0 ? prefix : " "
+            let pieceSeparator = index == 0 ? separator : " "
             result.append(TextChunk(
                 text: pieceText,
                 separatorBefore: result.isEmpty ? "" : pieceSeparator
             ))
         }
-    }
-
-    private static func splitBlocks(_ text: String) -> [Block] {
-        let lines = text.components(separatedBy: "\n")
-        var blocks: [Block] = []
-        var current: [String] = []
-        var pendingBlankLines = 0
-
-        for line in lines {
-            let isBlank = line.trimmingCharacters(in: .whitespaces).isEmpty
-            if isBlank {
-                if !current.isEmpty {
-                    let separator = blocks.isEmpty
-                        ? ""
-                        : String(repeating: "\n", count: pendingBlankLines + 1)
-                    blocks.append(Block(text: current.joined(separator: "\n"), separator: separator))
-                    current = []
-                    pendingBlankLines = 1
-                } else if !blocks.isEmpty {
-                    pendingBlankLines += 1
-                }
-            } else {
-                current.append(line)
-            }
-        }
-
-        if !current.isEmpty {
-            let separator = blocks.isEmpty
-                ? ""
-                : String(repeating: "\n", count: pendingBlankLines + 1)
-            blocks.append(Block(text: current.joined(separator: "\n"), separator: separator))
-        }
-        return blocks
-    }
-
-    /// Rebuilds logical lines from a block that has hard line breaks but no
-    /// blank lines: wrapped continuations are merged until sentence end, while
-    /// headings and list items start a new logical line.
-    private static func logicalLines(_ text: String) -> [String] {
-        let lines = text.components(separatedBy: "\n")
-        var result: [String] = []
-        var current = ""
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
-
-            let startsNew = isListItem(trimmed)
-                || trimmed.range(of: #"^#{1,6}\s+"#, options: .regularExpression) != nil
-            if startsNew && !current.isEmpty {
-                result.append(current)
-                current = trimmed
-                continue
-            }
-
-            if current.isEmpty {
-                current = trimmed
-            } else {
-                current += " " + trimmed
-            }
-
-            if current.range(of: #"[.!?;:…»”)]$"#, options: .regularExpression) != nil {
-                result.append(current)
-                current = ""
-            }
-        }
-
-        if !current.isEmpty {
-            result.append(current)
-        }
-        return result
-    }
-
-    private static func isListItem(_ line: String) -> Bool {
-        let value = line.trimmingCharacters(in: .whitespaces)
-        return value.range(
-            of: #"^([-*•–—]|\d+[.)]|[A-Za-z][.)])\s+"#,
-            options: .regularExpression
-        ) != nil
-    }
-
-    private static func normalizeParagraph(_ text: String) -> String {
-        var value = text.replacingOccurrences(
-            of: #"[ \t]*\n[ \t]*"#,
-            with: " ",
-            options: .regularExpression
-        )
-        value = value.replacingOccurrences(
-            of: #"[ \t]{2,}"#,
-            with: " ",
-            options: .regularExpression
-        )
-        return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func splitSentences(_ text: String, limit: Int) -> [String] {
@@ -243,6 +148,7 @@ final class TranslationService {
                 do {
                     guard !config.model.isEmpty else { throw TranslationError.emptyModel }
                     let chunks = TextChunker.chunks(from: text)
+                    var completed = 0
                     for chunk in chunks {
                         if Task.isCancelled { break }
                         if !chunk.separatorBefore.isEmpty {
@@ -252,47 +158,84 @@ final class TranslationService {
                         }
                         let segment = parseSegment(chunk.text)
                             ?? Segment(prefix: "", body: chunk.text)
-                        let primary: String
-                        let alternate: String
-                        if segment.body.count <= 80 {
-                            primary = PromptBuilder.headingPrompt(
-                                text: segment.body,
-                                style: style,
-                                tone: tone,
-                                targetLanguage: target.englishName
-                            )
-                            alternate = PromptBuilder.prompt(
-                                text: segment.body,
-                                style: style,
-                                tone: tone,
-                                targetLanguage: target.englishName
-                            )
-                        } else {
-                            primary = PromptBuilder.prompt(
-                                text: segment.body,
-                                style: style,
-                                tone: tone,
-                                targetLanguage: target.englishName
-                            )
-                            alternate = PromptBuilder.headingPrompt(
-                                text: segment.body,
-                                style: style,
-                                tone: tone,
-                                targetLanguage: target.englishName
-                            )
+                        var prefix = segment.prefix
+                        var body = segment.body
+
+                        // Model lists and URLs must stay byte-for-byte: keep the
+                        // left side of "IDs — description" and translate only
+                        // the description.
+                        if let mixed = splitMixedLine(body) {
+                            prefix += mixed.keep
+                            body = mixed.translate
                         }
 
-                        let translated = try await bufferedTranslation(
-                            primary: primary,
-                            alternate: alternate,
-                            source: segment.body,
-                            target: target,
-                            config: config
+                        // The literal style prompt makes Hy-MT2 argue with
+                        // itself on short fragments (role tokens, self-dialogue).
+                        // Short lines always use the neutral heading prompt;
+                        // long lines use the selected style first, then the
+                        // neutral prompt as a fallback.
+                        let neutralHeading = PromptBuilder.headingPrompt(
+                            text: body,
+                            style: .auto,
+                            tone: .standard,
+                            targetLanguage: target.englishName
                         )
-                        let output = segment.prefix + translated
+                        let neutralPrompt = PromptBuilder.prompt(
+                            text: body,
+                            style: .auto,
+                            tone: .standard,
+                            targetLanguage: target.englishName
+                        )
+
+                        let primary: String
+                        let alternate: String
+                        if body.count <= 80 {
+                            primary = neutralHeading
+                            alternate = neutralPrompt
+                        } else {
+                            primary = PromptBuilder.prompt(
+                                text: body,
+                                style: style,
+                                tone: tone,
+                                targetLanguage: target.englishName
+                            )
+                            alternate = neutralPrompt
+                        }
+
+                        var warning = false
+                        var translated: String
+                        do {
+                            translated = try await bufferedTranslation(
+                                primary: primary,
+                                alternate: alternate,
+                                source: body,
+                                target: target,
+                                config: config
+                            )
+                            translated = TokenRestorer.restore(source: body, translated: translated)
+                            translated = TokenRestorer.preserveTrailingPunctuation(
+                                source: body,
+                                translated: translated
+                            )
+                        } catch let error as TranslationError {
+                            switch error {
+                            case .degenerateResponse, .emptyResponse:
+                                translated = body
+                                warning = true
+                            default:
+                                throw error
+                            }
+                        }
+
+                        let output = prefix + translated
                         if case .terminated = continuation.yield(.chunk(output)) {
                             return
                         }
+                        if warning {
+                            continuation.yield(.warning)
+                        }
+                        completed += 1
+                        continuation.yield(.progress(completed, chunks.count))
                     }
                     continuation.finish()
                 } catch is CancellationError {
@@ -339,6 +282,30 @@ final class TranslationService {
         return Segment(prefix: prefix, body: trimmed)
     }
 
+    private func splitMixedLine(_ text: String) -> (keep: String, translate: String)? {
+        guard let separatorRange = text.range(of: " — ") else { return nil }
+        let left = String(text[..<separatorRange.lowerBound])
+        let right = String(text[separatorRange.upperBound...])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !right.isEmpty else { return nil }
+
+        let latin = left.unicodeScalars.filter {
+            (0x0041...0x007A).contains($0.value) || (0x0030...0x0039).contains($0.value)
+        }.count
+        let cyrillic = left.unicodeScalars.filter {
+            (0x0400...0x04FF).contains($0.value)
+        }.count
+        guard latin >= 8, latin > cyrillic * 2 else { return nil }
+
+        let hasSlash = left.contains("/")
+        let isSingleToken = !left.contains(" ")
+            && latin >= 8
+            && left.contains(where: { $0.isNumber })
+        guard hasSlash || isSingleToken else { return nil }
+
+        return (left + " — ", right)
+    }
+
     private func bufferedTranslation(
         primary: String,
         alternate: String,
@@ -357,7 +324,13 @@ final class TranslationService {
                 if attempt > 0 {
                     retryConfig.temperature = min(config.temperature, 0.3)
                 }
-                let raw = try await collect(prompt: prompt, config: retryConfig)
+                let maxLength = max(200, source.count * 4 + 100)
+                let raw = try await collect(
+                    prompt: prompt,
+                    config: retryConfig,
+                    maxLength: maxLength,
+                    target: target
+                )
                 if let clean = validated(raw, source: source, target: target) {
                     return clean
                 }
@@ -367,7 +340,14 @@ final class TranslationService {
     }
 
     private func validated(_ raw: String, source: String, target: Language) -> String? {
-        let cleaned = OutputSanitizer.clean(raw)
+        let sanitized = OutputSanitizer.clean(raw)
+        guard !sanitized.isEmpty else { return nil }
+
+        let cleaned = sanitized.replacingOccurrences(
+            of: #"\s*\n\s*"#,
+            with: " ",
+            options: .regularExpression
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return nil }
 
         let lower = cleaned.lowercased()
@@ -387,6 +367,14 @@ final class TranslationService {
                 (0x4E00...0x9FFF).contains(scalar.value) || (0x3400...0x4DBF).contains(scalar.value)
             }
             if hasCJK { return nil }
+        }
+
+        let cyrillicTargets = ["uk", "ru", "be", "bg", "mk", "sr", "kk", "mn"]
+        if !cyrillicTargets.contains(target.code) {
+            let hasCyrillic = cleaned.unicodeScalars.contains {
+                (0x0400...0x04FF).contains($0.value)
+            }
+            if hasCyrillic { return nil }
         }
 
         if source.count >= 40, cleaned.count > source.count * 4 {
@@ -410,7 +398,12 @@ final class TranslationService {
         return cleaned
     }
 
-    private func collect(prompt: String, config: BackendConfig) async throws -> String {
+    private func collect(
+        prompt: String,
+        config: BackendConfig,
+        maxLength: Int,
+        target: Language
+    ) async throws -> String {
         var text = ""
         let stream = AsyncThrowingStream<TranslationEvent, Error> { continuation in
             let task = Task {
@@ -428,12 +421,44 @@ final class TranslationService {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+
         for try await event in stream {
             if case .chunk(let piece) = event {
                 text += piece
+                if let cut = degenerateIndex(in: text, target: target) {
+                    text = String(text[..<cut])
+                    break
+                }
+                if text.count >= maxLength {
+                    text = String(text.prefix(maxLength))
+                    break
+                }
             }
         }
         return text
+    }
+
+    private func degenerateIndex(in text: String, target: Language) -> String.Index? {
+        let markers = ["hy-Assistant", "hy-User", "hy_end", "<｜", "<|", "</|", "｜hy"]
+        var earliest: String.Index?
+        for marker in markers {
+            if let range = text.range(of: marker, options: .caseInsensitive),
+               earliest == nil || range.lowerBound < earliest! {
+                earliest = range.lowerBound
+            }
+        }
+
+        let cjkTargets = ["zh", "zh-Hant", "yue"]
+        if !cjkTargets.contains(target.code) {
+            if let cjk = text.firstIndex(where: { character in
+                character.unicodeScalars.contains { scalar in
+                    (0x4E00...0x9FFF).contains(scalar.value) || (0x3400...0x4DBF).contains(scalar.value)
+                }
+            }), earliest == nil || cjk < earliest! {
+                earliest = cjk
+            }
+        }
+        return earliest
     }
 
     // MARK: - Ollama

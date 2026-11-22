@@ -96,6 +96,8 @@ enum L10n {
         "Translate clipboard": "Перекласти буфер обміну",
         "Swap languages": "Обміняти мови",
         "Copy translation": "Скопіювати переклад",
+        "Copy translation (Markdown + formatting)": "Скопіювати переклад (Markdown + форматування)",
+        "Copy": "Копіювати",
         "Settings…": "Налаштування…",
         "Connection status": "Стан підключення",
         "Check connection": "Перевірити з'єднання",
@@ -124,6 +126,7 @@ enum L10n {
         "Enter or paste text…": "Введіть або вставте текст…",
         "Translation will appear here": "Тут з'явиться переклад",
         "Translating…": "Перекладаю…",
+        "Translating… %d of %d": "Перекладаю… %d з %d",
         "Retry": "Повторити",
         "Clear": "Очистити",
         "Listen to the original": "Прослухати оригінал",
@@ -256,6 +259,7 @@ enum L10n {
         "Model “%@” not found on the server.": "Модель «%@» не знайдена на сервері.",
         "The model returned an empty translation. Try again.": "Модель повернула порожній переклад. Спробуйте ще раз.",
         "The model could not produce a stable translation. Try again or switch the style/model.": "Модель не змогла стабільно перекласти фрагмент. Спробуйте ще раз або змініть стиль/модель.",
+        "Some lines could not be translated (%d); they are left in the source language.": "Деякі рядки не вдалося перекласти (%d); їх залишено мовою оригіналу.",
         "Server returned an unexpected response.": "Сервер повернув неочікувану відповідь.",
 
         // Catalog entries
@@ -324,6 +328,8 @@ enum L10n {
         "Translate clipboard": "Перевести буфер обмена",
         "Swap languages": "Поменять языки",
         "Copy translation": "Скопировать перевод",
+        "Copy translation (Markdown + formatting)": "Скопировать перевод (Markdown + форматирование)",
+        "Copy": "Копировать",
         "Settings…": "Настройки…",
         "Connection status": "Состояние подключения",
         "Check connection": "Проверить соединение",
@@ -352,6 +358,7 @@ enum L10n {
         "Enter or paste text…": "Введите или вставьте текст…",
         "Translation will appear here": "Здесь появится перевод",
         "Translating…": "Перевожу…",
+        "Translating… %d of %d": "Перевожу… %d из %d",
         "Retry": "Повторить",
         "Clear": "Очистить",
         "Listen to the original": "Прослушать оригинал",
@@ -484,6 +491,7 @@ enum L10n {
         "Model “%@” not found on the server.": "Модель «%@» не найдена на сервере.",
         "The model returned an empty translation. Try again.": "Модель вернула пустой перевод. Попробуйте ещё раз.",
         "The model could not produce a stable translation. Try again or switch the style/model.": "Модель не смогла стабильно перевести фрагмент. Попробуйте ещё раз или смените стиль/модель.",
+        "Some lines could not be translated (%d); they are left in the source language.": "Некоторые строки не удалось перевести (%d); они оставлены на языке оригинала.",
         "Server returned an unexpected response.": "Сервер вернул неожиданный ответ.",
 
         // Catalog entries

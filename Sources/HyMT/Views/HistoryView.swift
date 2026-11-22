@@ -190,8 +190,7 @@ struct HistoryRow: View {
 
             HStack(spacing: 4) {
                 IconButton(systemName: copied ? "checkmark" : "doc.on.doc", help: L10n.t("Copy translation", language)) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(entry.translatedText, forType: .string)
+                    ClipboardWriter.copy(entry.translatedText)
                     withAnimation { copied = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                         withAnimation { copied = false }
