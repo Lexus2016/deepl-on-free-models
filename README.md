@@ -48,6 +48,9 @@ The same window can use a cloud model when you need more speed or quality.
   matching the Hy-MT2 model card.
 - Model catalog, a **Connect** button, provider model list and name filter.
 - Visible **Copy** button: puts Markdown, HTML and RTF on the clipboard at once.
+- **Formatting-aware paste.** A page or a document copied from another app keeps
+  its headings, lists, links and emphasis: HTML/RTF is converted to Markdown
+  before translation.
 - **Automatic updates** through Sparkle 2: a daily signed-feed check, a manual
   **Check for Updates…** button, and an optional fully automatic install.
 - **Optional fallback provider and model.** If the primary provider fails, the
@@ -56,7 +59,8 @@ The same window can use a cloud model when you need more speed or quality.
   warms up a local model; can be turned off in Settings.
 - History with search, copy and delete.
 - System text-to-speech for the original and the translation.
-- Interface in **English, Ukrainian and Russian** (follows the system by default).
+- Interface in **English, Ukrainian, Russian, German, French, Spanish, Polish,
+  Portuguese and Italian** (follows the system by default).
 - Menu-bar icon and quick clipboard translation from there.
 
 ## Screenshots
@@ -74,7 +78,8 @@ The translation target list contains **38 variants of 33 languages**:
 
 Chinese, English, French, Portuguese, Spanish, Japanese, Turkish, Russian, Arabic, Korean, Thai, Italian, German, Vietnamese, Malay, Indonesian, Filipino, Hindi, Traditional Chinese, Polish, Czech, Dutch, Khmer, Burmese, Persian, Gujarati, Urdu, Telugu, Marathi, Hebrew, Bengali, Tamil, Ukrainian, Tibetan, Kazakh, Mongolian, Uyghur, Cantonese.
 
-The application interface is English, Ukrainian and Russian. The translation
+The application interface is available in English, Ukrainian, Russian, German,
+French, Spanish, Polish, Portuguese and Italian. The translation
 picker itself exposes every language above, and its names follow the interface
 locale.
 
@@ -223,7 +228,7 @@ HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh
 ## Interface language
 
 **Settings → Behavior → Interface language**: System, English, Ukrainian,
-Russian. Changes apply immediately, without a restart. Model prompts remain in
+Russian, German, French, Spanish, Polish, Portuguese, Italian. Changes apply immediately, without a restart. Model prompts remain in
 English — the language Hy-MT2 was trained on.
 
 ## Updates

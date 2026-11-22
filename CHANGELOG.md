@@ -4,6 +4,29 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Interface languages: German, French, Spanish, Polish, Portuguese and Italian,
+  alongside English, Ukrainian and Russian.
+- Formatting-aware paste: HTML or RTF copied from a browser or a word processor
+  is converted to Markdown, so headings, lists, links and emphasis survive
+  translation.
+- Paste from clipboard and Translate now actions in the empty panes.
+
+### Fixed
+
+- A model id at the end of a sentence (`Hy-MT2.`) no longer sends the whole line
+  back to the source language.
+- The hotkey status text updates immediately when the shortcut changes.
+
+### Changed
+
+- Refreshed interface: gradient background, brand mark, provider icon, grouped
+  language switcher and settings card accents.
+- The interface-language picker is a menu, ready for nine locales.
+
 ## [1.0.7] — 2026-11-22
 
 ### Added
