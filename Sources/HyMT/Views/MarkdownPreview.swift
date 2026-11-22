@@ -238,6 +238,9 @@ enum MarkdownRenderer {
 struct MarkdownPreview: NSViewRepresentable {
     let markdown: String
     var fontSize: CGFloat = 17
+    /// When set, ⌘V in the preview hands the clipboard to the pane instead of
+    /// being swallowed by the read-only text view.
+    var onPaste: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -273,6 +276,7 @@ struct MarkdownPreview: NSViewRepresentable {
             .underlineStyle: NSUnderlineStyle.single.rawValue
         ]
 
+        textView.onPaste = onPaste
         scrollView.documentView = textView
         context.coordinator.textView = textView
         context.coordinator.render(markdown: markdown, fontSize: fontSize, scrollView: scrollView)
@@ -280,6 +284,7 @@ struct MarkdownPreview: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        (scrollView.documentView as? PreviewTextView)?.onPaste = onPaste
         context.coordinator.scheduleRender(
             markdown: markdown,
             fontSize: fontSize,
@@ -333,6 +338,25 @@ struct MarkdownPreview: NSViewRepresentable {
 /// Links are opened by the coordinator; the text view itself only needs to
 /// stop AppKit from beeping when a link is clicked in a read-only view.
 final class PreviewTextView: NSTextView {
+    var onPaste: ((String) -> Void)?
+
+    override func paste(_ sender: Any?) {
+        if let onPaste, let markdown = RichTextPasteboard.markdown() {
+            onPaste(markdown)
+            return
+        }
+        super.paste(sender)
+    }
+
+    /// A read-only text view normally disables Paste; the source preview keeps
+    /// it available so ⌘V replaces the text instead of doing nothing.
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(paste(_:)), onPaste != nil {
+            return true
+        }
+        return super.validateUserInterfaceItem(item)
+    }
+
     override func clicked(onLink link: Any, at charIndex: Int) {
         guard let delegate else { return }
         _ = delegate.textView?(self, clickedOnLink: link, at: charIndex)

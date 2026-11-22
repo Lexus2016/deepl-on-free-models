@@ -311,8 +311,14 @@ struct SourcePane: View {
                         .allowsHitTesting(false)
                 }
                 if preview {
-                    MarkdownPreview(markdown: app.sourceText)
-                        .padding(.trailing, 18)
+                    MarkdownPreview(markdown: app.sourceText) { text in
+                        // Pasting while the pane is rendered replaces the text
+                        // and returns to the editor, so the clipboard is never
+                        // swallowed by the read-only view.
+                        app.sourceChanged(text)
+                        preview = false
+                    }
+                    .padding(.trailing, 18)
                 } else {
                     SourceTextEditor(text: binding) {
                         // A rich paste arrives as Markdown: show what it looks
