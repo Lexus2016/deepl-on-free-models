@@ -33,3 +33,6 @@ history.json
 
 # Local screenshots / drafts
 docs/.local*
+
+# Playwright MCP artifacts
+.playwright-mcp/
