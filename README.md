@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <b>English</b> · <a href="README.uk.md">Українська</a> · <a href="README.ru.md">Русский</a>
+  <b>English</b> · <a href="README.uk.md">Українська</a> · <a href="README.ru.md">Русский</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pl.md">Polski</a> · <a href="README.pt.md">Português</a> · <a href="README.it.md">Italiano</a>
 </p>
 
 <p align="center">
@@ -76,9 +76,9 @@ The same window can use a cloud model when you need more speed or quality.
 
 | | |
 |---|---|
-| ![Translation](docs/screenshots/en/translation.png) | ![Settings](docs/screenshots/en/settings.png) |
+| [![Translation](docs/screenshots/en/translation.png)](docs/screenshots/en/translation.png) | [![Settings](docs/screenshots/en/settings.png)](docs/screenshots/en/settings.png) |
 | **Translation:** progress, finished text, visible Copy button | **Settings:** providers, live model list, fallback |
-| ![Updates](docs/screenshots/en/updates.png) | |
+| [![Updates](docs/screenshots/en/updates.png)](docs/screenshots/en/updates.png) | |
 | **Updates:** signed appcast, daily checks, manual button | |
 
 ## Languages

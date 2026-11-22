@@ -586,6 +586,16 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.text)
                     .font(.system(size: 12.5))
 
+                Toggle(L10n.t("Dock icon", language), isOn: $settings.showInDock)
+                    .toggleStyle(.switch)
+                    .foregroundStyle(Theme.text)
+                    .font(.system(size: 12.5))
+
+                Text(L10n.t("Hide the Dock icon to keep DeepL-oFM in the menu bar only.", language))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Theme.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 FieldRow(label: L10n.t("Interface language", language)) {
                     Picker("", selection: $settings.interfaceLanguage) {
                         ForEach(AppLanguage.allCases) { languageOption in

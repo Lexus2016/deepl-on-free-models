@@ -4,6 +4,17 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.9] — 2026-11-22
+
+### Added
+
+- Dock icon switch: hide DeepL-oFM from the Dock and keep it in the menu bar.
+  Turning the Dock icon off enables the menu bar icon automatically when it is
+  the last way to reach the app.
+- README editions for German, French, Spanish, Polish, Portuguese and Italian,
+  with localized screenshots, the demo GIF and a language switch across all
+  nine editions.
+
 ## [1.0.8] — 2026-11-22
 
 ### Added
@@ -125,6 +136,7 @@ All notable changes to DeepL-oFM. The format follows
 - Initial native SwiftUI translator with Hy-MT2 7B through Ollama.
 - Two-pane translation, history, hotkeys and Ukrainian/Russian/English UI.
 
+[1.0.9]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.9
 [1.0.8]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.8
 [1.0.7]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.7
 [1.0.6]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.6

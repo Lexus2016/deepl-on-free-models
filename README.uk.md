@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <b>Українська</b> · <a href="README.ru.md">Русский</a>
+  <a href="README.md">English</a> · <b>Українська</b> · <a href="README.ru.md">Русский</a> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pl.md">Polski</a> · <a href="README.pt.md">Português</a> · <a href="README.it.md">Italiano</a>
 </p>
 
 <p align="center">
@@ -81,9 +81,9 @@
 
 | | |
 |---|---|
-| ![Переклад](docs/screenshots/uk/translation.png) | ![Налаштування](docs/screenshots/uk/settings.png) |
+| [![Переклад](docs/screenshots/uk/translation.png)](docs/screenshots/uk/translation.png) | [![Налаштування](docs/screenshots/uk/settings.png)](docs/screenshots/uk/settings.png) |
 | **Переклад:** прогрес, готовий текст, видима кнопка «Копіювати» | **Налаштування:** провайдери, живий список моделей, резерв |
-| ![Оновлення](docs/screenshots/uk/updates.png) | |
+| [![Оновлення](docs/screenshots/uk/updates.png)](docs/screenshots/uk/updates.png) | |
 | **Оновлення:** підписаний appcast, щоденні перевірки, ручна кнопка | |
 
 ## Мови

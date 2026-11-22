@@ -144,6 +144,8 @@ enum L10n {
     // MARK: - Tables
 
     private static let ukrainian: [String: String] = [
+        "Dock icon": "Іконка в Dock",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Вимкніть іконку в Dock, щоб DeepL-oFM залишався лише в меню-барі.",
         "Back to translation": "Назад до перекладу",
         "File": "Файл",
         "Translate file…": "Перекласти файл…",
@@ -423,6 +425,8 @@ enum L10n {
     ]
 
     private static let russian: [String: String] = [
+        "Dock icon": "Иконка в Dock",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Отключите иконку в Dock, чтобы DeepL-oFM оставался только в меню-баре.",
         "Back to translation": "Назад к переводу",
         "File": "Файл",
         "Translate file…": "Перевести файл…",
@@ -703,6 +707,8 @@ enum L10n {
 
 
     private static let german: [String: String] = [
+        "Dock icon": "Dock-Symbol",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Dock-Symbol ausblenden, damit DeepL-oFM nur in der Menüleiste bleibt.",
         "Back to translation": "Zurück zur Übersetzung",
         "File": "Datei",
         "Translate file…": "Datei übersetzen…",
@@ -961,6 +967,8 @@ enum L10n {
     ]
 
     private static let french: [String: String] = [
+        "Dock icon": "Icône du Dock",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Masquez l’icône du Dock pour garder DeepL-oFM uniquement dans la barre des menus.",
         "Back to translation": "Retour à la traduction",
         "File": "Fichier",
         "Translate file…": "Traduire un fichier…",
@@ -1219,6 +1227,8 @@ enum L10n {
     ]
 
     private static let spanish: [String: String] = [
+        "Dock icon": "Icono del Dock",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Oculta el icono del Dock para mantener DeepL-oFM solo en la barra de menús.",
         "Back to translation": "Volver a la traducción",
         "File": "Archivo",
         "Translate file…": "Traducir archivo…",
@@ -1477,6 +1487,8 @@ enum L10n {
     ]
 
     private static let polish: [String: String] = [
+        "Dock icon": "Ikona w Docku",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Ukryj ikonę w Docku, aby DeepL-oFM pozostał tylko w pasku menu.",
         "Back to translation": "Powrót do tłumaczenia",
         "File": "Plik",
         "Translate file…": "Przetłumacz plik…",
@@ -1735,6 +1747,8 @@ enum L10n {
     ]
 
     private static let portuguese: [String: String] = [
+        "Dock icon": "Ícone no Dock",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Oculte o ícone no Dock para manter o DeepL-oFM apenas na barra de menus.",
         "Back to translation": "Voltar à tradução",
         "File": "Arquivo",
         "Translate file…": "Traduzir arquivo…",
@@ -1993,6 +2007,8 @@ enum L10n {
     ]
 
     private static let italian: [String: String] = [
+        "Dock icon": "Icona nel Dock",
+        "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Nascondi l’icona nel Dock per tenere DeepL-oFM solo nella barra dei menu.",
         "Back to translation": "Torna alla traduzione",
         "File": "File",
         "Translate file…": "Traduci file…",

@@ -4,6 +4,24 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>1.0.9</title>
+            <pubDate>Sun, 22 Nov 2026 16:55:00 +0100</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>1.0.9</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.0.9
+
+Menu-bar-only mode and documentation in nine languages.
+
+- **Dock icon switch**: hide DeepL-oFM from the Dock and keep it in the menu bar. If the menu bar icon is off, turning off the Dock icon enables it automatically.
+- **Nine README editions** with localized screenshots and the demo GIF: English, Ukrainian, Russian, German, French, Spanish, Polish, Portuguese and Italian.
+- Each edition links to all the others, and the website links the full documentation in every language.
+]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.9/DeepL-oFM-1.0.9.dmg" length="3470619" type="application/octet-stream" sparkle:edSignature="HfZ6w5n/lMf/ApFBrTmwAceFasXgT5hvr7kSkm2+VbBILJ0yZY831iacariM7qN3psgwxb+4b5gUb4CbaileBw=="></enclosure>
+        </item>
+    <item>
             <title>1.0.8</title>
             <pubDate>Sun, 22 Nov 2026 16:36:00 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -57,6 +75,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: lnjiMZiAJpVDm6Wm1uYyYn2088ad79zk5NVo1ZNkhzLxzzdG7O3PA/iPsFE7yMlDiIQnJBmuTLGmYObhkiT3Cg==
-length: 4072
+edSignature: lF8/9F4vqhwwthga7fTWc/6FetjvjHIkLtYl1U+iZ7hp4FRZLPbAmPrup5n7tWCK49phV9e+uH1zaRH0/o36Dg==
+length: 5427
 -->

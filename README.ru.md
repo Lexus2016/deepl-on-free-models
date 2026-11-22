@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.uk.md">Українська</a> · <b>Русский</b>
+  <a href="README.md">English</a> · <a href="README.uk.md">Українська</a> · <b>Русский</b> · <a href="README.de.md">Deutsch</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a> · <a href="README.pl.md">Polski</a> · <a href="README.pt.md">Português</a> · <a href="README.it.md">Italiano</a>
 </p>
 
 <p align="center">
@@ -82,9 +82,9 @@
 
 | | |
 |---|---|
-| ![Перевод](docs/screenshots/ru/translation.png) | ![Настройки](docs/screenshots/ru/settings.png) |
+| [![Перевод](docs/screenshots/ru/translation.png)](docs/screenshots/ru/translation.png) | [![Настройки](docs/screenshots/ru/settings.png)](docs/screenshots/ru/settings.png) |
 | **Перевод:** прогресс, готовый текст, видимая кнопка «Копировать» | **Настройки:** провайдеры, живой список моделей, резерв |
-| ![Обновления](docs/screenshots/ru/updates.png) | |
+| [![Обновления](docs/screenshots/ru/updates.png)](docs/screenshots/ru/updates.png) | |
 | **Обновления:** подписанный appcast, ежедневные проверки, ручная кнопка | |
 
 ## Языки

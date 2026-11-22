@@ -80,7 +80,8 @@ struct DeepLoFMApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.appearance = NSAppearance(named: .darkAqua)
-        NSApp.setActivationPolicy(.regular)
+        let showInDock = UserDefaults.standard.object(forKey: "hymt.showInDock") as? Bool ?? true
+        NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
         DispatchQueue.main.async {
             NSApp.activate()
         }

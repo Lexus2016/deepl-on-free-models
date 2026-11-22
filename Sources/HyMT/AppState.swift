@@ -146,6 +146,14 @@ final class AppState: NSObject, ObservableObject {
         configureBindings()
         registerHotKeys()
         if settings.showInMenuBar { installStatusItem() }
+        applyActivationPolicy()
+    }
+
+    private func applyActivationPolicy() {
+        let policy: NSApplication.ActivationPolicy = settings.showInDock ? .regular : .accessory
+        if NSApp.activationPolicy() != policy {
+            NSApp.setActivationPolicy(policy)
+        }
     }
 
     // MARK: - Lifecycle
@@ -236,7 +244,7 @@ final class AppState: NSObject, ObservableObject {
     }
 
     func showWindow() {
-        NSApp.setActivationPolicy(.regular)
+        applyActivationPolicy()
         if #available(macOS 14.0, *) {
             NSApp.activate()
         } else {
@@ -997,6 +1005,14 @@ final class AppState: NSObject, ObservableObject {
             .dropFirst()
             .sink { [weak self] show in
                 if show { self?.installStatusItem() } else { self?.removeStatusItem() }
+            }
+            .store(in: &cancellables)
+
+        settings.$showInDock
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.applyActivationPolicy()
+                self?.objectWillChange.send()
             }
             .store(in: &cancellables)
 

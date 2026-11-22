@@ -116,7 +116,17 @@ final class AppSettings: ObservableObject {
         }
     }
     @Published var showInMenuBar: Bool {
-        didSet { store(showInMenuBar, Keys.showInMenuBar) }
+        didSet {
+            store(showInMenuBar, Keys.showInMenuBar)
+            // Never leave the app without a way to reach it.
+            if !showInMenuBar && !showInDock { showInDock = true }
+        }
+    }
+    @Published var showInDock: Bool {
+        didSet {
+            store(showInDock, Keys.showInDock)
+            if !showInDock && !showInMenuBar { showInMenuBar = true }
+        }
     }
     @Published var keepHistory: Bool {
         didSet { store(keepHistory, Keys.keepHistory) }
@@ -172,6 +182,7 @@ final class AppSettings: ObservableObject {
         static let debounce = "hymt.debounce"
         static let hotKey = "hymt.hotKey"
         static let showInMenuBar = "hymt.showInMenuBar"
+        static let showInDock = "hymt.showInDock"
         static let keepHistory = "hymt.keepHistory"
         static let warmUpOnLaunch = "hymt.warmUpOnLaunch"
         static let interfaceLanguage = "hymt.interfaceLanguage"
@@ -220,7 +231,11 @@ final class AppSettings: ObservableObject {
         } else {
             self.hotKey = .standard
         }
-        self.showInMenuBar = defaults.object(forKey: Keys.showInMenuBar) as? Bool ?? true
+        let storedMenuBar = defaults.object(forKey: Keys.showInMenuBar) as? Bool ?? true
+        let storedDock = defaults.object(forKey: Keys.showInDock) as? Bool ?? true
+        self.showInMenuBar = storedMenuBar
+        // Never leave the app without a way to reach it.
+        self.showInDock = (storedMenuBar || storedDock) ? storedDock : true
         self.keepHistory = defaults.object(forKey: Keys.keepHistory) as? Bool ?? true
         self.warmUpOnLaunch = defaults.object(forKey: Keys.warmUpOnLaunch) as? Bool ?? true
         self.interfaceLanguage = AppLanguage(rawValue: defaults.string(forKey: Keys.interfaceLanguage) ?? "") ?? .system
