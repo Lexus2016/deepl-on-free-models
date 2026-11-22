@@ -1,23 +1,39 @@
-# DeepL-oFM — a native macOS translator for local and free models
+<p align="center">
+  <img src="docs/app-icon.png" width="120" height="120" alt="DeepL-oFM app icon">
+</p>
 
-**English** · [Українська](README.uk.md) · [Русский](README.ru.md)
+<h1 align="center">DeepL-oFM</h1>
 
-[![Release](https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?label=release)](https://github.com/Lexus2016/deepl-on-free-models/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
-![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)
+<p align="center">
+  <b>A native macOS translator for local and cloud models.</b><br>
+  Keep paragraphs, lists and Markdown intact. Run Hy-MT2 7B offline through
+  Ollama, or use OpenRouter, Groq and Cerebras with your own key. Free, private
+  and signed for macOS.
+</p>
 
-A two-pane translation app in the spirit of DeepL, powered by the local
-**Hy-MT2 7B** model or a cloud provider. Works offline by default; supports
-Ollama, Ollama Cloud, OpenRouter, Groq, Cerebras, LM Studio, oMLX, llama.cpp
-and any OpenAI-compatible server.
+<p align="center">
+  <b>English</b> · <a href="README.uk.md">Українська</a> · <a href="README.ru.md">Русский</a>
+</p>
 
-> Not affiliated with DeepL SE. “DeepL-oFM” describes the interface style
-> (“on Free Models”); it is an independent open-source project.
+<p align="center">
+  <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?style=flat-square&amp;color=2f6bff"></a>
+  <img alt="Platform: macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-111827?style=flat-square&amp;logo=apple&amp;logoColor=white">
+  <img alt="Built with SwiftUI" src="https://img.shields.io/badge/SwiftUI-native-2ee6ff?style=flat-square&amp;logo=swift&amp;logoColor=white">
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square">
+</p>
 
-![Translation](docs/screenshots/en/translation.png)
+<p align="center">
+  <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest"><b>⬇ Download DeepL-oFM for macOS</b></a>
+  · <a href="https://lexus2016.github.io/deepl-on-free-models/">Website</a>
+</p>
 
-![Settings](docs/screenshots/en/settings.png)
+<p align="center"><sub>Not affiliated with DeepL SE. “DeepL-oFM” describes the interface style (“on Free Models”).</sub></p>
+
+## Why DeepL-oFM
+
+Most translators are a website first. DeepL-oFM is a native Mac app first:
+local models by default, formatting preserved, no account and no telemetry.
+The same window can use a cloud model when you need more speed or quality.
 
 ## Features
 
@@ -42,6 +58,25 @@ and any OpenAI-compatible server.
 - System text-to-speech for the original and the translation.
 - Interface in **English, Ukrainian and Russian** (follows the system by default).
 - Menu-bar icon and quick clipboard translation from there.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Translation](docs/screenshots/en/translation.png) | ![Settings](docs/screenshots/en/settings.png) |
+| **Translation:** progress, finished text, visible Copy button | **Settings:** providers, live model list, fallback |
+| ![Updates](docs/screenshots/en/updates.png) | |
+| **Updates:** signed appcast, daily checks, manual button | |
+
+## Languages
+
+The translation target list contains **38 variants of 33 languages**:
+
+Chinese, English, French, Portuguese, Spanish, Japanese, Turkish, Russian, Arabic, Korean, Thai, Italian, German, Vietnamese, Malay, Indonesian, Filipino, Hindi, Traditional Chinese, Polish, Czech, Dutch, Khmer, Burmese, Persian, Gujarati, Urdu, Telugu, Marathi, Hebrew, Bengali, Tamil, Ukrainian, Tibetan, Kazakh, Mongolian, Uyghur, Cantonese.
+
+The application interface is English, Ukrainian and Russian. The translation
+picker itself exposes every language above, and its names follow the interface
+locale.
 
 ## Providers
 
@@ -192,8 +227,6 @@ Russian. Changes apply immediately, without a restart. Model prompts remain in
 English — the language Hy-MT2 was trained on.
 
 ## Updates
-
-![Updates](docs/screenshots/en/updates.png)
 
 The app uses **Sparkle 2** with a signed appcast:
 

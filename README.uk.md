@@ -1,23 +1,40 @@
-# DeepL-oFM — нативний перекладач для macOS на локальних і безкоштовних моделях
+<p align="center">
+  <img src="docs/app-icon.png" width="120" height="120" alt="Іконка DeepL-oFM">
+</p>
 
-[English](README.md) · **Українська** · [Русский](README.ru.md)
+<h1 align="center">DeepL-oFM</h1>
 
-[![Release](https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?label=release)](https://github.com/Lexus2016/deepl-on-free-models/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
-![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)
+<p align="center">
+  <b>Нативний перекладач для macOS на локальних і хмарних моделях.</b><br>
+  Зберігає абзаци, списки й Markdown. Hy-MT2 7B працює офлайн через Ollama,
+  а OpenRouter, Groq і Cerebras доступні з вашим ключем. Безкоштовно, приватно
+  й підписано для macOS.
+</p>
 
-Двопанельний перекладач у стилі DeepL на локальній моделі **Hy-MT2 7B** або
-хмарному провайдері. За замовчуванням працює офлайн; підтримує Ollama,
-Ollama Cloud, OpenRouter, Groq, Cerebras, LM Studio, oMLX, llama.cpp і
-будь-який OpenAI-сумісний сервер.
+<p align="center">
+  <a href="README.md">English</a> · <b>Українська</b> · <a href="README.ru.md">Русский</a>
+</p>
 
-> Не пов'язаний із DeepL SE. «DeepL-oFM» описує стиль інтерфейсу
-> («on Free Models»); це незалежний open-source проєкт.
+<p align="center">
+  <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest"><img alt="Останній реліз" src="https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?style=flat-square&amp;color=2f6bff"></a>
+  <img alt="Платформа: macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-111827?style=flat-square&amp;logo=apple&amp;logoColor=white">
+  <img alt="SwiftUI" src="https://img.shields.io/badge/SwiftUI-native-2ee6ff?style=flat-square&amp;logo=swift&amp;logoColor=white">
+  <img alt="Ліцензія: MIT" src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square">
+</p>
 
-![Переклад](docs/screenshots/uk/translation.png)
+<p align="center">
+  <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest"><b>⬇ Завантажити DeepL-oFM для macOS</b></a>
+  · <a href="https://lexus2016.github.io/deepl-on-free-models/">Сайт</a>
+</p>
 
-![Налаштування](docs/screenshots/uk/settings.png)
+<p align="center"><sub>Не пов'язаний із DeepL SE. «DeepL-oFM» описує стиль інтерфейсу («on Free Models»).</sub></p>
+
+## Чому DeepL-oFM
+
+Більшість перекладачів — це насамперед сайт. DeepL-oFM — насамперед нативний
+застосунок для Mac: локальні моделі за замовчуванням, збережене форматування,
+без акаунта й телеметрії. У тому самому вікні можна підключити хмарну модель,
+коли потрібні швидкість або якість.
 
 ## Можливості
 
@@ -46,6 +63,24 @@ Ollama Cloud, OpenRouter, Groq, Cerebras, LM Studio, oMLX, llama.cpp і
 - Системне озвучення оригіналу й перекладу.
 - Інтерфейс **українською, російською та англійською** (за системою).
 - Іконка в меню-барі та швидкий переклад буфера звідти.
+
+## Скріншоти
+
+| | |
+|---|---|
+| ![Переклад](docs/screenshots/uk/translation.png) | ![Налаштування](docs/screenshots/uk/settings.png) |
+| **Переклад:** прогрес, готовий текст, видима кнопка «Копіювати» | **Налаштування:** провайдери, живий список моделей, резерв |
+| ![Оновлення](docs/screenshots/uk/updates.png) | |
+| **Оновлення:** підписаний appcast, щоденні перевірки, ручна кнопка | |
+
+## Мови
+
+Список мов перекладу містить **38 варіантів 33 мов**:
+
+китайська, англійська, французька, португальська, іспанська, японська, турецька, російська, арабська, корейська, тайська, італійська, німецька, в'єтнамська, малайська, індонезійська, філіппінська, гінді, китайська (традиційна), польська, чеська, нідерландська, кхмерська, бірманська, перська, гуджараті, урду, телугу, маратхі, іврит, бенгальська, тамільська, українська, тибетська, казахська, монгольська, уйгурська, кантонська.
+
+Інтерфейс застосунку — англійська, українська та російська. Сам вибір мови
+перекладу показує всі мови вище, а їхні назви відповідають мові інтерфейсу.
 
 ## Провайдери
 
@@ -199,8 +234,6 @@ HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh
 для моделі залишаються англійською — мовою, на якій навчена Hy-MT2.
 
 ## Оновлення
-
-![Оновлення](docs/screenshots/uk/updates.png)
 
 Застосунок використовує **Sparkle 2** із підписаним appcast:
 
