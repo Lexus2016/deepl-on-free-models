@@ -287,6 +287,38 @@ final class TranslationService {
         }
     }
 
+    /// Raw completion for the writing mode: no translation prompts or target
+    /// validation, just the provider's answer.
+    func streamRaw(
+        prompt: String,
+        config: BackendConfig
+    ) -> AsyncThrowingStream<TranslationEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    switch config.kind {
+                    case .ollama:
+                        _ = try await runOllama(
+                            prompt: prompt,
+                            config: config,
+                            continuation: continuation
+                        )
+                    case .openAI:
+                        _ = try await runOpenAI(
+                            prompt: prompt,
+                            config: config,
+                            continuation: continuation
+                        )
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     // MARK: - Short blocks
 
     private struct Segment {

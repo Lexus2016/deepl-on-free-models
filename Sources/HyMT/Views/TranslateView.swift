@@ -385,7 +385,14 @@ struct SourcePane: View {
 
             PaneFooter(
                 left: [
-                    PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the original", language), active: !app.sourceText.isEmpty) {
+                    PaneAction(
+                        icon: app.speaking == .source ? "stop.fill" : "speaker.wave.2",
+                        help: L10n.t(
+                            app.speaking == .source ? "Stop" : "Listen to the original",
+                            language
+                        ),
+                        active: !app.sourceText.isEmpty
+                    ) {
                         app.speakSource()
                     },
                     PaneAction(icon: "doc.on.clipboard", help: L10n.t("Paste from clipboard", language), active: true) {
@@ -405,13 +412,7 @@ struct SourcePane: View {
                         app.copySource()
                     }
                 ],
-                counter: {
-                    let characters = L10n.characters(app.sourceText.count, language)
-                    if let name = app.document?.url.lastPathComponent {
-                        return "\(name) · \(characters)"
-                    }
-                    return characters
-                }()
+                counter: L10n.characters(app.sourceText.count, language)
             )
         }
         .background(Theme.editor)
@@ -441,13 +442,19 @@ struct TargetPane: View {
                     VStack(spacing: 10) {
                         if app.isTranslating {
                             if app.translationTotal > 0 {
-                                ProgressView(
-                                    value: Double(app.translationCompleted),
-                                    total: Double(max(app.translationTotal, 1))
-                                )
-                                .progressViewStyle(.linear)
-                                .tint(Theme.accent)
-                                .frame(width: 220)
+                                HStack(spacing: 8) {
+                                    ProgressView(
+                                        value: Double(app.translationCompleted),
+                                        total: Double(max(app.translationTotal, 1))
+                                    )
+                                    .progressViewStyle(.linear)
+                                    .tint(Theme.accent)
+                                    .frame(width: 180)
+                                    Text("\(app.translationPercent)%")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(Theme.secondary)
+                                        .monospacedDigit()
+                                }
                                 Text(L10n.format(
                                     "Translating… %d of %d",
                                     language,
@@ -524,14 +531,23 @@ struct TargetPane: View {
                 if app.isTranslating,
                    app.settings.resultView == .preview,
                    !app.translatedText.isEmpty {
-                    VStack {
-                        ProgressView(
-                            value: Double(app.translationCompleted),
-                            total: Double(max(app.translationTotal, 1))
-                        )
-                        .progressViewStyle(.linear)
-                        .tint(Theme.accent)
-                        .frame(height: 2)
+                    VStack(spacing: 6) {
+                        HStack(spacing: 8) {
+                            ProgressView(
+                                value: Double(app.translationCompleted),
+                                total: Double(max(app.translationTotal, 1))
+                            )
+                            .progressViewStyle(.linear)
+                            .tint(Theme.accent)
+                            .frame(width: 160)
+                            Text("\(app.translationPercent)%")
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .foregroundStyle(Theme.secondary)
+                                .monospacedDigit()
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 6)
                         Spacer()
                     }
                     .allowsHitTesting(false)
@@ -572,15 +588,15 @@ struct TargetPane: View {
 
             PaneFooter(
                 left: [
-                    PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the translation", language), active: !app.translatedText.isEmpty) {
-                        app.speakTranslation()
-                    },
                     PaneAction(
-                        icon: "square.and.arrow.down",
-                        help: L10n.t("Save translation…", language),
-                        active: app.document != nil && !app.translatedText.isEmpty
+                        icon: app.speaking == .translation ? "stop.fill" : "speaker.wave.2",
+                        help: L10n.t(
+                            app.speaking == .translation ? "Stop" : "Listen to the translation",
+                            language
+                        ),
+                        active: !app.translatedText.isEmpty
                     ) {
-                        app.saveTranslation()
+                        app.speakTranslation()
                     }
                 ],
                 accessory: AnyView(

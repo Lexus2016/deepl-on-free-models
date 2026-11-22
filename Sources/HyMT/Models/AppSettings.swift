@@ -96,6 +96,9 @@ final class AppSettings: ObservableObject {
             if !showInMenuBar && !showInDock { showInDock = true }
         }
     }
+    @Published var speechVoiceID: String {
+        didSet { store(speechVoiceID, Keys.speechVoiceID) }
+    }
     @Published var showInDock: Bool {
         didSet {
             store(showInDock, Keys.showInDock)
@@ -157,6 +160,7 @@ final class AppSettings: ObservableObject {
         static let hotKey = "hymt.hotKey"
         static let showInMenuBar = "hymt.showInMenuBar"
         static let showInDock = "hymt.showInDock"
+        static let speechVoiceID = "hymt.speechVoiceID"
         static let keepHistory = "hymt.keepHistory"
         static let warmUpOnLaunch = "hymt.warmUpOnLaunch"
         static let interfaceLanguage = "hymt.interfaceLanguage"
@@ -210,6 +214,7 @@ final class AppSettings: ObservableObject {
         self.showInMenuBar = storedMenuBar
         // Never leave the app without a way to reach it.
         self.showInDock = (storedMenuBar || storedDock) ? storedDock : true
+        self.speechVoiceID = defaults.string(forKey: Keys.speechVoiceID) ?? ""
         self.keepHistory = defaults.object(forKey: Keys.keepHistory) as? Bool ?? true
         self.warmUpOnLaunch = defaults.object(forKey: Keys.warmUpOnLaunch) as? Bool ?? true
         self.interfaceLanguage = AppLanguage(rawValue: defaults.string(forKey: Keys.interfaceLanguage) ?? "") ?? .system

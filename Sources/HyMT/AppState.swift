@@ -14,6 +14,8 @@ final class AppState: NSObject, ObservableObject {
 
     enum Tab: String, CaseIterable, Identifiable {
         case translate
+        case write
+        case files
         case history
         case settings
 
@@ -22,6 +24,8 @@ final class AppState: NSObject, ObservableObject {
         func title(_ language: AppLanguage) -> String {
             switch self {
             case .translate: return L10n.t("Translate text", language)
+            case .write: return "DeepL Write"
+            case .files: return L10n.t("Files", language)
             case .history: return L10n.t("History", language)
             case .settings: return L10n.t("Settings", language)
             }
@@ -30,6 +34,8 @@ final class AppState: NSObject, ObservableObject {
         var icon: String {
             switch self {
             case .translate: return "character.bubble"
+            case .write: return "wand.and.stars"
+            case .files: return "doc.text"
             case .history: return "clock.arrow.circlepath"
             case .settings: return "gearshape"
             }
@@ -56,9 +62,10 @@ final class AppState: NSObject, ObservableObject {
     @Published var errorMessage: String?
     @Published var tokensPerSecond: Double?
     @Published var lastDurationMs: Int?
-    @Published var document: OpenedDocument?
     @Published var windowRequest = 0
-    private var pendingSaveURL: URL?
+    @Published var speaking: SpeakTarget?
+    let files = FileTranslationStore()
+    let write = WriteStore()
 
     @Published var sourceLanguage: Language {
         didSet {
@@ -148,6 +155,9 @@ final class AppState: NSObject, ObservableObject {
         if UserDefaults.standard.object(forKey: "SUEnableAutomaticChecks") == nil {
             updaterController.updater.automaticallyChecksForUpdates = true
         }
+        Speaker.shared.onFinish = { [weak self] in
+            self?.speaking = nil
+        }
         configureBindings()
         registerHotKeys()
         if settings.showInMenuBar { installStatusItem() }
@@ -155,7 +165,9 @@ final class AppState: NSObject, ObservableObject {
     }
 
     private func applyActivationPolicy() {
-        let policy: NSApplication.ActivationPolicy = settings.showInDock ? .regular : .accessory
+        let visible = mainWindow?.isVisible == true
+        let policy: NSApplication.ActivationPolicy =
+            (settings.showInDock || visible) ? .regular : .accessory
         if NSApp.activationPolicy() != policy {
             NSApp.setActivationPolicy(policy)
         }
@@ -198,10 +210,29 @@ final class AppState: NSObject, ObservableObject {
             translate(force: true)
         }
         if let index = arguments.firstIndex(of: "--open-file"), arguments.count > index + 1 {
-            openDocument(at: URL(fileURLWithPath: arguments[index + 1]))
+            let url = URL(fileURLWithPath: arguments[index + 1])
+            tab = .files
+            files.select(url: url, language: settings.interfaceLanguage)
         }
-        if let index = arguments.firstIndex(of: "--save-file"), arguments.count > index + 1 {
-            pendingSaveURL = URL(fileURLWithPath: arguments[index + 1])
+        if let index = arguments.firstIndex(of: "--write-text"), arguments.count > index + 1 {
+            tab = .write
+            write.sourceText = arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let self else { return }
+                self.write.improve(
+                    settings: self.settings,
+                    interfaceLanguage: self.settings.interfaceLanguage
+                )
+            }
+        }
+        if arguments.contains("--translate-file") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                guard let self else { return }
+                self.files.translate(
+                    settings: self.settings,
+                    language: self.settings.interfaceLanguage
+                )
+            }
         }
         if arguments.contains("--translate-clipboard") {
             translateClipboard()
@@ -223,6 +254,8 @@ final class AppState: NSObject, ObservableObject {
         if let index = arguments.firstIndex(of: "--tab"), arguments.count > index + 1 {
             switch arguments[index + 1] {
             case "settings": tab = .settings
+            case "files": tab = .files
+            case "write": tab = .write
             case "history": tab = settings.keepHistory ? .history : .translate
             default: tab = .translate
             }
@@ -250,11 +283,15 @@ final class AppState: NSObject, ObservableObject {
         DispatchQueue.main.async {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate()
+            self.applyActivationPolicy()
         }
     }
 
     func showWindow() {
-        applyActivationPolicy()
+        let regular: NSApplication.ActivationPolicy = .regular
+        if NSApp.activationPolicy() != regular {
+            NSApp.setActivationPolicy(regular)
+        }
         if #available(macOS 14.0, *) {
             NSApp.activate()
         } else {
@@ -265,11 +302,13 @@ final class AppState: NSObject, ObservableObject {
                 window.deminiaturize(nil)
             }
             window.makeKeyAndOrderFront(nil)
+            applyActivationPolicy()
         } else if let window = NSApp.windows.first(where: { $0.canBecomeMain }) {
             if window.isMiniaturized {
                 window.deminiaturize(nil)
             }
             window.makeKeyAndOrderFront(nil)
+            applyActivationPolicy()
         } else {
             // The window was destroyed (for example after a close on another
             // path): ask SwiftUI to create the scene again.
@@ -279,6 +318,7 @@ final class AppState: NSObject, ObservableObject {
 
     @objc private func hideMainWindow() {
         mainWindow?.orderOut(nil)
+        applyActivationPolicy()
     }
 
 }
@@ -286,6 +326,7 @@ final class AppState: NSObject, ObservableObject {
 extension AppState: NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         sender.orderOut(nil)
+        applyActivationPolicy()
         return false
     }
 }
@@ -433,7 +474,6 @@ extension AppState {
             self.translationWarningCount = result.warnings
             self.debugLog("translate done in \(duration) ms: \(self.translatedText)")
             self.isTranslating = false
-            self.flushPendingSave()
             if result.warnings > 0 {
                 self.errorMessage = L10n.format(
                     "Some lines could not be translated (%d); they are left in the source language.",
@@ -540,7 +580,6 @@ extension AppState {
 
     func clearSource() {
         cancelTranslation()
-        discardDocument()
         sourceText = ""
         translatedText = ""
         errorMessage = nil
@@ -613,87 +652,6 @@ extension AppState {
         ClipboardWriter.copy(sourceText)
     }
 
-    // MARK: - Files
-
-    func openDocument() {
-        let panel = NSOpenPanel()
-        panel.title = L10n.t("Open a document", settings.interfaceLanguage)
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = DocumentTranslator.supportedContentTypes
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        openDocument(at: url)
-    }
-
-    func openDocument(at url: URL) {
-        do {
-            let opened = try DocumentTranslator.read(url: url)
-            discardDocument()
-            cancelTranslation()
-            document = opened
-            suppressRetranslation = true
-            sourceText = opened.text
-            translatedText = ""
-            errorMessage = nil
-            suppressRetranslation = false
-            detectedLanguage = sourceLanguage == .auto
-                ? Language.detect(opened.text, preferred: settings.interfaceLanguage)
-                : nil
-            tab = .translate
-            showWindow()
-            translate(force: true)
-        } catch let error as DocumentError {
-            errorMessage = error.message(settings.interfaceLanguage)
-            showWindow()
-        } catch {
-            errorMessage = L10n.t("The file could not be read.", settings.interfaceLanguage)
-            showWindow()
-        }
-    }
-
-    func saveTranslation() {
-        guard let document, !translatedText.isEmpty else { return }
-        let panel = NSSavePanel()
-        panel.title = L10n.t("Translated file", settings.interfaceLanguage)
-        panel.nameFieldStringValue = defaultFileName(for: document)
-        if let type = document.kind.contentType {
-            panel.allowedContentTypes = [type]
-        }
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        saveTranslation(to: url)
-    }
-
-    func saveTranslation(to url: URL) {
-        guard let document, !translatedText.isEmpty else { return }
-        do {
-            try DocumentTranslator.write(
-                document: document,
-                translated: translatedText,
-                to: url
-            )
-        } catch {
-            errorMessage = L10n.t(
-                "The translation could not be saved.",
-                settings.interfaceLanguage
-            )
-        }
-    }
-
-    private func defaultFileName(for document: OpenedDocument) -> String {
-        let base = document.url.deletingPathExtension().lastPathComponent
-        return "\(base)-\(targetLanguage.code).\(document.kind.fileExtension)"
-    }
-
-    private func flushPendingSave() {
-        guard let url = pendingSaveURL else { return }
-        pendingSaveURL = nil
-        saveTranslation(to: url)
-    }
-
-    func discardDocument() {
-        document = nil
-    }
-
     // MARK: - Updates
 
     func checkForUpdates() {
@@ -711,13 +669,51 @@ extension AppState {
         set { updaterController.updater.automaticallyDownloadsUpdates = newValue }
     }
 
+    enum SpeakTarget {
+        case source
+        case translation
+    }
+
+    var translationPercent: Int {
+        guard translationTotal > 0 else { return 0 }
+        let value = Double(translationCompleted) / Double(translationTotal)
+        return min(100, Int((value * 100).rounded()))
+    }
+
     func speakSource() {
-        let language = sourceLanguage == .auto ? (Language.detect(sourceText, preferred: settings.interfaceLanguage) ?? .auto) : sourceLanguage
-        Speaker.shared.speak(sourceText, language: language)
+        if speaking == .source {
+            stopSpeaking()
+            return
+        }
+        let language = sourceLanguage == .auto
+            ? (Language.detect(sourceText, preferred: settings.interfaceLanguage) ?? .auto)
+            : sourceLanguage
+        if Speaker.shared.speak(
+            sourceText,
+            language: language,
+            voiceID: settings.speechVoiceID
+        ) {
+            speaking = .source
+        }
     }
 
     func speakTranslation() {
-        Speaker.shared.speak(translatedText, language: targetLanguage)
+        if speaking == .translation {
+            stopSpeaking()
+            return
+        }
+        if Speaker.shared.speak(
+            translatedText,
+            language: targetLanguage,
+            voiceID: settings.speechVoiceID
+        ) {
+            speaking = .translation
+        }
+    }
+
+    func stopSpeaking() {
+        Speaker.shared.stop()
+        speaking = nil
     }
 
     func loadHistory(_ entry: HistoryEntry) {

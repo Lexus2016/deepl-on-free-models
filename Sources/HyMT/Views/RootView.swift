@@ -17,6 +17,10 @@ struct RootView: View {
                 switch app.tab {
                 case .translate:
                     TranslateView()
+                case .write:
+                    WriteView(store: app.write)
+                case .files:
+                    FilesView(store: app.files)
                 case .history:
                     HistoryView()
                 case .settings:
@@ -68,7 +72,8 @@ struct RootView: View {
                 }
                 guard let url else { return }
                 DispatchQueue.main.async {
-                    app.openDocument(at: url)
+                    app.files.select(url: url, language: app.settings.interfaceLanguage)
+                    app.tab = .files
                 }
             }
             return true
@@ -243,12 +248,13 @@ struct TopBar: View {
     private var fileMenu: some View {
         Menu {
             Button(L10n.t("Translate file…", language)) {
-                app.openDocument()
+                app.tab = .files
+                app.files.chooseFile(language: language)
             }
             Button(L10n.t("Save translation…", language)) {
-                app.saveTranslation()
+                app.files.saveOutput(language: language)
             }
-            .disabled(app.document == nil || app.translatedText.isEmpty)
+            .disabled(app.files.outputURL == nil)
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "doc.text")
@@ -256,16 +262,16 @@ struct TopBar: View {
                 Text(L10n.t("File", language))
                     .font(.system(size: 12.5, weight: .medium))
             }
-            .foregroundStyle(app.document == nil ? Theme.secondary : Theme.text)
+            .foregroundStyle(app.tab == .files ? Theme.text : Theme.secondary)
             .padding(.horizontal, 11)
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(app.document == nil ? Color.clear : Theme.chromeRaised)
+                    .fill(app.tab == .files ? Theme.chromeRaised : Color.clear)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(app.document == nil ? Color.clear : Theme.border, lineWidth: 1)
+                    .strokeBorder(app.tab == .files ? Theme.border : Color.clear, lineWidth: 1)
             )
             .contentShape(Rectangle())
         }

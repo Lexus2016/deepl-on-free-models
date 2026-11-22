@@ -51,6 +51,7 @@ The same window can use a cloud model when you need more speed or quality.
 - Styles **Auto / Literal / Natural** and tones **Default / Formal / Casual**,
   matching the Hy-MT2 model card.
 - Model catalog, a **Connect** button, provider model list and name filter.
+- **Percentage progress**: the translation bar shows 0–100%.
 - Visible **Copy** button: puts Markdown, HTML and RTF on the clipboard at once.
 - **Formatting-aware paste.** A page or a document copied from another app keeps
   its headings, lists, links and emphasis: HTML/RTF is converted to Markdown
@@ -58,8 +59,12 @@ The same window can use a cloud model when you need more speed or quality.
 - **Markdown view.** The result pane has three views: rendered Markdown, plain
   text with every marker removed, and the raw Markdown source. Copy follows the
   active view — rich text, clean text, or Markdown.
-- **Files.** Open `.txt`, `.md`, `.pdf` or `.docx`, or drop one onto the window;
-  Save writes the translated document back in its original format.
+- **Files tab.** A dedicated form: choose `.txt`, `.md`, `.pdf` or `.docx`, pick
+  the target language, translate with a percentage progress bar, then save the
+  generated file (for example `report.pdf` → `report_uk.pdf`).
+- **DeepL Write.** Rewrite text for clarity, grammar and style while keeping
+  the meaning.
+- **Speech** with a voice picker and a stop button.
 - **Automatic updates** through Sparkle 2: a daily signed-feed check, a manual
   **Check for Updates…** button, and an optional fully automatic install.
 - **Optional fallback provider and model.** If the primary provider fails, the
@@ -70,7 +75,8 @@ The same window can use a cloud model when you need more speed or quality.
 - System text-to-speech for the original and the translation.
 - Interface in **English, Ukrainian, Russian, German, French, Spanish, Polish,
   Portuguese and Italian** (follows the system by default).
-- Menu-bar icon and quick clipboard translation from there.
+- Menu-bar icon and quick clipboard translation from there; the Dock icon
+  appears while the window is open.
 
 ## Screenshots
 
@@ -94,10 +100,11 @@ locale.
 
 ## Files
 
-**File → Translate file…** (⌘O) opens a `.txt`, `.md`, `.pdf` or `.docx` file;
-you can also drop one onto the window. The text is extracted into the source
-pane, translated in the usual three views, and **Save translation…** (⌘S)
-writes the result back:
+The **Files** tab is a dedicated form: choose or drop a `.txt`, `.md`, `.pdf`
+or `.docx`, pick the target language and press **Translate**. A percentage
+progress bar follows the document, the translated file is created with the
+target code in its name (`report_uk.pdf`), and **Save** writes it wherever you
+need. The document text never appears in the translation panes.
 
 - **Text and Markdown** keep their content and line structure.
 - **DOCX** keeps the original package: only `word/document.xml` is updated in

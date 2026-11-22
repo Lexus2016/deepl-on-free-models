@@ -23,6 +23,7 @@ struct IconButton: View {
         .buttonStyle(.plain)
         .disabled(!active)
         .help(help)
+        .accessibilityLabel(help)
         .onHover { hovering = $0 }
     }
 }

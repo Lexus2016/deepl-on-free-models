@@ -16,15 +16,16 @@ struct DeepLoFMApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button(L10n.t("Translate file…", app.settings.interfaceLanguage)) {
-                    app.openDocument()
+                    app.tab = .files
+                    app.files.chooseFile(language: app.settings.interfaceLanguage)
                 }
                 .keyboardShortcut("o", modifiers: .command)
 
                 Button(L10n.t("Save translation…", app.settings.interfaceLanguage)) {
-                    app.saveTranslation()
+                    app.files.saveOutput(language: app.settings.interfaceLanguage)
                 }
                 .keyboardShortcut("s", modifiers: .command)
-                .disabled(app.document == nil || app.translatedText.isEmpty)
+                .disabled(app.files.outputURL == nil)
             }
 
             CommandGroup(after: .appInfo) {

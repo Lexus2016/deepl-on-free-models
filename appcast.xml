@@ -4,6 +4,26 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>1.1.0</title>
+            <pubDate>Sun, 22 Nov 2026 18:25:00 +0100</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.1.0
+
+Percentage progress, a dedicated Files form, DeepL Write and better speech.
+
+- **Percentage progress**: the text and file translation bars show 0–100%.
+- **Files tab**: choose a document, pick the target language and translate with a progress bar. The result is created as `name_<language>.<extension>` (for example `report_uk.pdf`) and Save writes it wherever you need. The document text stays out of the translation panes.
+- **DeepL Write**: improve clarity, grammar and style while keeping the meaning.
+- **Speech**: choose an installed system voice and stop playback at any time.
+- **Dock icon**: shown while the window is open, hidden again when the window is closed in menu-bar-only mode.
+]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.1.0/DeepL-oFM-1.1.0.dmg" length="3641058" type="application/octet-stream" sparkle:edSignature="++U/AMwVqf2GnmySliI/D+qEVtEEOfp0pkzDV7C96sH98J3d9iRfjrBZaKCgAFdBkBVZv/LSXGZyDuOdiRk6CA=="></enclosure>
+        </item>
+    <item>
             <title>1.0.10</title>
             <pubDate>Sun, 22 Nov 2026 17:15:00 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -93,6 +113,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: vJR6/46a7Ea/XlDT4W9VuM2zwnGFsLRhGj0MAZ98sgvhileBWMkZ3EVBACyjLBf4UBOsbaQbDpoZ6TAQqTw9DQ==
-length: 6860
+edSignature: Cmn92/gKdBYVT8YA0vFuXCybthvwRVIndhEYkUZbMzRG/ReDz4XtdSHe4yXXH5YT1ntr/LxiGBmQvOgeLJYRAw==
+length: 8431
 -->

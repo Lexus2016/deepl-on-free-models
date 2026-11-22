@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import AVFoundation
 import SwiftUI
 
 struct SettingsView: View {
@@ -549,6 +550,16 @@ struct SettingsView: View {
 
     // MARK: - Behaviour
 
+    private var speechVoices: [AVSpeechSynthesisVoice] {
+        var list = Speaker.voices(for: app.targetLanguage.code)
+        if !settings.speechVoiceID.isEmpty,
+           let chosen = AVSpeechSynthesisVoice(identifier: settings.speechVoiceID),
+           !list.contains(where: { $0.identifier == chosen.identifier }) {
+            list.insert(chosen, at: 0)
+        }
+        return list
+    }
+
     private var behaviourCard: some View {
         SettingsCard(title: L10n.t("Behavior", language), subtitle: nil) {
             VStack(alignment: .leading, spacing: 12) {
@@ -591,7 +602,25 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.text)
                     .font(.system(size: 12.5))
 
-                Text(L10n.t("Hide the Dock icon to keep DeepL-oFM in the menu bar only.", language))
+                Text(L10n.t("The Dock icon appears while the window is open. Turn this on to keep it in the Dock all the time.", language))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Theme.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                FieldRow(label: L10n.t("Voice", language)) {
+                    Picker("", selection: $settings.speechVoiceID) {
+                        Text(L10n.t("Automatic", language)).tag("")
+                        ForEach(speechVoices, id: \.identifier) { voice in
+                            Text("\(voice.name) — \(voice.language)")
+                                .tag(voice.identifier)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 280)
+                }
+
+                Text(L10n.t("For better voices, download Enhanced or Premium voices in System Settings → Accessibility → Spoken Content.", language))
                     .font(.system(size: 10.5))
                     .foregroundStyle(Theme.tertiary)
                     .fixedSize(horizontal: false, vertical: true)

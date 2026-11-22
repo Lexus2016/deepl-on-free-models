@@ -4,6 +4,26 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-11-22
+
+### Added
+
+- **Files tab**: a dedicated form that takes a document, the target language
+  and a Translate button. A percentage progress bar follows the translation,
+  the output is created as `name_<language>.<extension>` and Save writes it
+  wherever you need. The document text is not loaded into the translation
+  panes.
+- **DeepL Write** mode: rewrite text for clarity, grammar and style while
+  keeping the meaning, with the same rendered/text/Markdown views.
+- **Voice picker** for speech, with a stop control that works without quitting
+  the app. Enhanced and Premium system voices are listed when installed.
+- **Percentage progress** in the text and file translation bars.
+
+### Changed
+
+- The Dock icon appears while the window is open and disappears when the window
+  is hidden, even in menu-bar-only mode.
+
 ## [1.0.10] — 2026-11-22
 
 ### Added
@@ -149,6 +169,7 @@ All notable changes to DeepL-oFM. The format follows
 - Initial native SwiftUI translator with Hy-MT2 7B through Ollama.
 - Two-pane translation, history, hotkeys and Ukrainian/Russian/English UI.
 
+[1.1.0]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.1.0
 [1.0.10]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.10
 [1.0.9]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.9
 [1.0.8]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.8
