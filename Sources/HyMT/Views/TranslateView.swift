@@ -375,9 +375,15 @@ struct TargetPane: View {
     @EnvironmentObject private var app: AppState
     @Binding var copied: Bool
     @State private var caretVisible = false
-    @AppStorage("hymt.markdownPreview") private var markdownPreview = true
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
+
+    private var viewMode: Binding<ResultViewMode> {
+        Binding(
+            get: { app.settings.resultView },
+            set: { app.settings.resultView = $0 }
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -448,33 +454,29 @@ struct TargetPane: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if markdownPreview {
-                    MarkdownPreview(markdown: app.translatedText)
-                        .padding(.trailing, 4)
                 } else {
-                    ScrollView {
-                        HStack(alignment: .top, spacing: 1) {
-                            Text(app.translatedText)
-                                .font(.system(size: 17))
-                                .lineSpacing(7)
-                                .foregroundStyle(Theme.text)
-                                .textSelection(.enabled)
-                            if app.isTranslating {
-                                Rectangle()
-                                    .fill(Theme.accent)
-                                    .frame(width: 2, height: 18)
-                                    .opacity(caretVisible ? 1 : 0)
-                                    .padding(.top, 4)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 14)
+                    switch app.settings.resultView {
+                    case .preview:
+                        MarkdownPreview(markdown: app.translatedText)
+                            .padding(.trailing, 4)
+                    case .text:
+                        ResultText(
+                            text: MarkdownRenderer.plainText(app.translatedText),
+                            translating: app.isTranslating,
+                            caretVisible: caretVisible
+                        )
+                    case .markdown:
+                        ResultText(
+                            text: app.translatedText,
+                            translating: app.isTranslating,
+                            caretVisible: caretVisible
+                        )
                     }
-                    .scrollIndicators(.hidden)
                 }
 
-                if app.isTranslating, markdownPreview, !app.translatedText.isEmpty {
+                if app.isTranslating,
+                   app.settings.resultView == .preview,
+                   !app.translatedText.isEmpty {
                     VStack {
                         ProgressView(
                             value: Double(app.translationCompleted),
@@ -525,22 +527,18 @@ struct TargetPane: View {
                 left: [
                     PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the translation", language), active: !app.translatedText.isEmpty) {
                         app.speakTranslation()
-                    },
-                    PaneAction(
-                        icon: markdownPreview ? "chevron.left.forwardslash.chevron.right" : "eye",
-                        help: L10n.t(markdownPreview ? "Show Markdown source" : "Show rendered Markdown", language),
-                        active: !app.translatedText.isEmpty
-                    ) {
-                        markdownPreview.toggle()
                     }
                 ],
+                accessory: AnyView(
+                    ResultViewSwitch(selection: viewMode, language: language)
+                ),
                 right: [
                     PaneAction(icon: "arrow.clockwise", help: L10n.t("Translate again", language), active: !app.sourceText.isEmpty) {
                         app.translate(force: true)
                     },
                     PaneAction(
                         icon: copied ? "checkmark" : "doc.on.doc",
-                        help: L10n.t("Copy translation (Markdown + formatting)", language),
+                        help: L10n.t(app.settings.resultView.copyHelpKey, language),
                         title: L10n.t("Copy", language),
                         active: !app.translatedText.isEmpty
                     ) {
@@ -563,6 +561,75 @@ struct TargetPane: View {
     }
 }
 
+/// Three ways to read the result: rendered Markdown, markup-free text, and
+/// the raw Markdown source. The active mode also decides what Copy writes.
+struct ResultViewSwitch: View {
+    @Binding var selection: ResultViewMode
+    let language: AppLanguage
+
+    var body: some View {
+        HStack(spacing: 1) {
+            ForEach(ResultViewMode.allCases) { mode in
+                Button {
+                    selection = mode
+                } label: {
+                    Image(systemName: mode.icon)
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(selection == mode ? Theme.text : Theme.tertiary)
+                        .frame(width: 24, height: 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(selection == mode ? Theme.chromeRaised : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help(L10n.t(mode.helpKey, language))
+                .accessibilityLabel(L10n.t(mode.titleKey, language))
+            }
+        }
+        .padding(2)
+        .background(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Theme.editor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .strokeBorder(Theme.borderSoft, lineWidth: 1)
+        )
+    }
+}
+
+/// Selectable text for the "Text only" and "Markdown" result modes.
+struct ResultText: View {
+    let text: String
+    let translating: Bool
+    let caretVisible: Bool
+
+    var body: some View {
+        ScrollView {
+            HStack(alignment: .top, spacing: 1) {
+                Text(text)
+                    .font(.system(size: 17))
+                    .lineSpacing(7)
+                    .foregroundStyle(Theme.text)
+                    .textSelection(.enabled)
+                if translating {
+                    Rectangle()
+                        .fill(Theme.accent)
+                        .frame(width: 2, height: 18)
+                        .opacity(caretVisible ? 1 : 0)
+                        .padding(.top, 4)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+        }
+        .scrollIndicators(.hidden)
+    }
+}
+
 struct PaneAction: Identifiable {
     let id = UUID()
     let icon: String
@@ -574,6 +641,7 @@ struct PaneAction: Identifiable {
 
 struct PaneFooter: View {
     let left: [PaneAction]
+    var accessory: AnyView? = nil
     let right: [PaneAction]
     let counter: String
 
@@ -581,6 +649,10 @@ struct PaneFooter: View {
         HStack(spacing: 4) {
             ForEach(left) { item in
                 IconButton(systemName: item.icon, help: item.help, active: item.active, action: item.action)
+            }
+            if let accessory {
+                accessory
+                    .padding(.leading, 4)
             }
             Spacer()
             Text(counter)

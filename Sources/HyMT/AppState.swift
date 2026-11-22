@@ -546,7 +546,14 @@ final class AppState: NSObject, ObservableObject {
     func copyTranslation() {
         let text = translatedText
         guard !text.isEmpty else { return }
-        ClipboardWriter.copy(text)
+        switch settings.resultView {
+        case .preview:
+            ClipboardWriter.copy(text)
+        case .text:
+            ClipboardWriter.copyPlain(MarkdownRenderer.plainText(text))
+        case .markdown:
+            ClipboardWriter.copyPlain(text)
+        }
     }
 
     func copySource() {

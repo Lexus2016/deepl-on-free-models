@@ -6,6 +6,15 @@ import Foundation
 /// plain editors paste the Markdown source.
 enum ClipboardWriter {
 
+    /// Plain text only: used by the "Text only" and "Markdown" result modes,
+    /// where a rich destination must not re-interpret the markup.
+    static func copyPlain(_ text: String) {
+        guard !text.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
     static func copy(_ text: String) {
         guard !text.isEmpty else { return }
         let pasteboard = NSPasteboard.general

@@ -79,4 +79,21 @@ final class MarkdownRendererTests: XCTestCase {
         let rendered = MarkdownRenderer.render("Just plain text without markers.")
         XCTAssertEqual(rendered.string, "Just plain text without markers.")
     }
+
+    func testPlainTextStripsMarkup() {
+        let plain = MarkdownRenderer.plainText(
+            "## Title\n\nA **bold** and *italic* with `code` and [link](https://example.com)."
+        )
+        XCTAssertEqual(plain, "Title\n\nA bold and italic with code and link.")
+    }
+
+    func testPlainTextKeepsListStructure() {
+        let plain = MarkdownRenderer.plainText("- One\n- Two\n\n1. First\n\n```\nlet x = 1\n```")
+        XCTAssertEqual(plain, "• One\n• Two\n1. First\n\nlet x = 1")
+    }
+
+    func testPlainTextDropsLinkTarget() {
+        let plain = MarkdownRenderer.plainText("Read [the guide](https://example.com/docs) now.")
+        XCTAssertEqual(plain, "Read the guide now.")
+    }
 }

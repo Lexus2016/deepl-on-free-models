@@ -14,6 +14,8 @@ All notable changes to DeepL-oFM. The format follows
   is converted to Markdown, so headings, lists, links and emphasis survive
   translation.
 - Rendered Markdown view in both panes, with a toggle back to the raw markup.
+- Result pane with three views — rendered Markdown, plain text without markup,
+  and the raw Markdown source — with Copy following the active view.
 - Paste from clipboard and Translate now actions in the empty panes.
 
 ### Fixed

@@ -127,6 +127,9 @@ final class AppSettings: ObservableObject {
     @Published var interfaceLanguage: AppLanguage {
         didSet { store(interfaceLanguage.rawValue, Keys.interfaceLanguage) }
     }
+    @Published var resultView: ResultViewMode {
+        didSet { store(resultView.rawValue, Keys.resultView) }
+    }
     @Published var selectionHotKey: KeyCombo {
         didSet {
             if let data = try? JSONEncoder().encode(selectionHotKey) {
@@ -172,6 +175,7 @@ final class AppSettings: ObservableObject {
         static let keepHistory = "hymt.keepHistory"
         static let warmUpOnLaunch = "hymt.warmUpOnLaunch"
         static let interfaceLanguage = "hymt.interfaceLanguage"
+        static let resultView = "hymt.resultView"
         static let selectionHotKey = "hymt.selectionHotKey"
         static let lastStyle = "hymt.lastStyle"
         static let lastTone = "hymt.lastTone"
@@ -220,6 +224,7 @@ final class AppSettings: ObservableObject {
         self.keepHistory = defaults.object(forKey: Keys.keepHistory) as? Bool ?? true
         self.warmUpOnLaunch = defaults.object(forKey: Keys.warmUpOnLaunch) as? Bool ?? true
         self.interfaceLanguage = AppLanguage(rawValue: defaults.string(forKey: Keys.interfaceLanguage) ?? "") ?? .system
+        self.resultView = ResultViewMode(rawValue: defaults.string(forKey: Keys.resultView) ?? "") ?? .preview
         if let data = defaults.data(forKey: Keys.selectionHotKey),
            let combo = try? JSONDecoder().decode(KeyCombo.self, from: data) {
             self.selectionHotKey = combo

@@ -144,6 +144,13 @@ enum L10n {
     // MARK: - Tables
 
     private static let ukrainian: [String: String] = [
+        "Preview": "Перегляд",
+        "Text only": "Тільки текст",
+        "Markdown": "Markdown",
+        "Show plain text": "Показати лише текст",
+        "Copy translation (formatted text)": "Скопіювати переклад (форматований текст)",
+        "Copy translation (plain text)": "Скопіювати переклад (простий текст)",
+        "Copy translation (Markdown)": "Скопіювати переклад (Markdown)",
         "Show rendered Markdown": "Показати відформатований Markdown",
         "Show Markdown source": "Показати розмітку Markdown",
         // Core
@@ -404,6 +411,13 @@ enum L10n {
     ]
 
     private static let russian: [String: String] = [
+        "Preview": "Просмотр",
+        "Text only": "Только текст",
+        "Markdown": "Markdown",
+        "Show plain text": "Показать только текст",
+        "Copy translation (formatted text)": "Скопировать перевод (форматированный текст)",
+        "Copy translation (plain text)": "Скопировать перевод (простой текст)",
+        "Copy translation (Markdown)": "Скопировать перевод (Markdown)",
         "Show rendered Markdown": "Показать отформатированный Markdown",
         "Show Markdown source": "Показать разметку Markdown",
         // Core
@@ -665,6 +679,13 @@ enum L10n {
 
 
     private static let german: [String: String] = [
+        "Preview": "Vorschau",
+        "Text only": "Nur Text",
+        "Markdown": "Markdown",
+        "Show plain text": "Nur Text anzeigen",
+        "Copy translation (formatted text)": "Übersetzung kopieren (formatierter Text)",
+        "Copy translation (plain text)": "Übersetzung kopieren (reiner Text)",
+        "Copy translation (Markdown)": "Übersetzung kopieren (Markdown)",
         "Show rendered Markdown": "Gerendertes Markdown anzeigen",
         "Show Markdown source": "Markdown-Quelltext anzeigen",
         "Translate text": "Text übersetzen",
@@ -904,6 +925,13 @@ enum L10n {
     ]
 
     private static let french: [String: String] = [
+        "Preview": "Aperçu",
+        "Text only": "Texte seul",
+        "Markdown": "Markdown",
+        "Show plain text": "Afficher le texte seul",
+        "Copy translation (formatted text)": "Copier la traduction (texte mis en forme)",
+        "Copy translation (plain text)": "Copier la traduction (texte brut)",
+        "Copy translation (Markdown)": "Copier la traduction (Markdown)",
         "Show rendered Markdown": "Afficher le Markdown rendu",
         "Show Markdown source": "Afficher la source Markdown",
         "Translate text": "Traduire le texte",
@@ -1143,6 +1171,13 @@ enum L10n {
     ]
 
     private static let spanish: [String: String] = [
+        "Preview": "Vista previa",
+        "Text only": "Solo texto",
+        "Markdown": "Markdown",
+        "Show plain text": "Mostrar solo texto",
+        "Copy translation (formatted text)": "Copiar traducción (texto con formato)",
+        "Copy translation (plain text)": "Copiar traducción (texto sin formato)",
+        "Copy translation (Markdown)": "Copiar traducción (Markdown)",
         "Show rendered Markdown": "Mostrar Markdown renderizado",
         "Show Markdown source": "Mostrar código Markdown",
         "Translate text": "Traducir texto",
@@ -1382,6 +1417,13 @@ enum L10n {
     ]
 
     private static let polish: [String: String] = [
+        "Preview": "Podgląd",
+        "Text only": "Tylko tekst",
+        "Markdown": "Markdown",
+        "Show plain text": "Pokaż tylko tekst",
+        "Copy translation (formatted text)": "Skopiuj tłumaczenie (tekst sformatowany)",
+        "Copy translation (plain text)": "Skopiuj tłumaczenie (tekst jawny)",
+        "Copy translation (Markdown)": "Skopiuj tłumaczenie (Markdown)",
         "Show rendered Markdown": "Pokaż wyrenderowany Markdown",
         "Show Markdown source": "Pokaż źródło Markdown",
         "Translate text": "Przetłumacz tekst",
@@ -1621,6 +1663,13 @@ enum L10n {
     ]
 
     private static let portuguese: [String: String] = [
+        "Preview": "Pré-visualização",
+        "Text only": "Somente texto",
+        "Markdown": "Markdown",
+        "Show plain text": "Mostrar somente texto",
+        "Copy translation (formatted text)": "Copiar tradução (texto formatado)",
+        "Copy translation (plain text)": "Copiar tradução (texto simples)",
+        "Copy translation (Markdown)": "Copiar tradução (Markdown)",
         "Show rendered Markdown": "Mostrar Markdown renderizado",
         "Show Markdown source": "Mostrar código Markdown",
         "Translate text": "Traduzir texto",
@@ -1860,6 +1909,13 @@ enum L10n {
     ]
 
     private static let italian: [String: String] = [
+        "Preview": "Anteprima",
+        "Text only": "Solo testo",
+        "Markdown": "Markdown",
+        "Show plain text": "Mostra solo testo",
+        "Copy translation (formatted text)": "Copia traduzione (testo formattato)",
+        "Copy translation (plain text)": "Copia traduzione (testo semplice)",
+        "Copy translation (Markdown)": "Copia traduzione (Markdown)",
         "Show rendered Markdown": "Mostra Markdown renderizzato",
         "Show Markdown source": "Mostra sorgente Markdown",
         "Translate text": "Traduci testo",

@@ -10,7 +10,7 @@ enum MarkdownRenderer {
     static func render(_ markdown: String, fontSize: CGFloat = 17) -> NSAttributedString {
         let source = markdown.trimmingCharacters(in: .newlines)
         guard !source.isEmpty else { return NSAttributedString() }
-        guard let parsed = try? AttributedString(markdown: source) else {
+        guard let blocks = parse(source) else {
             return NSAttributedString(
                 string: source,
                 attributes: [
@@ -19,6 +19,21 @@ enum MarkdownRenderer {
                 ]
             )
         }
+        return assemble(blocks, fontSize: fontSize)
+    }
+
+    /// The same text with every Markdown marker removed: headings become their
+    /// text, links keep only the label, code keeps only its content. List items
+    /// keep a bullet or number because that is the content, not markup.
+    static func plainText(_ markdown: String) -> String {
+        let source = markdown.trimmingCharacters(in: .newlines)
+        guard !source.isEmpty else { return "" }
+        guard let blocks = parse(source) else { return source }
+        return assemblePlain(blocks)
+    }
+
+    private static func parse(_ source: String) -> [Block]? {
+        guard let parsed = try? AttributedString(markdown: source) else { return nil }
 
         var blocks: [Block] = []
         for run in parsed.runs {
@@ -40,8 +55,7 @@ enum MarkdownRenderer {
                 )
             )
         }
-
-        return assemble(blocks, fontSize: fontSize)
+        return blocks
     }
 
     // MARK: - Model
@@ -145,6 +159,61 @@ enum MarkdownRenderer {
         }
 
         return output
+    }
+
+    private static func assemblePlain(_ blocks: [Block]) -> String {
+        var output: [(text: String, isList: Bool)] = []
+        var index = 0
+
+        while index < blocks.count {
+            if let first = blocks[index].listOrdinal {
+                _ = first
+                let ordered = blocks[index].listOrdered
+                let level = blocks[index].listLevel
+                var items: [String] = []
+                while index < blocks.count,
+                      let ordinal = blocks[index].listOrdinal,
+                      blocks[index].listOrdered == ordered,
+                      blocks[index].listLevel == level {
+                    let block = blocks[index]
+                    let content = plainContent(block)
+                    if !content.isEmpty {
+                        let marker = block.listOrdered ? "\(ordinal). " : "• "
+                        let indent = String(repeating: "  ", count: block.listLevel)
+                        items.append(indent + marker + content)
+                    }
+                    index += 1
+                }
+                if !items.isEmpty {
+                    output.append((items.joined(separator: "\n"), true))
+                }
+            } else {
+                let content = plainContent(blocks[index])
+                if !content.isEmpty {
+                    output.append((content, false))
+                }
+                index += 1
+            }
+        }
+
+        var result = ""
+        for (position, part) in output.enumerated() {
+            if position > 0 {
+                result += (part.isList && output[position - 1].isList) ? "\n" : "\n\n"
+            }
+            result += part.text
+        }
+        return result
+    }
+
+    private static func plainContent(_ block: Block) -> String {
+        let text = block.spans.map { $0.text }.joined()
+        if block.code {
+            return text.trimmingCharacters(in: .newlines)
+        }
+        return text
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespaces)
     }
 
     private static func styled(_ span: Span, in block: Block, fontSize: CGFloat) -> NSAttributedString {
