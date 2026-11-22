@@ -1,0 +1,35 @@
+# Build artifacts
+.build/
+build/
+DerivedData/
+*.xcuserstate
+
+# Secrets — never commit
+.env
+.env.*
+*.key
+*.pem
+Secrets.plist
+*.secret
+*.secrets
+
+# Models and generated media
+*.gguf
+*.ggml
+*.bin
+*.safetensors
+*.mlmodel
+
+# Local data and logs
+*.log
+*.sqlite
+*.sqlite3
+*.jsonl
+history.json
+
+# macOS
+.DS_Store
+._*
+
+# Local screenshots / drafts
+docs/.local*
