@@ -1,5 +1,13 @@
 # HyMT — аналог DeepL на локальних і безкоштовних моделях
 
+> **HyMT** — a native macOS DeepL alternative for local and free translation models.
+> Interface in Ukrainian, Russian and English.
+
+[![Release](https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?label=release)](https://github.com/Lexus2016/deepl-on-free-models/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
+![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)
+
 Нативний застосунок для macOS у стилі DeepL: дві панелі, автоматичний переклад під
 час введення, історія, гарячі клавіші та локальна модель **Hy-MT2 7B** (Tencent Hy).
 Працює офлайн, але вміє й хмарні моделі — OpenRouter, Groq, Cerebras, Ollama Cloud.
