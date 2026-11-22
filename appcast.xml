@@ -1,0 +1,29 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>DeepL-oFM</title>
+        <item>
+            <title>1.0.6</title>
+            <pubDate>Sun, 22 Nov 2026 13:10:59 +0100</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.0.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.0.6
+
+Automatic updates with Sparkle 2, a manual **Check for Updates…** button, and a
+drag-and-drop DMG.
+
+- Sparkle 2 with a signed appcast and EdDSA update signatures; daily checks.
+- Optional automatic download and installation.
+- DMG now contains an **Applications** shortcut; drag the app to install.
+- Signed and notarized DMG and app bundle.
+
+The base model is still Hy-MT2 7B via Ollama; use 30B-A3B or a cloud model for
+publication-quality long texts.
+]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.6/DeepL-oFM-1.0.6.dmg" length="3198631" type="application/octet-stream" sparkle:edSignature="SZMCh0aE9v3eCTCWGxiK+v9pSlm9kHcdRFCGb/redvgCntEFt+jQ44xX/LbzRB+j3k7P36g+erWTp/84qDJ1Dg=="/>
+        </item>
+    </channel>
+</rss>

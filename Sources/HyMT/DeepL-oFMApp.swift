@@ -16,6 +16,12 @@ struct DeepLoFMApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
 
+            CommandGroup(after: .appInfo) {
+                Button(L10n.t("Check for Updates…", app.settings.interfaceLanguage)) {
+                    app.checkForUpdates()
+                }
+            }
+
             CommandMenu(L10n.t("Translation", app.settings.interfaceLanguage)) {
                 Button(L10n.t("Translate now", app.settings.interfaceLanguage)) {
                     app.translate(force: true)

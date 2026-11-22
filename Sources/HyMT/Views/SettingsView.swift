@@ -46,7 +46,7 @@ struct SettingsView: View {
                     behaviourCard
                     hotKeyCard.id("hotkey")
                     promptCard
-                    aboutCard
+                    aboutCard.id("about")
                 }
                 .frame(maxWidth: 820)
                 .padding(.horizontal, 24)
@@ -56,10 +56,12 @@ struct SettingsView: View {
             .background(Theme.window)
             .scrollIndicators(.hidden)
             .onAppear {
-                guard CommandLine.arguments.contains("--scroll-hotkey") else { return }
+                let arguments = CommandLine.arguments
+                guard arguments.contains("--scroll-hotkey") || arguments.contains("--scroll-about") else { return }
+                let target = arguments.contains("--scroll-about") ? "about" : "hotkey"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        proxy.scrollTo("hotkey", anchor: .top)
+                        proxy.scrollTo(target, anchor: .top)
                     }
                 }
             }
@@ -597,6 +599,62 @@ struct SettingsView: View {
                 Text(L10n.t("Model: Hy-MT2 7B (Tencent Hy). License and model card on Hugging Face.", language))
                     .font(.system(size: 11.5))
                     .foregroundStyle(Theme.tertiary)
+
+                DividerLine()
+                    .padding(.vertical, 4)
+
+                HStack(spacing: 10) {
+                    Button {
+                        app.checkForUpdates()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text(L10n.t("Check for Updates…", language))
+                                .font(.system(size: 11.5, weight: .medium))
+                        }
+                        .foregroundStyle(Theme.text)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .fill(Theme.chromeRaised)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .strokeBorder(Theme.border, lineWidth: 1)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .focusEffectDisabled()
+
+                    Text(L10n.t("Updates are signed and notarized.", language))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.tertiary)
+                }
+
+                Toggle(
+                    L10n.t("Automatically check for updates", language),
+                    isOn: Binding(
+                        get: { app.automaticallyChecksForUpdates },
+                        set: { app.automaticallyChecksForUpdates = $0 }
+                    )
+                )
+                .toggleStyle(.switch)
+                .font(.system(size: 11.5))
+                .foregroundStyle(Theme.secondary)
+
+                Toggle(
+                    L10n.t("Automatically download and install updates", language),
+                    isOn: Binding(
+                        get: { app.automaticallyDownloadsUpdates },
+                        set: { app.automaticallyDownloadsUpdates = $0 }
+                    )
+                )
+                .toggleStyle(.switch)
+                .font(.system(size: 11.5))
+                .foregroundStyle(Theme.secondary)
+
                 HStack(spacing: 14) {
                     Link("huggingface.co/tencent/Hy-MT2-7B", destination: URL(string: "https://huggingface.co/tencent/Hy-MT2-7B")!)
                     Link(L10n.t("DeepL-oFM on GitHub", language), destination: URL(string: "https://github.com/Lexus2016/deepl-on-free-models")!)

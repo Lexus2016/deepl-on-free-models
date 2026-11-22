@@ -32,6 +32,8 @@ and any OpenAI-compatible server.
   matching the Hy-MT2 model card.
 - Model catalog, a **Connect** button, provider model list and name filter.
 - Visible **Copy** button: puts Markdown, HTML and RTF on the clipboard at once.
+- **Automatic updates** through Sparkle 2: a daily signed-feed check, a manual
+  **Check for Updates…** button, and an optional fully automatic install.
 - History with search, copy and delete.
 - System text-to-speech for the original and the translation.
 - Interface in **English, Ukrainian and Russian** (follows the system by default).
@@ -118,9 +120,10 @@ server.
 
 Download the notarized DMG from
 [Releases](https://github.com/Lexus2016/deepl-on-free-models/releases), open it
-and drag **DeepL-oFM** to **Applications**. The app is signed with a Developer
-ID certificate and notarized by Apple, so Gatekeeper accepts it without a
-right-click workaround.
+and drag **DeepL-oFM** onto the **Applications** folder in the same window. The
+disk image is signed and notarized; it contains the app and an Applications
+shortcut, so installation is the usual drag-and-drop. Gatekeeper accepts the app
+without a right-click workaround.
 
 ### From source
 
@@ -183,6 +186,24 @@ HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh
 **Settings → Behavior → Interface language**: System, English, Ukrainian,
 Russian. Changes apply immediately, without a restart. Model prompts remain in
 English — the language Hy-MT2 was trained on.
+
+## Updates
+
+![Updates](docs/updates.png)
+
+The app uses **Sparkle 2** with a signed appcast:
+
+- checks for updates once a day (`SUScheduledCheckInterval = 86400`);
+- **Settings → About → Check for Updates…** and the app menu check on demand;
+- **Automatically download and install updates** is opt-in (off by default);
+- the feed is
+  [appcast.xml](https://raw.githubusercontent.com/Lexus2016/deepl-on-free-models/main/appcast.xml);
+- every update enclosure is signed with EdDSA (`SUPublicEDKey` in the app) and
+  the DMG is signed and notarized. Sparkle refuses an update whose signature or
+  code signature does not match.
+
+The appcast is generated with Sparkle’s `generate_appcast` and committed to the
+repository, so the update history is auditable.
 
 ## Formatting and progress
 
@@ -341,7 +362,9 @@ old `Application Support/HyMT` folder.
 `build.sh` signs the bundle with **Developer ID Application** when the identity
 is in the Keychain, otherwise with Apple Development, otherwise ad-hoc. The
 Developer ID path enables the hardened runtime and a secure timestamp, which is
-required for notarization.
+required for notarization. The script also embeds and signs
+`Sparkle.framework` from SwiftPM, adds the `@executable_path/../Frameworks`
+rpath, and verifies the whole bundle.
 
 ```bash
 ./build.sh
@@ -351,12 +374,36 @@ xcrun notarytool submit build/DeepL-oFM.zip \
   --keychain-profile "your-notary-profile" --wait
 xcrun stapler staple build/DeepL-oFM.app
 
-hdiutil create -volname "DeepL-oFM" -srcfolder build/DeepL-oFM.app \
+# DMG with an Applications shortcut for drag-and-drop install
+STAGE=build/dmg-stage
+rm -rf "$STAGE"
+mkdir -p "$STAGE"
+ditto build/DeepL-oFM.app "$STAGE/DeepL-oFM.app"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname "DeepL-oFM" -srcfolder "$STAGE" \
   -ov -format UDZO build/DeepL-oFM.dmg
+
+codesign --force --timestamp --sign "Developer ID Application: …" build/DeepL-oFM.dmg
 xcrun notarytool submit build/DeepL-oFM.dmg \
   --keychain-profile "your-notary-profile" --wait
 xcrun stapler staple build/DeepL-oFM.dmg
 ```
+
+Then generate and sign the Sparkle feed:
+
+```bash
+mkdir -p build/appcast
+cp build/DeepL-oFM.dmg build/appcast/
+cp release-notes.md build/appcast/DeepL-oFM.md
+.build/artifacts/sparkle/Sparkle/bin/generate_appcast \
+  --account deepl-ofm \
+  --download-url-prefix "https://github.com/Lexus2016/deepl-on-free-models/releases/download/vX.Y.Z/" \
+  build/appcast
+```
+
+Commit the generated `appcast.xml` and upload the DMG and appcast to the GitHub
+release. The EdDSA private key stays in the login Keychain; only the public key
+is in `Info.plist`.
 
 `notarytool` uses a profile created once with
 `xcrun notarytool store-credentials`; no password belongs in the repository.

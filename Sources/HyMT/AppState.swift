@@ -3,6 +3,7 @@ import ApplicationServices
 import Carbon.HIToolbox
 import Combine
 import Foundation
+import Sparkle
 
 @MainActor
 final class AppState: NSObject, ObservableObject {
@@ -95,6 +96,7 @@ final class AppState: NSObject, ObservableObject {
 
     let settings: AppSettings
     let history: HistoryStore
+    let updaterController: SPUStandardUpdaterController
 
     private let translator = TranslationService()
     private let hotKeys = HotKeyManager()
@@ -117,6 +119,11 @@ final class AppState: NSObject, ObservableObject {
         let settings = AppSettings()
         self.settings = settings
         self.history = HistoryStore()
+        self.updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
         self.sourceLanguage = Language.with(code: settings.lastSourceCode) ?? .auto
         self.targetLanguage = Language.with(code: settings.lastTargetCode) ?? Language.with(code: "en") ?? .auto
         self.style = settings.lastStyle
@@ -150,6 +157,9 @@ final class AppState: NSObject, ObservableObject {
         }
         if arguments.contains("--catalog") {
             showCatalog = true
+        }
+        if arguments.contains("--check-updates") {
+            checkForUpdates()
         }
         if let index = arguments.firstIndex(of: "--tab"), arguments.count > index + 1 {
             switch arguments[index + 1] {
@@ -427,6 +437,22 @@ final class AppState: NSObject, ObservableObject {
     func copySource() {
         guard !sourceText.isEmpty else { return }
         ClipboardWriter.copy(sourceText)
+    }
+
+    // MARK: - Updates
+
+    func checkForUpdates() {
+        updaterController.checkForUpdates(nil)
+    }
+
+    var automaticallyChecksForUpdates: Bool {
+        get { updaterController.updater.automaticallyChecksForUpdates }
+        set { updaterController.updater.automaticallyChecksForUpdates = newValue }
+    }
+
+    var automaticallyDownloadsUpdates: Bool {
+        get { updaterController.updater.automaticallyDownloadsUpdates }
+        set { updaterController.updater.automaticallyDownloadsUpdates = newValue }
     }
 
     func speakSource() {

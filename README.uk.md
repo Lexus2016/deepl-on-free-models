@@ -34,6 +34,9 @@ Ollama Cloud, OpenRouter, Groq, Cerebras, LM Studio, oMLX, llama.cpp і
 - Каталог моделей, кнопка **«Під'єднатися»**, список моделей провайдера й фільтр
   за назвою.
 - Видима кнопка **«Копіювати»**: кладе в буфер Markdown, HTML і RTF одночасно.
+- **Автоматичні оновлення** через Sparkle 2: щоденна перевірка підписаного
+  каналу, кнопка **«Перевірити оновлення…»** і необов'язкове повністю
+  автоматичне встановлення.
 - Історія перекладів із пошуком, копіюванням і видаленням.
 - Системне озвучення оригіналу й перекладу.
 - Інтерфейс **українською, російською та англійською** (за системою).
@@ -120,9 +123,10 @@ ollama cp maternion/hy-mt2:7b hy-mt2:7b
 
 Завантажте нотарізований DMG зі
 [Releases](https://github.com/Lexus2016/deepl-on-free-models/releases),
-відкрийте його та перетягніть **DeepL-oFM** у **Applications**. Застосунок
-підписаний сертифікатом Developer ID і нотарізований Apple, тому Gatekeeper
-приймає його без обходу через правий клік.
+відкрийте його та перетягніть **DeepL-oFM** на теку **Applications** у тому
+самому вікні. Образ диска підписаний і нотарізований; усередині є застосунок і
+ярлик Applications, тому встановлення — звичайне перетягування. Gatekeeper
+приймає застосунок без обходу через правий клік.
 
 ### З вихідного коду
 
@@ -188,6 +192,26 @@ HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh
 **Налаштування → Поведінка → Мова інтерфейсу**: системна, англійська,
 українська, російська. Зміни застосовуються одразу, без перезапуску. Промпти
 для моделі залишаються англійською — мовою, на якій навчена Hy-MT2.
+
+## Оновлення
+
+![Оновлення](docs/updates.png)
+
+Застосунок використовує **Sparkle 2** із підписаним appcast:
+
+- перевірка раз на добу (`SUScheduledCheckInterval = 86400`);
+- **Налаштування → Про програму → Перевірити оновлення…** і команда в меню
+  перевіряють негайно;
+- **Автоматично завантажувати й встановлювати оновлення** вмикається окремо
+  (за замовчуванням вимкнено);
+- канал:
+  [appcast.xml](https://raw.githubusercontent.com/Lexus2016/deepl-on-free-models/main/appcast.xml);
+- кожен файл оновлення підписаний EdDSA (`SUPublicEDKey` у застосунку), а DMG
+  підписаний і нотарізований. Sparkle відхиляє оновлення, якщо підпис або
+  підпис коду не збігається.
+
+Appcast генерується інструментом `generate_appcast` і зберігається в
+репозиторії, тому історію оновлень можна перевірити.
 
 ## Форматування та прогрес
 
@@ -351,7 +375,9 @@ bundle identifier збережено, щоб Accessibility, налаштуван
 
 `build.sh` підписує бандл **Developer ID Application**, якщо сертифікат є в
 Keychain, інакше — Apple Development, інакше — ad-hoc. Шлях Developer ID вмикає
-hardened runtime і захищений timestamp, потрібні для нотарізації.
+hardened runtime і захищений timestamp, потрібні для нотарізації. Скрипт також
+вбудовує й підписує `Sparkle.framework` зі SwiftPM, додає rpath
+`@executable_path/../Frameworks` і перевіряє підпис усього бандла.
 
 ```bash
 ./build.sh
@@ -361,12 +387,36 @@ xcrun notarytool submit build/DeepL-oFM.zip \
   --keychain-profile "your-notary-profile" --wait
 xcrun stapler staple build/DeepL-oFM.app
 
-hdiutil create -volname "DeepL-oFM" -srcfolder build/DeepL-oFM.app \
+# DMG із ярликом Applications для перетягування
+STAGE=build/dmg-stage
+rm -rf "$STAGE"
+mkdir -p "$STAGE"
+ditto build/DeepL-oFM.app "$STAGE/DeepL-oFM.app"
+ln -s /Applications "$STAGE/Applications"
+hdiutil create -volname "DeepL-oFM" -srcfolder "$STAGE" \
   -ov -format UDZO build/DeepL-oFM.dmg
+
+codesign --force --timestamp --sign "Developer ID Application: …" build/DeepL-oFM.dmg
 xcrun notarytool submit build/DeepL-oFM.dmg \
   --keychain-profile "your-notary-profile" --wait
 xcrun stapler staple build/DeepL-oFM.dmg
 ```
+
+Потім згенерувати й підписати канал Sparkle:
+
+```bash
+mkdir -p build/appcast
+cp build/DeepL-oFM.dmg build/appcast/
+cp release-notes.md build/appcast/DeepL-oFM.md
+.build/artifacts/sparkle/Sparkle/bin/generate_appcast \
+  --account deepl-ofm \
+  --download-url-prefix "https://github.com/Lexus2016/deepl-on-free-models/releases/download/vX.Y.Z/" \
+  build/appcast
+```
+
+Закомітьте згенерований `appcast.xml` і завантажте DMG та appcast у GitHub
+release. Приватний ключ EdDSA залишається в Keychain; у `Info.plist` є лише
+публічний.
 
 `notarytool` використовує профіль, створений один раз через
 `xcrun notarytool store-credentials`; пароль не повинен потрапляти в

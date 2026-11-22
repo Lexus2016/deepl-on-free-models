@@ -224,6 +224,10 @@ enum L10n {
         "About": "Про програму",
         "local translator for macOS": "локальний перекладач для macOS",
         "Model: Hy-MT2 7B (Tencent Hy). License and model card on Hugging Face.": "Модель: Hy-MT2 7B (Tencent Hy). Ліцензія та картка моделі — на Hugging Face.",
+        "Check for Updates…": "Перевірити оновлення…",
+        "Automatically check for updates": "Автоматично перевіряти оновлення",
+        "Automatically download and install updates": "Автоматично завантажувати й встановлювати оновлення",
+        "Updates are signed and notarized.": "Оновлення підписані та нотарізовані.",
         "Project repository": "Репозиторій проєкту",
         "DeepL-oFM on GitHub": "DeepL-oFM на GitHub",
 
@@ -460,6 +464,10 @@ enum L10n {
         "About": "О программе",
         "local translator for macOS": "локальный переводчик для macOS",
         "Model: Hy-MT2 7B (Tencent Hy). License and model card on Hugging Face.": "Модель: Hy-MT2 7B (Tencent Hy). Лицензия и карточка модели — на Hugging Face.",
+        "Check for Updates…": "Проверить обновления…",
+        "Automatically check for updates": "Автоматически проверять обновления",
+        "Automatically download and install updates": "Автоматически загружать и устанавливать обновления",
+        "Updates are signed and notarized.": "Обновления подписаны и нотаризованы.",
         "Project repository": "Репозиторий проекта",
         "DeepL-oFM on GitHub": "DeepL-oFM на GitHub",
 

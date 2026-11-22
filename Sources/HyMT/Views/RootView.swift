@@ -96,6 +96,9 @@ struct TopBar: View {
                     app.checkConnection()
                     app.tab = .settings
                 }
+                Button(L10n.t("Check for Updates…", language)) {
+                    app.checkForUpdates()
+                }
                 Button(L10n.t("History", language)) { app.tab = .history }
                 Button(L10n.t("Settings", language)) { app.tab = .settings }
             } label: {
