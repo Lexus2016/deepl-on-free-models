@@ -4,6 +4,24 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>1.0.10</title>
+            <pubDate>Sun, 22 Nov 2026 17:15:00 +0100</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>1.0.10</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.0.10
+
+The window comes back, and the iPhone app is here.
+
+- **Window reopen fix**: closing the window keeps DeepL-oFM in the menu bar; the clipboard hotkey (⌥⌘T) and the menu bar item bring it back instead of leaving the app active without a window.
+- **iPhone app source**: `ios/` now contains a SwiftUI app with the same translation core, nine interface languages, cloud providers and a custom LAN endpoint. Build it with XcodeGen and Xcode; instructions are in `ios/README.md`.
+- All nine README editions include localized screenshots and the demo GIF.
+]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.10/DeepL-oFM-1.0.10.dmg" length="3474611" type="application/octet-stream" sparkle:edSignature="C8gDuBhqCKCU+w5Wn3N8M6o2eaDIv2qEySN3KexitclMWfGvXGU9RtmTUxGFkYE6ZLuz6Z3DWPtkWQzrvkNMAQ=="></enclosure>
+        </item>
+    <item>
             <title>1.0.9</title>
             <pubDate>Sun, 22 Nov 2026 16:55:00 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -75,6 +93,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: lF8/9F4vqhwwthga7fTWc/6FetjvjHIkLtYl1U+iZ7hp4FRZLPbAmPrup5n7tWCK49phV9e+uH1zaRH0/o36Dg==
-length: 5427
+edSignature: vJR6/46a7Ea/XlDT4W9VuM2zwnGFsLRhGj0MAZ98sgvhileBWMkZ3EVBACyjLBf4UBOsbaQbDpoZ6TAQqTw9DQ==
+length: 6860
 -->
