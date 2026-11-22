@@ -93,9 +93,16 @@ struct LanguagePicker: View {
         var list = includeAuto ? [Language.auto] + Language.all : Language.all
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !needle.isEmpty {
-            list = list.filter {
-                $0.localName.lowercased().contains(needle)
-                    || $0.englishName.lowercased().contains(needle)
+            list = list.filter { language in
+                let names = [
+                    language.localName,
+                    language.englishName,
+                    language.displayName(in: self.language),
+                    language.displayName(in: .uk),
+                    language.displayName(in: .ru),
+                    language.code
+                ]
+                return names.contains { $0.lowercased().contains(needle) }
             }
         }
         return list
@@ -307,12 +314,12 @@ struct SourcePane: View {
 
             PaneFooter(
                 left: [
-                    PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the original", language)) {
+                    PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the original", language), active: !app.sourceText.isEmpty) {
                         app.speakSource()
                     }
                 ],
                 right: [
-                    PaneAction(icon: "doc.on.doc", help: L10n.t("Copy the original", language)) {
+                    PaneAction(icon: "doc.on.doc", help: L10n.t("Copy the original", language), active: !app.sourceText.isEmpty) {
                         app.copySource()
                     }
                 ],
@@ -338,7 +345,7 @@ struct TargetPane: View {
             ZStack(alignment: .topLeading) {
                 Theme.editorAlt
 
-                if app.translatedText.isEmpty && app.errorMessage == nil {
+                if app.translatedText.isEmpty {
                     VStack(spacing: 10) {
                         if app.isTranslating {
                             if app.translationTotal > 0 {
@@ -364,6 +371,13 @@ struct TargetPane: View {
                                     .font(.system(size: 12.5))
                                     .foregroundStyle(Theme.tertiary)
                             }
+                        } else if app.errorMessage != nil {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.system(size: 22, weight: .light))
+                                .foregroundStyle(Theme.danger.opacity(0.8))
+                            Text(L10n.t("Translation failed", language))
+                                .font(.system(size: 13))
+                                .foregroundStyle(Theme.tertiary)
                         } else {
                             Image(systemName: "character.bubble")
                                 .font(.system(size: 22, weight: .light))
@@ -433,18 +447,19 @@ struct TargetPane: View {
 
             PaneFooter(
                 left: [
-                    PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the translation", language)) {
+                    PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the translation", language), active: !app.translatedText.isEmpty) {
                         app.speakTranslation()
                     }
                 ],
                 right: [
-                    PaneAction(icon: "arrow.clockwise", help: L10n.t("Translate again", language)) {
+                    PaneAction(icon: "arrow.clockwise", help: L10n.t("Translate again", language), active: !app.sourceText.isEmpty) {
                         app.translate(force: true)
                     },
                     PaneAction(
                         icon: copied ? "checkmark" : "doc.on.doc",
                         help: L10n.t("Copy translation (Markdown + formatting)", language),
-                        title: L10n.t("Copy", language)
+                        title: L10n.t("Copy", language),
+                        active: !app.translatedText.isEmpty
                     ) {
                         app.copyTranslation()
                         withAnimation(.easeOut(duration: 0.15)) { copied = true }
@@ -470,6 +485,7 @@ struct PaneAction: Identifiable {
     let icon: String
     let help: String
     var title: String? = nil
+    var active: Bool = true
     let action: () -> Void
 }
 
@@ -481,7 +497,7 @@ struct PaneFooter: View {
     var body: some View {
         HStack(spacing: 4) {
             ForEach(left) { item in
-                IconButton(systemName: item.icon, help: item.help, action: item.action)
+                IconButton(systemName: item.icon, help: item.help, active: item.active, action: item.action)
             }
             Spacer()
             Text(counter)
@@ -511,9 +527,11 @@ struct PaneFooter: View {
                     }
                     .buttonStyle(.plain)
                     .focusEffectDisabled()
+                    .disabled(!item.active)
+                    .opacity(item.active ? 1 : 0.45)
                     .help(item.help)
                 } else {
-                    IconButton(systemName: item.icon, help: item.help, action: item.action)
+                    IconButton(systemName: item.icon, help: item.help, active: item.active, action: item.action)
                 }
             }
         }

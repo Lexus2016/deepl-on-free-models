@@ -2,12 +2,12 @@ import AppKit
 import SwiftUI
 
 @main
-struct HyMTApp: App {
+struct DeepLoFMApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var app = AppState()
 
     var body: some Scene {
-        WindowGroup("HyMT") {
+        WindowGroup("DeepL-oFM") {
             RootView()
                 .environmentObject(app)
         }
@@ -25,7 +25,6 @@ struct HyMTApp: App {
                 Button(L10n.t("Translate clipboard", app.settings.interfaceLanguage)) {
                     app.translateClipboard()
                 }
-                .keyboardShortcut("v", modifiers: [.command, .option])
 
                 Button(L10n.t("Translate selection", app.settings.interfaceLanguage)) {
                     app.translateSelection()
@@ -65,6 +64,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationShouldSaveApplicationState(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationShouldRestoreApplicationState(_ sender: NSApplication) -> Bool {
         false
     }
 

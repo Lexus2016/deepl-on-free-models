@@ -145,6 +145,10 @@ struct SettingsView: View {
                     }
                 }
 
+                Text(L10n.t("For difficult texts, use Hy-MT2 30B or a cloud model.", language))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Theme.tertiary)
+
                 HStack(spacing: 10) {
                     Button {
                         app.connectAndLoadModels()
@@ -447,7 +451,7 @@ struct SettingsView: View {
     private var hotKeyCard: some View {
         SettingsCard(
             title: L10n.t("Hot key", language),
-            subtitle: L10n.t("Copy text anywhere and press the shortcut — HyMT opens and translates the clipboard.", language)
+            subtitle: L10n.t("Copy text anywhere and press the shortcut — DeepL-oFM opens and translates the clipboard.", language)
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 FieldRow(label: L10n.t("Translate clipboard", language)) {
@@ -468,7 +472,7 @@ struct SettingsView: View {
                     }
                 }
 
-                Text(L10n.t("Select text in any app and press the shortcut — HyMT copies it and translates.", language))
+                Text(L10n.t("Select text in any app and press the shortcut — DeepL-oFM copies it and translates.", language))
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -505,7 +509,7 @@ struct SettingsView: View {
 
                 if !app.accessibilityGranted {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(L10n.t("If access is already granted, remove HyMT from the Accessibility list and add the current app again — a permission from an older build does not apply.", language))
+                        Text(L10n.t("If access is already granted, remove DeepL-oFM from the Accessibility list and add the current app again — a permission from an older build does not apply.", language))
                             .font(.system(size: 10.5))
                             .foregroundStyle(Theme.tertiary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -555,7 +559,8 @@ struct SettingsView: View {
                 Text(PromptBuilder.preview(
                     style: app.style,
                     tone: app.tone,
-                    targetLanguage: app.targetLanguage.englishName
+                    targetLanguage: app.targetLanguage.englishName,
+                    sample: L10n.t("Sample text", language)
                 ))
                 .font(.system(size: 11.5, design: .monospaced))
                 .foregroundStyle(Theme.secondary)
@@ -580,7 +585,7 @@ struct SettingsView: View {
         SettingsCard(title: L10n.t("About", language), subtitle: nil) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
-                    Text("HyMT 1.0")
+                    Text("DeepL-oFM \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Theme.text)
                     Text("·")
@@ -594,7 +599,7 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.tertiary)
                 HStack(spacing: 14) {
                     Link("huggingface.co/tencent/Hy-MT2-7B", destination: URL(string: "https://huggingface.co/tencent/Hy-MT2-7B")!)
-                    Link(L10n.t("HyMT on GitHub", language), destination: URL(string: "https://github.com/Lexus2016/deepl-on-free-models")!)
+                    Link(L10n.t("DeepL-oFM on GitHub", language), destination: URL(string: "https://github.com/Lexus2016/deepl-on-free-models")!)
                 }
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.accent)

@@ -7,13 +7,6 @@ enum BackendKind: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .ollama: return "Ollama"
-        case .openAI: return "OpenAI-сумісний"
-        }
-    }
-
     var defaultBaseURL: String {
         switch self {
         case .ollama: return "http://127.0.0.1:11434"

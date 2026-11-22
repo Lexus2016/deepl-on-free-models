@@ -55,7 +55,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var sourceLanguage: Language {
         didSet {
             settings.lastSourceCode = sourceLanguage.code
-            detectedLanguage = sourceLanguage == .auto ? Language.detect(sourceText) : nil
+            detectedLanguage = sourceLanguage == .auto ? Language.detect(sourceText, preferred: settings.interfaceLanguage) : nil
         }
     }
     @Published var targetLanguage: Language {
@@ -139,7 +139,7 @@ final class AppState: NSObject, ObservableObject {
         if let index = arguments.firstIndex(of: "--prefill"), arguments.count > index + 1 {
             let text = arguments[index + 1]
             sourceText = text
-            detectedLanguage = Language.detect(text)
+            detectedLanguage = Language.detect(text, preferred: settings.interfaceLanguage)
             translate(force: true)
         }
         if arguments.contains("--translate-clipboard") {
@@ -168,6 +168,7 @@ final class AppState: NSObject, ObservableObject {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
+        window.isRestorable = false
         window.minSize = NSSize(width: 1000, height: 640)
 
         guard !didActivateWindow else { return }
@@ -196,7 +197,7 @@ final class AppState: NSObject, ObservableObject {
 
     func sourceChanged(_ text: String) {
         sourceText = text
-        detectedLanguage = sourceLanguage == .auto ? Language.detect(text) : nil
+        detectedLanguage = sourceLanguage == .auto ? Language.detect(text, preferred: settings.interfaceLanguage) : nil
 
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
@@ -205,6 +206,9 @@ final class AppState: NSObject, ObservableObject {
             errorMessage = nil
             lastDurationMs = nil
             tokensPerSecond = nil
+            translationCompleted = 0
+            translationTotal = 0
+            translationWarningCount = 0
             return
         }
         guard settings.autoTranslate, !suppressRetranslation else { return }
@@ -228,7 +232,7 @@ final class AppState: NSObject, ObservableObject {
 
         var target = targetLanguage
         if sourceLanguage == .auto,
-           let detected = Language.detect(trimmed),
+           let detected = Language.detect(trimmed, preferred: settings.interfaceLanguage),
            detected == target {
             let interface = settings.interfaceLanguage.resolved
             let preferredCode: String
@@ -368,12 +372,15 @@ final class AppState: NSObject, ObservableObject {
         detectedLanguage = nil
         lastDurationMs = nil
         tokensPerSecond = nil
+        translationCompleted = 0
+        translationTotal = 0
+        translationWarningCount = 0
     }
 
     func swapLanguages() {
         let detected: Language
         if sourceLanguage == .auto {
-            detected = Language.detect(sourceText) ?? Language.with(code: "en") ?? .auto
+            detected = Language.detect(sourceText, preferred: settings.interfaceLanguage) ?? Language.with(code: "en") ?? .auto
         } else {
             detected = sourceLanguage
         }
@@ -407,7 +414,7 @@ final class AppState: NSObject, ObservableObject {
         sourceText = clipboard
         translatedText = ""
         suppressRetranslation = false
-        detectedLanguage = sourceLanguage == .auto ? Language.detect(clipboard) : nil
+        detectedLanguage = sourceLanguage == .auto ? Language.detect(clipboard, preferred: settings.interfaceLanguage) : nil
         translate(force: true)
     }
 
@@ -423,7 +430,7 @@ final class AppState: NSObject, ObservableObject {
     }
 
     func speakSource() {
-        let language = sourceLanguage == .auto ? (Language.detect(sourceText) ?? .auto) : sourceLanguage
+        let language = sourceLanguage == .auto ? (Language.detect(sourceText, preferred: settings.interfaceLanguage) ?? .auto) : sourceLanguage
         Speaker.shared.speak(sourceText, language: language)
     }
 
@@ -443,15 +450,16 @@ final class AppState: NSObject, ObservableObject {
         lastDurationMs = entry.durationMs
         tokensPerSecond = nil
         suppressRetranslation = false
-        detectedLanguage = sourceLanguage == .auto ? Language.detect(entry.sourceText) : nil
+        detectedLanguage = sourceLanguage == .auto ? Language.detect(entry.sourceText, preferred: settings.interfaceLanguage) : nil
         tab = .translate
     }
 
     var isSourceLanguageAuto: Bool { sourceLanguage == .auto }
 
     private func debugLog(_ message: String) {
-        guard ProcessInfo.processInfo.environment["HYMT_DEBUG"] == "1" else { return }
-        guard let data = ("[HyMT] " + message + "\n").data(using: .utf8) else { return }
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["DEEPLOFM_DEBUG"] == "1" || environment["HYMT_DEBUG"] == "1" else { return }
+        guard let data = ("[DeepL-oFM] " + message + "\n").data(using: .utf8) else { return }
         FileHandle.standardError.write(data)
     }
 
@@ -502,8 +510,12 @@ final class AppState: NSObject, ObservableObject {
                 self.providerModels = sorted
                 self.providerModelsSource = provider
                 self.modelsLoading = false
-                self.modelsError = sorted.isEmpty ? L10n.t("The server returned no models.", language) : nil
-                if Probe.model(config.model, isListedIn: sorted) {
+                if sorted.isEmpty {
+                    let message = L10n.t("The server returned no models.", language)
+                    self.modelsError = message
+                    self.backendStatus = .modelMissing
+                    self.probeMessage = message
+                } else if Probe.model(config.model, isListedIn: sorted) {
                     self.backendStatus = .ready
                     self.probeMessage = L10n.format("Connection works. Model “%@” is available.", language, config.model)
                 } else {
@@ -534,10 +546,21 @@ final class AppState: NSObject, ObservableObject {
         let language = settings.interfaceLanguage
         probeMessage = L10n.t("Checking connection…", language)
         let config = settings.snapshot
+
+        if settings.provider.requiresKey && config.apiKey.isEmpty {
+            let message = L10n.format("Enter the API key for %@ in Settings first.", language, settings.provider.title)
+            backendStatus = .error(message)
+            probeMessage = message
+            return
+        }
+
         do {
             let models = try await Probe.models(config)
             debugLog("probe \(config.baseURL): \(models.count) models, has=\(Probe.model(config.model, isListedIn: models))")
-            if Probe.model(config.model, isListedIn: models) {
+            if models.isEmpty {
+                backendStatus = .modelMissing
+                probeMessage = L10n.t("The server returned no models.", language)
+            } else if Probe.model(config.model, isListedIn: models) {
                 backendStatus = .ready
                 probeMessage = L10n.format("Connection works. Model “%@” is available.", language, config.model)
             } else {
@@ -606,7 +629,7 @@ final class AppState: NSObject, ObservableObject {
             self.lastDurationMs = nil
             self.tokensPerSecond = nil
             self.suppressRetranslation = false
-            self.detectedLanguage = self.sourceLanguage == .auto ? Language.detect(text) : nil
+            self.detectedLanguage = self.sourceLanguage == .auto ? Language.detect(text, preferred: settings.interfaceLanguage) : nil
             self.translate(force: true)
         }
     }
@@ -738,7 +761,7 @@ final class AppState: NSObject, ObservableObject {
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            let image = NSImage(systemSymbolName: "character.bubble", accessibilityDescription: "HyMT")
+            let image = NSImage(systemSymbolName: "character.bubble", accessibilityDescription: "DeepL-oFM")
             image?.isTemplate = true
             button.image = image
         }
@@ -758,7 +781,7 @@ final class AppState: NSObject, ObservableObject {
         let language = settings.interfaceLanguage
         let menu = NSMenu()
 
-        let open = NSMenuItem(title: L10n.t("Open HyMT", language), action: #selector(menuOpen), keyEquivalent: "")
+        let open = NSMenuItem(title: L10n.t("Open DeepL-oFM", language), action: #selector(menuOpen), keyEquivalent: "")
         open.target = self
         menu.addItem(open)
 

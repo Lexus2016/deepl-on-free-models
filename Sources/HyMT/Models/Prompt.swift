@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 enum TranslationStyle: String, Codable, CaseIterable, Identifiable {
     case auto
@@ -56,6 +55,7 @@ enum TranslationTone: String, Codable, CaseIterable, Identifiable {
 /// the model has no default system prompt.
 enum PromptBuilder {
 
+    private static let markdownClause = "Preserve Markdown syntax exactly (headings, lists, bold, italic, links, inline code); translate only the human-readable text."
 
     static func styleDescriptor(_ style: TranslationStyle) -> String {
         switch style {
@@ -77,17 +77,19 @@ enum PromptBuilder {
     static func instruction(
         style: TranslationStyle,
         tone: TranslationTone,
-        targetLanguage: String
+        targetLanguage: String,
+        preserveMarkdown: Bool = false
     ) -> String {
+        let clause = preserveMarkdown ? " " + markdownClause : ""
         let base: String
         if style == .auto && tone == .standard {
-            base = "Translate the following text into \(targetLanguage). Note that you should only output the translated result without any additional explanation:"
+            base = "Translate the following text into \(targetLanguage).\(clause) Note that you should only output the translated result without any additional explanation:"
         } else {
             var descriptor = styleDescriptor(style)
             if tone != .standard, let suffix = toneSuffix(tone) {
                 descriptor += "; \(suffix)"
             }
-            base = "Please translate the following text into \(targetLanguage). Note that the translation style must strictly conform to [\(descriptor)]:"
+            base = "Please translate the following text into \(targetLanguage).\(clause) Note that the translation style must strictly conform to [\(descriptor)]:"
         }
         return base
     }
@@ -96,12 +98,14 @@ enum PromptBuilder {
         text: String,
         style: TranslationStyle,
         tone: TranslationTone,
-        targetLanguage: String
+        targetLanguage: String,
+        preserveMarkdown: Bool = false
     ) -> String {
         instruction(
             style: style,
             tone: tone,
-            targetLanguage: targetLanguage
+            targetLanguage: targetLanguage,
+            preserveMarkdown: preserveMarkdown
         ) + "\n\n" + text
     }
 
@@ -111,17 +115,19 @@ enum PromptBuilder {
     static func headingInstruction(
         style: TranslationStyle,
         tone: TranslationTone,
-        targetLanguage: String
+        targetLanguage: String,
+        preserveMarkdown: Bool = false
     ) -> String {
+        let clause = preserveMarkdown ? " " + markdownClause : ""
         let base: String
         if style == .auto && tone == .standard {
-            base = "Translate this heading into \(targetLanguage). Output only the translated heading, without any additional explanation:"
+            base = "Translate this heading into \(targetLanguage).\(clause) Output only the translated heading, without any additional explanation:"
         } else {
             var descriptor = styleDescriptor(style)
             if tone != .standard, let suffix = toneSuffix(tone) {
                 descriptor += "; \(suffix)"
             }
-            base = "Please translate this heading into \(targetLanguage). Note that the translation style must strictly conform to [\(descriptor)] and output only the translated heading:"
+            base = "Please translate this heading into \(targetLanguage).\(clause) Note that the translation style must strictly conform to [\(descriptor)] and output only the translated heading:"
         }
         return base
     }
@@ -130,16 +136,33 @@ enum PromptBuilder {
         text: String,
         style: TranslationStyle,
         tone: TranslationTone,
-        targetLanguage: String
+        targetLanguage: String,
+        preserveMarkdown: Bool = false
     ) -> String {
         headingInstruction(
             style: style,
             tone: tone,
-            targetLanguage: targetLanguage
+            targetLanguage: targetLanguage,
+            preserveMarkdown: preserveMarkdown
         ) + "\n\n" + text
     }
 
-    static func preview(style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
-        instruction(style: style, tone: tone, targetLanguage: targetLanguage) + "\n\n{текст для перекладу}"
+    /// A style-free fallback for models that return an empty stream for the
+    /// regular prompt. It is intentionally short and ends with a colon.
+    static func plainInstruction(targetLanguage: String) -> String {
+        "Translate the following text into \(targetLanguage). Output only the translated text, without any additional explanation:"
+    }
+
+    static func plainPrompt(text: String, targetLanguage: String) -> String {
+        plainInstruction(targetLanguage: targetLanguage) + "\n\n" + text
+    }
+
+    static func preview(
+        style: TranslationStyle,
+        tone: TranslationTone,
+        targetLanguage: String,
+        sample: String = "Hello, world!"
+    ) -> String {
+        instruction(style: style, tone: tone, targetLanguage: targetLanguage) + "\n\n" + sample
     }
 }

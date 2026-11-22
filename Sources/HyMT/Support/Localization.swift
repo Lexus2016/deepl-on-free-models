@@ -64,13 +64,22 @@ enum L10n {
     static func characters(_ count: Int, _ language: AppLanguage) -> String {
         switch language.resolved {
         case .uk:
-            let word = (count % 10 == 1 && count % 100 != 11) ? "символ" : "символів"
-            return "\(count) \(word)"
+            return "\(count) \(plural(count, one: "символ", few: "символи", many: "символів"))"
         case .ru:
-            let word = (count % 10 == 1 && count % 100 != 11) ? "символ" : "символов"
-            return "\(count) \(word)"
+            return "\(count) \(plural(count, one: "символ", few: "символа", many: "символов"))"
         default:
             return "\(count) " + (count == 1 ? "character" : "characters")
+        }
+    }
+
+    private static func plural(_ count: Int, one: String, few: String, many: String) -> String {
+        let abs = abs(count)
+        let mod100 = abs % 100
+        if (11...14).contains(mod100) { return many }
+        switch abs % 10 {
+        case 1: return one
+        case 2...4: return few
+        default: return many
         }
     }
 
@@ -98,10 +107,12 @@ enum L10n {
         "Copy translation": "Скопіювати переклад",
         "Copy translation (Markdown + formatting)": "Скопіювати переклад (Markdown + форматування)",
         "Copy": "Копіювати",
+        "Sample text": "Зразок тексту",
+        "Translation failed": "Не вдалося перекласти",
         "Settings…": "Налаштування…",
         "Connection status": "Стан підключення",
         "Check connection": "Перевірити з'єднання",
-        "Open HyMT": "Відкрити HyMT",
+        "Open DeepL-oFM": "Відкрити DeepL-oFM",
         "Quit": "Вийти",
         "Translate clipboard (%@)": "Перекласти буфер обміну (%@)",
 
@@ -150,8 +161,8 @@ enum L10n {
         "Reset": "Скинути",
         "At least one modifier is required — ⌘, ⌥ or ⌃. Press Esc to cancel.": "Потрібен щонайменше один модифікатор — ⌘, ⌥ або ⌃. Натисніть Esc, щоб скасувати.",
         "Hot key": "Гаряча клавіша",
-        "Copy text anywhere and press the shortcut — HyMT opens and translates the clipboard.": "Скопіюйте текст у будь-якому застосунку та натисніть комбінацію — HyMT відкриється й одразу перекладе вміст буфера обміну.",
-        "Select text in any app and press the shortcut — HyMT copies it and translates.": "Виділіть текст у будь-якому застосунку та натисніть комбінацію — HyMT скопіює його й перекладе.",
+        "Copy text anywhere and press the shortcut — DeepL-oFM opens and translates the clipboard.": "Скопіюйте текст у будь-якому застосунку та натисніть комбінацію — DeepL-oFM відкриється й одразу перекладе вміст буфера обміну.",
+        "Select text in any app and press the shortcut — DeepL-oFM copies it and translates.": "Виділіть текст у будь-якому застосунку та натисніть комбінацію — DeepL-oFM скопіює його й перекладе.",
         "Translate selection": "Перекласти виділене",
         "Translate selection (%@)": "Перекласти виділене (%@)",
         "Selected text": "Виділений текст",
@@ -163,14 +174,15 @@ enum L10n {
         "Delete": "Видалити",
         "Forward Delete": "Видалити вперед",
         "Examples: ⌥⌘T or ⌥⌘C.": "Наприклад: ⌥⌘T або ⌥⌘C.",
-        "If access is already granted, remove HyMT from the Accessibility list and add the current app again — a permission from an older build does not apply.": "Якщо доступ уже надано, видаліть HyMT зі списку Accessibility і додайте поточний застосунок знову — дозвіл від старої збірки не діє.",
+        "If access is already granted, remove DeepL-oFM from the Accessibility list and add the current app again — a permission from an older build does not apply.": "Якщо доступ уже надано, видаліть DeepL-oFM зі списку Accessibility і додайте поточний застосунок знову — дозвіл від старої збірки не діє.",
         "Accessibility access is required to copy the selected text.": "Для копіювання виділеного тексту потрібен доступ до Accessibility.",
         "Could not copy the selected text. Check Accessibility access.": "Не вдалося скопіювати виділений текст. Перевірте доступ до Accessibility.",
         "Space": "Пробіл",
         "key %d": "клавіша %d",
         "Can be empty for local servers. Stored in the macOS Keychain, never in the repository.": "Може бути порожнім для локального сервера. Ключ зберігається в Keychain macOS і ніколи не потрапляє в репозиторій.",
-        "HyMT — local translation": "HyMT — локальний переклад",
+        "DeepL-oFM — local translation": "DeepL-oFM — локальний переклад",
         "Other": "Інший",
+        "Custom": "Власний",
         "Ollama Cloud through a direct API key. No local server is needed.": "Ollama Cloud через прямий API-ключ. Локальний сервер не потрібен.",
         "Connect": "Під'єднатися",
         "Models on the server": "Моделі на сервері",
@@ -193,6 +205,7 @@ enum L10n {
         "Server address": "Адреса сервера",
         "Model": "Модель",
         "Model catalog…": "Каталог моделей…",
+        "For difficult texts, use Hy-MT2 30B or a cloud model.": "Для складних текстів використовуйте Hy-MT2 30B або хмарну модель.",
         "Generation parameters": "Параметри генерації",
         "Defaults match Tencent’s recommendations for Hy-MT2 7B.": "Значення за замовчуванням відповідають рекомендаціям Tencent для Hy-MT2 7B.",
         "Temperature": "Температура",
@@ -212,7 +225,7 @@ enum L10n {
         "local translator for macOS": "локальний перекладач для macOS",
         "Model: Hy-MT2 7B (Tencent Hy). License and model card on Hugging Face.": "Модель: Hy-MT2 7B (Tencent Hy). Ліцензія та картка моделі — на Hugging Face.",
         "Project repository": "Репозиторій проєкту",
-        "HyMT on GitHub": "HyMT на GitHub",
+        "DeepL-oFM on GitHub": "DeepL-oFM на GitHub",
 
         // Providers
         "Local Ollama server. The model must be pulled with ollama pull.": "Локальний сервер Ollama. Модель має бути завантажена командою ollama pull.",
@@ -330,10 +343,12 @@ enum L10n {
         "Copy translation": "Скопировать перевод",
         "Copy translation (Markdown + formatting)": "Скопировать перевод (Markdown + форматирование)",
         "Copy": "Копировать",
+        "Sample text": "Образец текста",
+        "Translation failed": "Не удалось перевести",
         "Settings…": "Настройки…",
         "Connection status": "Состояние подключения",
         "Check connection": "Проверить соединение",
-        "Open HyMT": "Открыть HyMT",
+        "Open DeepL-oFM": "Открыть DeepL-oFM",
         "Quit": "Выйти",
         "Translate clipboard (%@)": "Перевести буфер обмена (%@)",
 
@@ -382,8 +397,8 @@ enum L10n {
         "Reset": "Сбросить",
         "At least one modifier is required — ⌘, ⌥ or ⌃. Press Esc to cancel.": "Нужен хотя бы один модификатор — ⌘, ⌥ или ⌃. Нажмите Esc, чтобы отменить.",
         "Hot key": "Горячая клавиша",
-        "Copy text anywhere and press the shortcut — HyMT opens and translates the clipboard.": "Скопируйте текст в любом приложении и нажмите комбинацию — HyMT откроется и сразу переведёт содержимое буфера обмена.",
-        "Select text in any app and press the shortcut — HyMT copies it and translates.": "Выделите текст в любом приложении и нажмите комбинацию — HyMT скопирует его и переведёт.",
+        "Copy text anywhere and press the shortcut — DeepL-oFM opens and translates the clipboard.": "Скопируйте текст в любом приложении и нажмите комбинацию — DeepL-oFM откроется и сразу переведёт содержимое буфера обмена.",
+        "Select text in any app and press the shortcut — DeepL-oFM copies it and translates.": "Выделите текст в любом приложении и нажмите комбинацию — DeepL-oFM скопирует его и переведёт.",
         "Translate selection": "Перевести выделенное",
         "Translate selection (%@)": "Перевести выделенное (%@)",
         "Selected text": "Выделенный текст",
@@ -395,14 +410,15 @@ enum L10n {
         "Delete": "Удалить",
         "Forward Delete": "Удалить вперёд",
         "Examples: ⌥⌘T or ⌥⌘C.": "Например: ⌥⌘T или ⌥⌘C.",
-        "If access is already granted, remove HyMT from the Accessibility list and add the current app again — a permission from an older build does not apply.": "Если доступ уже предоставлен, удалите HyMT из списка Accessibility и добавьте текущее приложение снова — разрешение от старой сборки не действует.",
+        "If access is already granted, remove DeepL-oFM from the Accessibility list and add the current app again — a permission from an older build does not apply.": "Если доступ уже предоставлен, удалите DeepL-oFM из списка Accessibility и добавьте текущее приложение снова — разрешение от старой сборки не действует.",
         "Accessibility access is required to copy the selected text.": "Для копирования выделенного текста нужен доступ к Accessibility.",
         "Could not copy the selected text. Check Accessibility access.": "Не удалось скопировать выделенный текст. Проверьте доступ к Accessibility.",
         "Space": "Пробел",
         "key %d": "клавиша %d",
         "Can be empty for local servers. Stored in the macOS Keychain, never in the repository.": "Может быть пустым для локального сервера. Ключ хранится в Keychain macOS и никогда не попадает в репозиторий.",
-        "HyMT — local translation": "HyMT — локальный перевод",
+        "DeepL-oFM — local translation": "DeepL-oFM — локальный перевод",
         "Other": "Другой",
+        "Custom": "Свой",
         "Ollama Cloud through a direct API key. No local server is needed.": "Ollama Cloud через прямой API-ключ. Локальный сервер не нужен.",
         "Connect": "Подключиться",
         "Models on the server": "Модели на сервере",
@@ -425,6 +441,7 @@ enum L10n {
         "Server address": "Адрес сервера",
         "Model": "Модель",
         "Model catalog…": "Каталог моделей…",
+        "For difficult texts, use Hy-MT2 30B or a cloud model.": "Для сложных текстов используйте Hy-MT2 30B или облачную модель.",
         "Generation parameters": "Параметры генерации",
         "Defaults match Tencent’s recommendations for Hy-MT2 7B.": "Значения по умолчанию соответствуют рекомендациям Tencent для Hy-MT2 7B.",
         "Temperature": "Температура",
@@ -444,7 +461,7 @@ enum L10n {
         "local translator for macOS": "локальный переводчик для macOS",
         "Model: Hy-MT2 7B (Tencent Hy). License and model card on Hugging Face.": "Модель: Hy-MT2 7B (Tencent Hy). Лицензия и карточка модели — на Hugging Face.",
         "Project repository": "Репозиторий проекта",
-        "HyMT on GitHub": "HyMT на GitHub",
+        "DeepL-oFM on GitHub": "DeepL-oFM на GitHub",
 
         // Providers
         "Local Ollama server. The model must be pulled with ollama pull.": "Локальный сервер Ollama. Модель должна быть загружена командой ollama pull.",

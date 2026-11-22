@@ -1,41 +1,46 @@
-# Безпека
+# Security
 
-## Ключі та секрети
+## Keys and secrets
 
-- API-ключі зберігаються в **Keychain macOS**, окремо для кожного провайдера
-  (`service = ua.admin.hymt`, `account = provider:<id>`).
-- Ключі не записуються в `UserDefaults`, історію перекладів, журнали або файли
-  репозиторію.
-- У репозиторії немає `.env`-файлів, токенів, приватних ключів чи моделей.
-  `.gitignore` виключає `.env`, `*.key`, `*.pem`, `*.gguf`, `build/`, `.build/`
-  та логи.
-- Якщо ключ випадково потрапив у коміт або публічний репозиторій — негайно
-  відкликайте його в панелі провайдера. Історію git слід вважати скомпрометованою:
-  ключ треба вважати публічним, навіть якщо коміт пізніше видалено.
+- API keys are stored in the **macOS Keychain**, one item per provider
+  (`service = ua.admin.hymt`, `account = provider:<id>`). New items use the
+  `kSecAttrAccessibleAfterFirstUnlock` protection class.
+- Keys are never written to `UserDefaults`, translation history, logs or files
+  in the repository.
+- The repository contains no `.env` files, tokens, private keys or models.
+  `.gitignore` excludes `.env`, `*.key`, `*.pem`, `*.gguf`, `build/`, `.build/`
+  and logs.
+- If a key ever reaches a commit or a public repository, revoke it in the
+  provider's panel immediately. Treat the git history as compromised: the key
+  must be considered public even if the commit is removed later.
 
-## Приватність
+## Privacy
 
-- Локальні провайдери (Ollama, LM Studio, oMLX, llama.cpp) не надсилають текст у
-  мережу.
-- Хмарні провайдери (Ollama Cloud, OpenRouter, Groq, Cerebras) отримують текст,
-  який перекладається, згідно з їхніми умовами та політикою даних.
-- Застосунок не має телеметрії, аналітики чи фонового зв'язку з власними
-  серверами.
-- Дозвіл **Accessibility** використовується лише для надсилання `⌘C` активному
-  застосунку перед перекладом виділеного тексту. Застосунок не читає keyboard
-  events і не збирає вміст інших вікон.
+- Local providers (Ollama, LM Studio, oMLX, llama.cpp) do not send the text over
+  the network.
+- Cloud providers (Ollama Cloud, OpenRouter, Groq, Cerebras) receive the text
+  being translated under their own terms and data policies.
+- The app has no telemetry, analytics or background connection to its authors'
+  servers.
+- The **Accessibility** permission is used only to send `⌘C` to the active app
+  before translating selected text. The app does not read keyboard events or
+  collect the contents of other windows.
+- Translation history is stored locally in
+  `~/Library/Application Support/DeepL-oFM/history.json` and can be cleared from
+  the History tab. Disable **Keep translation history** to stop writing it.
 
-## Повідомлення про вразливість
+## Reporting a vulnerability
 
-Не створюйте публічний issue з деталями експлуатації. Використайте GitHub
-**Security → Report a vulnerability** (private advisory) у цьому репозиторії.
+Do not open a public issue with exploit details. Use GitHub
+**Security → Report a vulnerability** (private advisory) in this repository.
 
-Вкажіть:
+Please include:
 
-- версію/коміт;
-- macOS і спосіб запуску (локальна збірка чи `/Applications`);
-- кроки відтворення;
-- очікувану й фактичну поведінку;
-- чи зачіпає проблема API-ключі або дані користувача.
+- version/commit;
+- macOS version and how the app was launched (local build or `/Applications`);
+- reproduction steps;
+- expected and actual behaviour;
+- whether the issue affects API keys or user data.
 
-Відповідь — протягом 7 днів. Будь ласка, не публікуйте деталі до виправлення.
+You can expect a response within 7 days. Please do not publish details before a
+fix is available.

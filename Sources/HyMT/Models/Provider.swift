@@ -25,7 +25,7 @@ enum Provider: String, Codable, CaseIterable, Identifiable {
         case .openRouter: return "OpenRouter"
         case .groq: return "Groq"
         case .cerebras: return "Cerebras"
-        case .custom: return "Other"
+        case .custom: return "Custom"
         }
     }
 

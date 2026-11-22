@@ -12,8 +12,6 @@ struct CatalogEntry: Identifiable, Hashable {
     let badges: [String]
     let isFree: Bool
     let installCommand: String?
-
-    var key: String { provider.rawValue + "/" + modelID }
 }
 
 enum ModelCatalog {
@@ -330,11 +328,6 @@ enum ModelCatalog {
         case .custom:
             return []
         }
-    }
-
-    static func entry(for model: String, provider: Provider) -> CatalogEntry? {
-        entries.first { $0.modelID == model && $0.provider == provider }
-            ?? entries.first { $0.modelID == model }
     }
 
     static func installCommand(for model: String) -> String? {

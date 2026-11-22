@@ -3,19 +3,19 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>HyMT</string>
+    <string>DeepL-oFM</string>
     <key>CFBundleDisplayName</key>
-    <string>HyMT</string>
+    <string>DeepL-oFM</string>
     <key>CFBundleIdentifier</key>
     <string>ua.admin.hymt</string>
     <key>CFBundleExecutable</key>
-    <string>HyMT</string>
+    <string>DeepL-oFM</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.0.5</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>5</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
@@ -29,6 +29,6 @@
     <key>LSMultipleInstancesProhibited</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>HyMT — локальний переклад на Hy-MT2 7B</string>
+    <string>DeepL-oFM — local translation powered by Hy-MT2 7B</string>
 </dict>
 </plist>

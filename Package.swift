@@ -11,6 +11,11 @@ let package = Package(
         .executableTarget(
             name: "HyMT",
             path: "Sources/HyMT"
+        ),
+        .testTarget(
+            name: "HyMTTests",
+            dependencies: ["HyMT"],
+            path: "Tests/HyMTTests"
         )
     ]
 )

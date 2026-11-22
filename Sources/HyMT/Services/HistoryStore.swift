@@ -23,9 +23,21 @@ final class HistoryStore: ObservableObject {
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
-        let folder = support.appendingPathComponent("HyMT", isDirectory: true)
+        let folder = support.appendingPathComponent("DeepL-oFM", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        fileURL = folder.appendingPathComponent("history.json")
+
+        let target = folder.appendingPathComponent("history.json")
+        let legacy = support
+            .appendingPathComponent("HyMT", isDirectory: true)
+            .appendingPathComponent("history.json")
+        if !FileManager.default.fileExists(atPath: target.path),
+           FileManager.default.fileExists(atPath: legacy.path) {
+            // The app was called HyMT before 1.0.5. Copy the old history once;
+            // never mutate the old file, so a failed migration is recoverable.
+            try? FileManager.default.copyItem(at: legacy, to: target)
+        }
+
+        fileURL = target
         load()
     }
 

@@ -70,4 +70,4 @@ echo "==> Збірка застосунку"
 ./build.sh
 
 echo
-echo "Готово. Запуск: open build/HyMT.app"
+echo "Готово. Запуск: open build/DeepL-oFM.app"

@@ -21,10 +21,6 @@ struct Language: Identifiable, Hashable, Codable {
         all.first { $0.code == code }
     }
 
-    static func english(_ code: String) -> Language? {
-        all.first { $0.code == code }
-    }
-
     func displayName(in language: AppLanguage) -> String {
         if self == .auto {
             return L10n.t("Auto-detect", language)
@@ -81,7 +77,7 @@ struct Language: Identifiable, Hashable, Codable {
     ]
 
     /// Cheap script-based detection, enough to label the interface and to swap sides.
-    static func detect(_ text: String) -> Language? {
+    static func detect(_ text: String, preferred: AppLanguage = .system) -> Language? {
         let sample = text.prefix(600)
         guard !sample.isEmpty else { return nil }
 
@@ -104,14 +100,41 @@ struct Language: Identifiable, Hashable, Codable {
         if has([0x4E00...0x9FFF, 0x3400...0x4DBF]) { return with(code: "zh") }
         if has([0x0400...0x04FF]) {
             let lowered = sample.lowercased()
-            if lowered.contains("і") || lowered.contains("ї") || lowered.contains("є")
-                || lowered.contains("ґ") || lowered.contains("’") {
-                return with(code: "uk")
+            var ukScore = 0
+            var ruScore = 0
+            for character in lowered {
+                switch character {
+                case "і", "ї", "є", "ґ": ukScore += 2
+                case "ы", "э", "ё", "ъ": ruScore += 2
+                case "’": ukScore += 1
+                default: break
+                }
             }
-            if lowered.contains("ы") || lowered.contains("э") || lowered.contains("ё") {
-                return with(code: "ru")
+
+            let tokens = lowered.split(whereSeparator: { !$0.isLetter }).map(String.init)
+            let ukWords: Set<String> = [
+                "що", "цей", "ця", "ці", "після", "або", "також", "вже", "ще",
+                "рядок", "рядки", "мова", "переклад", "можна", "потрібно",
+                "який", "яка", "які", "було", "цього", "мене", "тебе", "його",
+                "її", "вони", "ми", "ви", "безкоштовно", "локальні", "хмарні",
+                "провайдери"
+            ]
+            let ruWords: Set<String> = [
+                "что", "это", "этот", "эта", "эти", "после", "или", "также",
+                "ещё", "еще", "строка", "строки", "язык", "перевод", "можно",
+                "нужно", "который", "которая", "которые", "было", "этого",
+                "меня", "тебя", "его", "её", "они", "мы", "вы", "бесплатно",
+                "локальные", "облачные", "провайдеры"
+            ]
+            ukScore += tokens.filter { ukWords.contains($0) }.count
+            ruScore += tokens.filter { ruWords.contains($0) }.count
+
+            if ukScore > ruScore { return with(code: "uk") }
+            if ruScore > ukScore { return with(code: "ru") }
+            switch preferred.resolved {
+            case .ru: return with(code: "ru")
+            default: return with(code: "uk")
             }
-            return with(code: "ru")
         }
         if has([0x0530...0x058F]) { return nil }
         if has([0x10A0...0x10FF]) { return nil }

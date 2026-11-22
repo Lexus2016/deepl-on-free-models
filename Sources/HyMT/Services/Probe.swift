@@ -34,7 +34,7 @@ enum Probe {
         }
 
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw TranslationError.backend("Сервер повернув неочікувану відповідь.")
+            throw TranslationError.unexpectedResponse
         }
 
         switch config.kind {
@@ -49,7 +49,7 @@ enum Probe {
 
     static func model(_ name: String, isListedIn models: [String]) -> Bool {
         let target = name.lowercased()
-        if models.isEmpty { return true }
+        guard !models.isEmpty else { return false }
         return models.contains { listed in
             let value = listed.lowercased()
             return value == target || value.hasPrefix(target + ":") || value.hasSuffix("/" + target)

@@ -41,6 +41,7 @@ enum Keychain {
         if status == errSecItemNotFound {
             var add = query
             add[kSecValueData as String] = data
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
             SecItemAdd(add as CFDictionary, nil)
         }
     }

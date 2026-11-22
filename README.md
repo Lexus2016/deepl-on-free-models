@@ -1,242 +1,257 @@
-# HyMT — аналог DeepL на локальних і безкоштовних моделях
+# DeepL-oFM — a native macOS translator for local and free models
 
-> **HyMT** — a native macOS DeepL alternative for local and free translation models.
-> Interface in Ukrainian, Russian and English.
+**English** · [Українська](README.uk.md) · [Русский](README.ru.md)
 
 [![Release](https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?label=release)](https://github.com/Lexus2016/deepl-on-free-models/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)
 ![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)
 
-Нативний застосунок для macOS у стилі DeepL: дві панелі, автоматичний переклад під
-час введення, історія, гарячі клавіші та локальна модель **Hy-MT2 7B** (Tencent Hy).
-Працює офлайн, але вміє й хмарні моделі — OpenRouter, Groq, Cerebras, Ollama Cloud.
+A two-pane translation app in the spirit of DeepL, powered by the local
+**Hy-MT2 7B** model or a cloud provider. Works offline by default; supports
+Ollama, Ollama Cloud, OpenRouter, Groq, Cerebras, LM Studio, oMLX, llama.cpp
+and any OpenAI-compatible server.
 
-**Репозиторій:** https://github.com/Lexus2016/deepl-on-free-models
+> Not affiliated with DeepL SE. “DeepL-oFM” describes the interface style
+> (“on Free Models”); it is an independent open-source project.
 
-![Переклад](docs/screenshot.png)
+![Translation](docs/screenshot.png)
 
-![Налаштування](docs/settings.png)
+![Settings](docs/settings.png)
 
-## Можливості
+## Features
 
-- Двопанельний переклад з індикатором прогресу: під час роботи видно «X з Y», готовий текст з'являється після завершення.
-- Автоматичний переклад під час введення (затримка налаштовується).
-- Дві глобальні гарячі клавіші:
-  - **⌥⌘T** — перекласти вміст буфера обміну;
-  - **⌥⌘C** — скопіювати **виділений текст** у будь-якому застосунку, відкрити
-    HyMT і одразу перекласти його.
-- 33 мови Hy-MT2 (38 варіантів у списку), пошук мови.
-- Стилі **Авто / Дослівний / Природний** і тони **За замовчуванням / Офіційний /
-  Розмовний** — точно за карткою моделі.
-- Збереження абзаців, списків і Markdown-заголовків; короткі заголовки
-  перекладаються окремою інструкцією.
-- Каталог моделей, кнопка **«Під'єднатися»**, отримання списку моделей із сервера
-  та фільтр за частиною назви.
-- Локальні провайдери: Ollama, LM Studio, oMLX, llama.cpp.
-- Хмарні провайдери: Ollama Cloud, OpenRouter, Groq, Cerebras.
-- Будь-який OpenAI-сумісний сервер вручну (vLLM, LocalAI, свій проксі).
-- Кнопка **«Копіювати»** кладе в буфер Markdown, HTML і RTF — форматований текст зберігається.
-- Історія перекладів із пошуком, копіюванням і видаленням.
-- Прослуховування оригіналу й перекладу системними голосами macOS.
-- Інтерфейс українською, російською та англійською; мова змінюється на льоту.
-- Іконка в меню-барі та швидкий переклад звідти.
+- Two-pane translation with a progress indicator. The finished text appears
+  only when every line has been checked — no partial or repeated garbage.
+- Automatic translation while typing (configurable delay).
+- Two global hotkeys:
+  - **⌥⌘T** — translate the clipboard;
+  - **⌥⌘C** — copy the selected text in any app, open DeepL-oFM and translate it.
+- 33 Hy-MT2 languages (38 variants in the picker) with language search.
+- Styles **Auto / Literal / Natural** and tones **Default / Formal / Casual**,
+  matching the Hy-MT2 model card.
+- Model catalog, a **Connect** button, provider model list and name filter.
+- Visible **Copy** button: puts Markdown, HTML and RTF on the clipboard at once.
+- History with search, copy and delete.
+- System text-to-speech for the original and the translation.
+- Interface in **English, Ukrainian and Russian** (follows the system by default).
+- Menu-bar icon and quick clipboard translation from there.
 
-## Підтримувані провайдери
+## Providers
 
-| Провайдер | Тип | API-ключ | Примітка |
+| Provider | Type | API key | Notes |
 |---|---|---|---|
-| Ollama | локально | не потрібен | локальні моделі та `-cloud` моделі через `ollama signin` |
-| Ollama Cloud | хмара | потрібен | прямий доступ до `https://ollama.com/v1` |
-| LM Studio | локально | зазвичай не потрібен | локальний сервер LM Studio |
-| oMLX | локально | зазвичай не потрібен | MLX-сервер для Apple Silicon |
-| llama.cpp | локально | зазвичай не потрібен | `llama-server --api` |
-| OpenRouter | хмара | потрібен | є безкоштовні моделі з суфіксом `:free` |
-| Groq | хмара | потрібен | безкоштовний тариф із лімітами |
-| Cerebras | хмара | потрібен | безкоштовний тариф із лімітами |
-| Інший | будь-де | за потреби | будь-який OpenAI-сумісний endpoint |
+| Ollama | local | not needed | local models and `-cloud` models via `ollama signin` |
+| Ollama Cloud | cloud | required | direct `https://ollama.com/v1` |
+| LM Studio | local | usually not needed | local server |
+| oMLX | local | usually not needed | MLX server for Apple Silicon |
+| llama.cpp | local | usually not needed | `llama-server --api` |
+| OpenRouter | cloud | required | free models use the `:free` suffix |
+| Groq | cloud | required | free tier with rate limits |
+| Cerebras | cloud | required | free tier with limits |
+| Custom | any | optional | any OpenAI-compatible endpoint |
 
-Поле **«Ключ API»** доступне для всіх провайдерів: для локального сервера воно
-зазвичай порожнє, але якщо ваш проксі або LM Studio вимагають токен — введіть його.
-Ключ зберігається в **Keychain macOS** і ніколи не записується в репозиторій.
+The API-key field is available for **every** provider: leave it empty for a
+local server unless your proxy/LM Studio requires a token. Keys are stored in
+the **macOS Keychain** and never written to the repository.
 
-## Моделі
+## Models
 
-### Локально через Ollama
+### Local via Ollama
 
-| Модель | Ідентифікатор | Розмір | Мови |
+| Model | ID | Size | Languages |
 |---|---|---|---|
-| Hy-MT2 7B | `hy-mt2:7b` | ≈4,6 ГБ | 33 |
-| Hy-MT2 1.8B | `hy-mt2:1.8b` | легка | 33 |
-| Hy-MT2 30B-A3B | `hy-mt2:30b` | велика, MoE | 33 |
-| TranslateGemma 4B | `translategemma:4b` | ≈3 ГБ | 55 |
-| TranslateGemma 12B | `translategemma:12b` | ≈8 ГБ | 55 |
-| Qwen3.5-MT 2B | `qwen3.5-mt:2b` | 2B | переклад |
+| Hy-MT2 7B | `hy-mt2:7b` | ≈4.6 GB | 33 |
+| Hy-MT2 1.8B | `hy-mt2:1.8b` | light | 33 |
+| Hy-MT2 30B-A3B | `hy-mt2:30b` | large, MoE | 33 |
+| TranslateGemma 4B | `translategemma:4b` | ≈3 GB | 55 |
+| TranslateGemma 12B | `translategemma:12b` | ≈8 GB | 55 |
+| Qwen3.5-MT 2B | `qwen3.5-mt:2b` | 2B | translation |
 | Aya Expanse 8B | `aya-expanse:8b` | 8B | 23 |
-| Qwen3 8B | `qwen3:8b` | 8B | універсальна |
-
-Команди встановлення видно в **Налаштування → Каталог моделей…** (кнопка з
-копіюванням). Для Hy-MT2 достатньо:
+| Qwen3 8B | `qwen3:8b` | 8B | general |
 
 ```bash
 ollama pull maternion/hy-mt2:7b
 ollama cp maternion/hy-mt2:7b hy-mt2:7b
 ```
 
-Легша версія:
+The **Model catalog…** button in Settings shows install commands with a copy
+button.
 
-```bash
-ollama pull maternion/hy-mt2:1.8b
-ollama cp maternion/hy-mt2:1.8b hy-mt2:1.8b
-```
+### Ollama Cloud — both modes
 
-### Ollama Cloud — два режими
-
-1. **Через локальний демон Ollama.** Увійдіть і використовуйте `-cloud` моделі:
+1. **Through the local Ollama daemon.** Sign in and use `-cloud` models:
 
    ```bash
    ollama signin
    ollama run gpt-oss:120b-cloud
    ```
 
-   У застосунку оберіть провайдера **Ollama**, натисніть **«Під'єднатися»** — у
-   списку з'являться і локальні моделі, і `-cloud` моделі. Ключ у застосунку не
-   потрібен: авторизацію виконує демон.
+   Choose **Ollama** in the app, press **Connect**, and the list includes both
+   local and `-cloud` models. The app needs no key here; the daemon
+   authenticates.
 
-2. **Прямо через Ollama Cloud API.** Оберіть провайдера **Ollama Cloud**, введіть
-   ключ із [ollama.com/settings/keys](https://ollama.com/settings/keys). Базова
-   адреса — `https://ollama.com/v1`, локальний сервер не потрібен. Список
-   доступних хмарних моделей з'явиться після **«Під'єднатися»**.
+2. **Direct Ollama Cloud API.** Choose **Ollama Cloud**, paste a key from
+   [ollama.com/settings/keys](https://ollama.com/settings/keys). Base URL:
+   `https://ollama.com/v1`; no local server required.
 
-> Хмарні моделі Ollama тарифікуються за планом і використанням; локальні моделі —
-> безкоштовні й не потребують інтернету.
+### Cloud providers
 
-### Хмарні провайдери
+- **OpenRouter** ([keys](https://openrouter.ai/keys)): `tencent/hy-mt2-7b`,
+  `tencent/hy-mt2-1.8b`, `tencent/hy-mt2-30b-a3b`; free models such as
+  `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free`,
+  `nvidia/nemotron-3-ultra-550b-a55b:free`, `inclusionai/ling-3.2-flash:free`;
+  fast paid options such as `google/gemini-3.1-flash-lite`,
+  `qwen/qwen3.7-flash`, `openai/gpt-5-mini`.
+- **Groq** ([keys](https://console.groq.com/keys)): `openai/gpt-oss-120b`
+  (~500 t/s), `openai/gpt-oss-20b` (~1000 t/s),
+  `llama-3.3-70b-versatile`, `qwen/qwen3.8-27b` (preview).
+- **Cerebras** ([keys](https://cloud.cerebras.ai)): `gpt-oss-120b`
+  (~3000 t/s), `qwen-3.8-27b` (~1850 t/s).
 
-**OpenRouter** (ключ: [openrouter.ai/keys](https://openrouter.ai/keys)):
+Provider catalogs change; **Connect** always fetches the live list from the
+server.
 
-- `tencent/hy-mt2-7b`, `tencent/hy-mt2-1.8b`, `tencent/hy-mt2-30b-a3b` — та сама
-  перекладацька модель у хмарі;
-- `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free`,
-  `nvidia/nemotron-3-ultra-550b-a55b:free`, `inclusionai/ling-3.2-flash:free` —
-  безкоштовні моделі з лімітами;
-- `google/gemini-3.1-flash-lite`, `qwen/qwen3.7-flash`, `openai/gpt-5-mini` —
-  швидкі платні варіанти.
+## Install
 
-**Groq** (ключ: [console.groq.com/keys](https://console.groq.com/keys)):
+### Ready-built app
 
-- `openai/gpt-oss-120b` — ~500 т/с;
-- `openai/gpt-oss-20b` — ~1000 т/с;
-- `llama-3.3-70b-versatile` — ~280 т/с;
-- `qwen/qwen3.8-27b` — ~450 т/с, preview.
+Download the notarized DMG from
+[Releases](https://github.com/Lexus2016/deepl-on-free-models/releases), open it
+and drag **DeepL-oFM** to **Applications**. The app is signed with a Developer
+ID certificate and notarized by Apple, so Gatekeeper accepts it without a
+right-click workaround.
 
-**Cerebras** (ключ: [cloud.cerebras.ai](https://cloud.cerebras.ai)):
+### From source
 
-- `gpt-oss-120b` — ~3000 т/с;
-- `qwen-3.8-27b` — ~1850 т/с.
-
-Списки моделей у хмарних провайдерів змінюються, тому головний шлях — кнопка
-**«Під'єднатися»**: застосунок отримує актуальний список із сервера й показує його
-з фільтром. Каталог — це лише рекомендовані варіанти.
-
-## Встановлення
-
-Потрібні macOS 14+, Xcode Command Line Tools і [Ollama](https://ollama.com).
+Requirements: macOS 14+, Xcode Command Line Tools,
+[Ollama](https://ollama.com).
 
 ```bash
 git clone https://github.com/Lexus2016/deepl-on-free-models.git
 cd deepl-on-free-models
 
-# 1. Модель + тестовий переклад + збірка
-./setup.sh
-
-# або вручну:
+./setup.sh          # model, test translation, build
+# or manually:
 ollama pull maternion/hy-mt2:7b
 ollama cp maternion/hy-mt2:7b hy-mt2:7b
 ./build.sh
 
-# 2. Запуск
-open build/HyMT.app
-
-# 3. За бажанням — у Applications
-cp -R build/HyMT.app /Applications/
-open /Applications/HyMT.app
+open build/DeepL-oFM.app
+cp -R build/DeepL-oFM.app /Applications/
 ```
 
-Застосунок живе в меню-барі: закриття вікна не вимикає гарячі клавіші. Щоб вони
-працювали після перезавантаження, додайте HyMT у **Системні налаштування →
-Основні → Елементи входу** (або запускайте застосунок вручну).
+The app lives in the menu bar; closing the window keeps the hotkeys alive.
+Add it to **Login Items** if it should start after a reboot.
 
-## Перше підключення
+## First connection
 
-1. **Налаштування → Модель і провайдер**.
-2. Оберіть провайдера. Для локального Ollama адреса вже стоїть:
-   `http://127.0.0.1:11434`.
-3. Введіть ключ API, якщо він потрібен (для локального сервера — зазвичай ні).
-4. Натисніть **«Під'єднатися»**. Застосунок перевірить сервер і покаже список
-   моделей.
-5. Введіть частину назви у **«Фільтр за назвою»** й оберіть модель.
-6. Для рекомендованих моделей відкрийте **«Каталог моделей…»**.
+1. **Settings → Model and provider**.
+2. Choose a provider. Local Ollama defaults to `http://127.0.0.1:11434`.
+3. Enter an API key if the provider needs one.
+4. Press **Connect**: the server is checked and its models are listed.
+5. Filter by part of the name and choose a model.
+6. **Model catalog…** offers curated translation models with install commands.
 
-Якщо моделі немає — у картці з'явиться команда `ollama pull …` з кнопкою
-копіювання.
+## Hotkeys and Accessibility
 
-## Гарячі клавіші
-
-Типові значення:
-
-| Комбінація | Дія |
+| Shortcut | Action |
 |---|---|
-| **⌥⌘T** | прочитати буфер обміну, відкрити HyMT і перекласти |
-| **⌥⌘C** | скопіювати виділений текст у поточному застосунку, відкрити HyMT і перекласти |
+| **⌥⌘T** | translate the clipboard and bring the app forward |
+| **⌥⌘C** | copy the selected text, open DeepL-oFM and translate |
 
-Обидві змінюються в **Налаштування → Гаряча клавіша** (кнопка запису, `Esc` —
-скасувати). Потрібен щонайменше один модифікатор — ⌘, ⌥ або ⌃. У полі запису
-показується фактична клавіша, яку ви натиснули (`⌥'`, `⌥є`, `⌥⌘T`), а не номер.
+Both are configurable in **Settings → Hot key**; at least one of ⌘, ⌥ or ⌃ is
+required. The field shows the actual key you pressed (for example `⌥'`, `⌥є`,
+`⌥⌘T`).
 
-Для **⌥⌘C** macOS вимагає дозвіл **Accessibility**: застосунок має право
-надіслати `⌘C` активному застосунку, щоб скопіювати виділення. Статус видно в
-налаштуваннях; кнопка **«Відкрити системні налаштування»** веде прямо до
-**Privacy & Security → Accessibility**. Без дозволу застосунок покаже
-повідомлення й не чіпатиме буфер обміну.
+The selected-text shortcut needs **Accessibility** access: the app sends `⌘C`
+to the active app. The status and an **Open System Settings** button are in
+Settings. If access was granted to an older build, remove DeepL-oFM from the
+Accessibility list, add the current app and enable it. The app shows its
+current path.
 
-`build.sh` підписує застосунок вашим **Developer ID Application** або **Apple
-Development** сертифікатом, якщо він є в Keychain. Тоді дозвіл Accessibility
-зберігається між збірками. Якщо сертифіката немає, використовується ad-hoc підпис,
-і після кожного перезбирання дозвіл треба надавати знову. Примусовий вибір:
-`HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh`.
+`build.sh` signs with your **Developer ID Application** or **Apple Development**
+identity when one is in the Keychain, so Accessibility survives rebuilds. With
+ad-hoc signing it may need to be granted again. Force an identity with:
 
-## Мова інтерфейсу
+```bash
+HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh
+```
 
-**Налаштування → Поведінка → Мова інтерфейсу**: Системна, Українська, Русский,
-English. Зміна застосовується одразу, без перезапуску. Промпти до моделі завжди
-англійською — це мова інструкцій Hy-MT2.
+## Interface language
 
-## Промпти
+**Settings → Behavior → Interface language**: System, English, Ukrainian,
+Russian. Changes apply immediately, without a restart. Model prompts remain in
+English — the language Hy-MT2 was trained on.
 
-Hy-MT2 не має системного промпту: інструкція та текст передаються **одним
-повідомленням**.
+## Formatting and progress
 
-| Стиль | Інструкція |
+The text is split into **lines**: every non-empty line is translated separately;
+blank lines are preserved. Very long lines are split by sentences and rejoined
+into one line. Windows (`CRLF`) and old Mac (`CR`) line endings are normalized.
+
+- `#` headings, `-`/`1.` list markers, block quotes and task-list markers are
+  kept; the prefix is reattached after translation.
+- Short lines use a neutral instruction: the literal style made Hy-MT2 talk to
+  itself and leak role tokens. Longer fragments use the selected style.
+- Long fragments that contain Markdown get one extra sentence in the
+  instruction, before the final colon: preserve headings, lists, bold, italic,
+  links and inline code. Short fragments skip it — on a short line the extra
+  instruction sometimes made the model rewrite the link instead of translating
+  it.
+- URLs, e-mail addresses, model IDs and inline code are protected and restored
+  exactly (`console.groq.com/keys`, `tencent/hy-mt2-7b`, `` `qwen3:8b` ``).
+  A URL at the end of a sentence does not swallow the full stop.
+- Trailing `:`, `;`, `.`, `!`, `?` are preserved; if the model changes the final
+  punctuation, the source punctuation wins.
+- Each block is checked for empty output, repetition, CJK or Cyrillic characters
+  that do not belong to the target script, role tokens, instruction echoes,
+  first-person meta answers and excessive length. A translation into a
+  non-Latin language must contain at least one character of that script, so an
+  English sentence cannot silently pass as Ukrainian. Failed blocks are retried
+  with lower temperature and a different prompt. If a long paragraph still
+  fails, the app translates it sentence by sentence and rejoins the line; known
+  wrappers (“Here is the translation:”) are stripped. If a line still cannot be
+  translated, it is left in the source language and a warning is shown — the
+  rest of the document is still translated.
+
+While translating, the pane shows **progress** (`X of Y`) instead of partial
+text. The completed translation appears at once.
+
+## Copy and Markdown
+
+The **Copy** button places three formats on the clipboard:
+
+- **Markdown** — for chats, GitHub and plain editors;
+- **HTML** — for Notes, Word, browsers;
+- **RTF** — for rich-text apps.
+
+Markdown headings, lists, block quotes, `**bold**`, `*italic*`, links and
+`` `code` `` are preserved when present; the HTML/RTF version renders them.
+Links are rendered only for `http`, `https`, `mailto` and relative URLs; a
+`javascript:` target is dropped. Inline formatting that TextEditor did not
+retain on paste (for example bold text copied from a browser) cannot be
+reconstructed. Fenced code blocks are translated as ordinary lines, not as
+code. `⇧⌘C` also copies the translation.
+
+## Prompts
+
+Hy-MT2 has no default system prompt: the instruction and the source text travel
+in one message.
+
+| Style | Instruction |
 |---|---|
-| Авто | `Translate the following text into {target_language}. Note that you should only output the translated result without any additional explanation:` |
-| Дослівний | `Please translate the following text into {target_language}. Note that the translation style must strictly conform to [literal, word for word]:` |
-| Природний | `Please translate the following text into {target_language}. Note that the translation style must strictly conform to [natural and idiomatic, conveying the meaning rather than the wording]:` |
+| Auto | `Translate the following text into {target_language}. Note that you should only output the translated result without any additional explanation:` |
+| Literal | `Please translate the following text into {target_language}. Note that the translation style must strictly conform to [literal, word for word]:` |
+| Natural | `Please translate the following text into {target_language}. Note that the translation style must strictly conform to [natural and idiomatic, conveying the meaning rather than the wording]:` |
 
-Тон додається до опису стилю:
+Tone suffix: `; formal and professional` or `; casual and conversational`.
+Auto + Default gives the base instruction. The generated prompt is shown in
+**Settings → System prompt**.
 
-| Тон | Доповнення |
-|---|---|
-| За замовчуванням | без доповнення |
-| Офіційний | `; formal and professional` |
-| Розмовний | `; casual and conversational` |
+## Parameters
 
-Комбінація «Авто + За замовчуванням» дає базову інструкцію без опису стилю.
-Поточний згенерований промпт видно в **Налаштування → Системний промпт**.
-
-## Параметри генерації
-
-Типові значення відповідають рекомендаціям Tencent для Hy-MT2 7B:
+Tencent’s defaults for Hy-MT2 7B are used:
 
 ```
 temperature    = 0.7
@@ -246,114 +261,107 @@ repeat_penalty = 1.05
 num_ctx        = 8192
 ```
 
-Усі змінюються в налаштуваннях.
+All are editable. If the source language is auto-detected and equals the target,
+the app selects another language (interface language or the other side of the
+pair) instead of translating text into itself.
 
-## Форматування
+## Security and privacy
 
-Текст ділиться на **рядки**: кожен непорожній рядок — окремий блок, порожні
-рядки зберігаються. Дуже довгі рядки додатково діляться за реченнями, а потім
-склеюються в один рядок.
+- API keys live in the **macOS Keychain**, one item per provider. They are not
+  written to UserDefaults, logs, history or the repository.
+- The repo contains no keys, tokens, `.env` files or models; `.gitignore`
+  excludes `build/`, `.build/`, `.env*`, `*.key`, `*.pem`, `*.gguf`, logs and
+  sqlite files.
+- Local models (Ollama, LM Studio, oMLX, llama.cpp) keep the text on the machine.
+- Cloud providers receive the translated text under their own terms.
+- No telemetry, analytics or background connection to the authors’ servers.
+- Accessibility is used only to send `⌘C` before translating selected text.
 
-- Заголовки `#`, пункти `-`/`1.` і Markdown-маркери зберігаються.
-- Короткі рядки переводяться нейтральною інструкцією: на літеральному стилі
-  модель часто починає «розмовляти сама з собою» й випускає службові токени.
-  Довші фрагменти використовують обраний стиль.
-- URL і model ID захищені від перекручування: після перекладу вони
-  відновлюються дослівно (`console.groq.com/keys`, `tencent/hy-mt2-7b`).
-- Пунктуація в кінці рядка (`:`, `;`, `.`) зберігається.
-- Кожен блок перевіряється на порожній результат, повторення, китайські
-  ієрогліфи (коли цільова мова не китайська), рольові токени та надто довгий
-  вивід. Якщо модель зірвалася — до кількох повторів із нижчою температурою та
-  нейтральною інструкцією; якщо стабільного результату немає, рядок
-  залишається мовою оригіналу, а внизу з'являється попередження.
+See [SECURITY.md](SECURITY.md). If a key leaks, revoke it in the provider’s panel
+immediately.
 
-Під час перекладу панель показує **прогрес**, а не проміжний текст: результат
-з'являється після перевірки всіх рядків.
+## Troubleshooting
 
-## Копіювання та Markdown
-
-Кнопка **«Копіювати»** кладе в буфер одночасно:
-
-- **Markdown** (звичайний текст для чатів, GitHub, редакторів);
-- **HTML** (для Notes, Word, браузера);
-- **RTF** (для програм, які надають перевагу rich text).
-
-Markdown-заголовки, списки, `**жирний**`, `*курсив*`, посилання й `` `код` ``
-зберігаються, якщо були у вихідному тексті; HTML/RTF-версія рендерить їх
-форматованими. Inline-форматування, яке TextEditor не зберіг під час вставки,
-не відновлюється — для нього потрібен rich-text редактор.
-
-## Безпека та приватність
-
-- **API-ключі** зберігаються в **Keychain macOS**, окремо для кожного провайдера.
-  Вони не потрапляють у `UserDefaults`, журнали, історію перекладів або
-  репозиторій.
-- У репозиторії немає ключів, токенів, `.env`-файлів чи моделей; `.gitignore`
-  виключає `.env`, `*.key`, `*.pem`, `*.gguf`, `build/`, `.build/` та логи.
-- Локальні моделі (Ollama, LM Studio, oMLX, llama.cpp) не надсилають текст у
-  мережу.
-- Хмарні провайдери (OpenRouter, Groq, Cerebras, Ollama Cloud) отримують текст
-  перекладу — це їхня звичайна робота; обирайте їх свідомо.
-- Застосунок не має телеметрії й не збирає статистику.
-- Дозвіл Accessibility використовується лише для надсилання `⌘C` перед
-  перекладом виділеного тексту.
-
-Якщо ключ випадково потрапив у публічний репозиторій — негайно відкликайте його в
-панелі провайдера. Деталі: [SECURITY.md](SECURITY.md).
-
-## Діагностика
-
-- **«Модель не знайдена»** — перевірте `ollama list`; назва в полі «Модель» має
-  збігатися з назвою на сервері. Натисніть **«Під'єднатися»**, щоб побачити
-  актуальний список.
-- **«Сервер недоступний»** — запустіть `ollama serve` або відповідний сервер і
-  перевірте адресу.
-- **HTTP 401 / 403** — перевірте API-ключ для хмарного провайдера.
-- **Гаряча клавіша не працює** — комбінація може бути зайнята; оберіть іншу.
-  Статус реєстрації видно під полем запису.
-- **Accessibility увімкнено, але застосунок каже, що ні** — дозвіл міг належати
-  старій збірці (ad-hoc підпис змінюється після перезбирання). Видаліть HyMT зі
-  списку Accessibility, додайте поточний `build/HyMT.app` (шлях показано в
-  налаштуваннях) і увімкніть. Скинути старі записи:
-  `tccutil reset Accessibility ua.admin.hymt`.
-- Локальний запуск із журналом:
+- **Model not found** — check `ollama list`; press **Connect** to see the live
+  list. The name must match exactly.
+- **Server unavailable** — start `ollama serve` or the relevant server and check
+  the URL.
+- **HTTP 401/403** — verify the cloud API key.
+- **Some lines remain in the source language** — press **Retry** or switch the
+  style/model. The model occasionally produces unstable output; the app rejects
+  repetition and role tokens.
+- **Selected text does not copy** — grant Accessibility; if it was granted to an
+  older build, remove the old entry and add the current app.
+- **Hotkey does not work** — the combination may be taken; record another one.
+- **Brand names or abbreviations look wrong** — the 7B model may mistranslate
+  domain terms; use Natural style or a different model.
+- Debug run:
 
   ```bash
-  HYMT_DEBUG=1 ./build/HyMT.app/Contents/MacOS/HyMT --prefill "Hello world"
+  DEEPLOFM_DEBUG=1 ./build/DeepL-oFM.app/Contents/MacOS/DeepL-oFM --prefill "Hello world"
   ```
 
-## Архітектура
+## Architecture
 
 ```
 Sources/HyMT/
-  HyMTApp.swift              точка входу, меню, AppDelegate
-  AppState.swift             стан, дебаунс, історія, гарячі клавіші, моделі
-  Models/
-    Language.swift           33 мови Hy-MT2, визначення мови, локалізовані назви
-    Prompt.swift             стилі, тони, збірка інструкції
-    AppSettings.swift        налаштування (UserDefaults) і Keychain-ключі
-    Provider.swift           локальні й хмарні провайдери
-    ModelCatalog.swift       каталог рекомендованих моделей
-    KeyCombo.swift           комбінації клавіш
-  Services/
-    TranslationService.swift Ollama / OpenAI-сумісний стрімінг, чанкінг
-    Probe.swift              перевірка сервера й списку моделей
-    HotKeyManager.swift      кілька глобальних гарячих клавіш через Carbon
-    HistoryStore.swift       історія в Application Support
-  Views/                     SwiftUI-інтерфейс у стилі DeepL
-  Support/
-    Localization.swift       uk / ru / en без перезапуску
-    Keychain.swift           ключі API
-    Speaker.swift            системне озвучення
-    Theme.swift              тема
+  DeepL-oFMApp.swift        app entry, menu, AppDelegate
+  AppState.swift            state, debounce, history, hotkeys, progress
+  Models/                   languages, prompts, settings, providers, catalog
+  Services/                 translation (Ollama/OpenAI streaming), probe,
+                            hotkeys, history
+  Views/                    SwiftUI interface
+  Support/                  localization, Keychain, clipboard, sanitizers
+Tests/HyMTTests/            unit tests (prompts, chunker, tokens, clipboard)
 ```
 
-Дані: `~/Library/Application Support/HyMT/history.json`.
-Налаштування: `UserDefaults` (домен `ua.admin.hymt`).
-Ключі: Keychain, service `ua.admin.hymt`, account `provider:<id>`.
+Data: `~/Library/Application Support/DeepL-oFM/history.json`; settings in
+`UserDefaults` (`ua.admin.hymt`); keys in the Keychain (`ua.admin.hymt`). The
+internal bundle identifier is kept so Accessibility, settings and existing API
+keys survive the rename from HyMT; the history file is migrated once from the
+old `Application Support/HyMT` folder.
 
-## Ліцензія
+## Status and limitations
 
-Код — MIT (див. [LICENSE](LICENSE)). Модель Hy-MT2 7B розповсюджується Tencent за
-власною ліцензією; подробиці на
+- The bundled 7B model is small. It can mistranslate abbreviations and brand
+  names (for example `т/с` as “tons per second”), and on rare short fragments it
+  still produces unstable output. The app rejects degenerate blocks and leaves
+  the source line with a warning; press **Retry**, switch to **Natural**, or use
+  a larger/cloud model.
+- Formatting is line-based: every source line is a translation unit. A paragraph
+  hard-wrapped across several lines keeps those line breaks; it is not reflowed.
+- Inline formatting that arrives as rich text (bold/links pasted from a browser
+  into TextEditor) is not available to the app. Markdown syntax typed or pasted
+  as characters is preserved.
+- No glossary or terminology memory yet. This is deliberate: the app stays a
+  transparent client for the model you choose.
+
+## Building a signed release
+
+`build.sh` signs the bundle with **Developer ID Application** when the identity
+is in the Keychain, otherwise with Apple Development, otherwise ad-hoc. The
+Developer ID path enables the hardened runtime and a secure timestamp, which is
+required for notarization.
+
+```bash
+./build.sh
+ditto -c -k --keepParent build/DeepL-oFM.app build/DeepL-oFM.zip
+
+xcrun notarytool submit build/DeepL-oFM.zip \
+  --keychain-profile "your-notary-profile" --wait
+xcrun stapler staple build/DeepL-oFM.app
+
+hdiutil create -volname "DeepL-oFM" -srcfolder build/DeepL-oFM.app \
+  -ov -format UDZO build/DeepL-oFM.dmg
+xcrun notarytool submit build/DeepL-oFM.dmg \
+  --keychain-profile "your-notary-profile" --wait
+xcrun stapler staple build/DeepL-oFM.dmg
+```
+
+`notarytool` uses a profile created once with
+`xcrun notarytool store-credentials`; no password belongs in the repository.
+
+## License
+
+Code: MIT. Hy-MT2 7B is distributed by Tencent under its own license; see
 [huggingface.co/tencent/Hy-MT2-7B](https://huggingface.co/tencent/Hy-MT2-7B).

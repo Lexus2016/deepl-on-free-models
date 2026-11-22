@@ -355,29 +355,40 @@ struct ModelCatalogSheet: View {
             return
         }
 
-        let config = BackendConfig(
-            kind: provider.kind,
-            baseURL: provider.baseURL,
-            model: settings.model,
-            apiKey: key,
-            temperature: settings.temperature,
-            topP: settings.topP,
-            topK: settings.topK,
-            repetitionPenalty: settings.repetitionPenalty,
-            contextWindow: settings.contextWindow
-        )
+        let config: BackendConfig
+        if provider == settings.provider {
+            config = settings.snapshot
+        } else {
+            config = BackendConfig(
+                kind: provider.kind,
+                baseURL: provider.baseURL,
+                model: settings.model,
+                apiKey: key,
+                temperature: settings.temperature,
+                topP: settings.topP,
+                topK: settings.topK,
+                repetitionPenalty: settings.repetitionPenalty,
+                contextWindow: settings.contextWindow
+            )
+        }
 
         Task {
             do {
                 let models = try await Probe.models(config)
                 await MainActor.run {
-                    serverModels = models.sorted()
-                    serverProvider = provider
+                    if models.isEmpty {
+                        serverError = L10n.t("The server returned no models.", language)
+                        serverProvider = nil
+                    } else {
+                        serverModels = models.sorted()
+                        serverProvider = provider
+                    }
                     serverLoading = false
                 }
             } catch {
+                let message = (error as? TranslationError)?.message(language) ?? error.localizedDescription
                 await MainActor.run {
-                    serverError = error.localizedDescription
+                    serverError = message
                     serverLoading = false
                 }
             }

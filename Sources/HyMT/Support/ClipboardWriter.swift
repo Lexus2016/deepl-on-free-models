@@ -26,6 +26,7 @@ enum ClipboardWriter {
         var body = ""
         var paragraphOpen = false
         var listKind: ListKind?
+        var blockquoteOpen = false
 
         func closeParagraph() {
             if paragraphOpen {
@@ -41,6 +42,13 @@ enum ClipboardWriter {
             }
         }
 
+        func closeBlockquote() {
+            if blockquoteOpen {
+                body += "</blockquote>"
+                blockquoteOpen = false
+            }
+        }
+
         for rawLine in text.components(separatedBy: "\n") {
             let line = rawLine
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -48,9 +56,22 @@ enum ClipboardWriter {
             if trimmed.isEmpty {
                 closeParagraph()
                 closeList()
+                closeBlockquote()
                 body += "<p>&nbsp;</p>"
                 continue
             }
+
+            if let quote = blockquoteText(trimmed) {
+                closeParagraph()
+                closeList()
+                if !blockquoteOpen {
+                    body += "<blockquote>"
+                    blockquoteOpen = true
+                }
+                body += "<p>\(inline(quote))</p>"
+                continue
+            }
+            closeBlockquote()
 
             if let heading = headingParts(trimmed) {
                 closeParagraph()
@@ -63,7 +84,10 @@ enum ClipboardWriter {
                 closeParagraph()
                 if listKind != item.kind {
                     closeList()
-                    body += "<\(item.kind.tag)>"
+                    let start = item.kind == .ordered && item.start != 1
+                        ? " start=\"\(item.start)\""
+                        : ""
+                    body += "<\(item.kind.tag)\(start)>"
                     listKind = item.kind
                 }
                 body += "<li>\(inline(item.text))</li>"
@@ -82,6 +106,7 @@ enum ClipboardWriter {
 
         closeParagraph()
         closeList()
+        closeBlockquote()
 
         return """
         <!DOCTYPE html>
@@ -92,13 +117,22 @@ enum ClipboardWriter {
         h1,h2,h3,h4,h5,h6 { margin: 12px 0 6px 0; }
         code { font-family: Menlo, monospace; font-size: 13px; }
         a { color: #2f6bff; }
+        blockquote { margin: 8px 0; padding-left: 10px; border-left: 3px solid #555; }
         </style></head><body>\(body)</body></html>
         """
     }
 
-    private enum ListKind {
-        case unordered, ordered
+    private enum ListKind: Equatable {
+        case unordered
+        case ordered
+
         var tag: String { self == .unordered ? "ul" : "ol" }
+    }
+
+    private static func blockquoteText(_ line: String) -> String? {
+        guard line.hasPrefix(">") else { return nil }
+        let value = String(line.dropFirst()).trimmingCharacters(in: .whitespaces)
+        return value.isEmpty ? nil : value
     }
 
     private static func headingParts(_ line: String) -> (level: Int, text: String)? {
@@ -112,7 +146,7 @@ enum ClipboardWriter {
         return (level, text)
     }
 
-    private static func listItem(_ line: String) -> (kind: ListKind, text: String)? {
+    private static func listItem(_ line: String) -> (kind: ListKind, start: Int, text: String)? {
         if let match = line.range(of: #"^[-*+]\s+(.+)$"#, options: .regularExpression) {
             let value = String(line[match])
             let text = value.replacingOccurrences(
@@ -120,28 +154,25 @@ enum ClipboardWriter {
                 with: "",
                 options: .regularExpression
             )
-            return (.unordered, text)
+            return (.unordered, 1, text)
         }
-        if let match = line.range(of: #"^\d+[.)]\s+(.+)$"#, options: .regularExpression) {
+        if let match = line.range(of: #"^(\d+)[.)]\s+(.+)$"#, options: .regularExpression) {
             let value = String(line[match])
+            let digits = value.prefix { $0.isNumber }
             let text = value.replacingOccurrences(
                 of: #"^\d+[.)]\s+"#,
                 with: "",
                 options: .regularExpression
             )
-            return (.ordered, text)
+            return (.ordered, Int(digits) ?? 1, text)
         }
         return nil
     }
 
     private static func inline(_ text: String) -> String {
         var value = escapeHTML(text)
+        value = replaceLinks(in: value)
 
-        value = value.replacingOccurrences(
-            of: #"\[([^\]]+)\]\(([^)\s]+)\)"#,
-            with: #"<a href="$2">$1</a>"#,
-            options: .regularExpression
-        )
         value = value.replacingOccurrences(
             of: #"\*\*([^*]+)\*\*"#,
             with: #"<strong>$1</strong>"#,
@@ -170,6 +201,43 @@ enum ClipboardWriter {
         return value
     }
 
+    private static func replaceLinks(in text: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"\[([^\]]+)\]\(([^)\s]+)\)"#) else {
+            return text
+        }
+        let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+        guard !matches.isEmpty else { return text }
+
+        var result = ""
+        var cursor = text.startIndex
+        for match in matches {
+            guard let full = Range(match.range, in: text),
+                  let labelRange = Range(match.range(at: 1), in: text),
+                  let urlRange = Range(match.range(at: 2), in: text) else { continue }
+            result += String(text[cursor..<full.lowerBound])
+            let label = String(text[labelRange])
+            let url = String(text[urlRange])
+            if isSafeLink(url) {
+                let escapedURL = url.replacingOccurrences(of: "\"", with: "&quot;")
+                result += "<a href=\"\(escapedURL)\">\(label)</a>"
+            } else {
+                result += label
+            }
+            cursor = full.upperBound
+        }
+        result += String(text[cursor...])
+        return result
+    }
+
+    private static func isSafeLink(_ url: String) -> Bool {
+        let lower = url.lowercased()
+        if lower.hasPrefix("http://") || lower.hasPrefix("https://") || lower.hasPrefix("mailto:") {
+            return true
+        }
+        // Relative links and anchors are safe; any other scheme is not.
+        return !lower.contains(":")
+    }
+
     private static func escapeHTML(_ text: String) -> String {
         text
             .replacingOccurrences(of: "&", with: "&amp;")
@@ -181,7 +249,7 @@ enum ClipboardWriter {
 
     private static func renderRTF(html: String) -> Data? {
         guard let data = html.data(using: .utf8),
-              let attributed = try? NSAttributedString(
+              let attributed = NSAttributedString(
                   html: data,
                   options: [.characterEncoding: String.Encoding.utf8.rawValue],
                   documentAttributes: nil

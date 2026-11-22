@@ -133,7 +133,7 @@ struct TopBar: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(.white)
         }
-        .help(L10n.t("HyMT — local translation", language))
+        .help(L10n.t("DeepL-oFM — local translation", language))
     }
 
     private func tabButton(_ tab: AppState.Tab) -> some View {
