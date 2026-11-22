@@ -287,6 +287,7 @@ struct StyleToneControls: View {
 
 struct SourcePane: View {
     @EnvironmentObject private var app: AppState
+    @State private var preview = false
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
@@ -309,8 +310,17 @@ struct SourcePane: View {
                         .padding(.leading, 16)
                         .allowsHitTesting(false)
                 }
-                SourceTextEditor(text: binding)
+                if preview {
+                    MarkdownPreview(markdown: app.sourceText)
+                        .padding(.trailing, 18)
+                } else {
+                    SourceTextEditor(text: binding) {
+                        // A rich paste arrives as Markdown: show what it looks
+                        // like, the eye toggle brings the raw text back.
+                        preview = true
+                    }
                     .padding(.trailing, 18)
+                }
 
                 VStack {
                     HStack {
@@ -333,6 +343,14 @@ struct SourcePane: View {
                     },
                     PaneAction(icon: "doc.on.clipboard", help: L10n.t("Paste from clipboard", language), active: true) {
                         app.translateClipboard()
+                        if MarkdownDetector.contains(app.sourceText) { preview = true }
+                    },
+                    PaneAction(
+                        icon: preview ? "chevron.left.forwardslash.chevron.right" : "eye",
+                        help: L10n.t(preview ? "Show Markdown source" : "Show rendered Markdown", language),
+                        active: !app.sourceText.isEmpty
+                    ) {
+                        preview.toggle()
                     }
                 ],
                 right: [
@@ -351,6 +369,7 @@ struct TargetPane: View {
     @EnvironmentObject private var app: AppState
     @Binding var copied: Bool
     @State private var caretVisible = false
+    @AppStorage("hymt.markdownPreview") private var markdownPreview = true
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
@@ -423,6 +442,9 @@ struct TargetPane: View {
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if markdownPreview {
+                    MarkdownPreview(markdown: app.translatedText)
+                        .padding(.trailing, 4)
                 } else {
                     ScrollView {
                         HStack(alignment: .top, spacing: 1) {
@@ -444,6 +466,20 @@ struct TargetPane: View {
                         .padding(.vertical, 14)
                     }
                     .scrollIndicators(.hidden)
+                }
+
+                if app.isTranslating, markdownPreview, !app.translatedText.isEmpty {
+                    VStack {
+                        ProgressView(
+                            value: Double(app.translationCompleted),
+                            total: Double(max(app.translationTotal, 1))
+                        )
+                        .progressViewStyle(.linear)
+                        .tint(Theme.accent)
+                        .frame(height: 2)
+                        Spacer()
+                    }
+                    .allowsHitTesting(false)
                 }
 
                 if let error = app.errorMessage {
@@ -483,6 +519,13 @@ struct TargetPane: View {
                 left: [
                     PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the translation", language), active: !app.translatedText.isEmpty) {
                         app.speakTranslation()
+                    },
+                    PaneAction(
+                        icon: markdownPreview ? "chevron.left.forwardslash.chevron.right" : "eye",
+                        help: L10n.t(markdownPreview ? "Show Markdown source" : "Show rendered Markdown", language),
+                        active: !app.translatedText.isEmpty
+                    ) {
+                        markdownPreview.toggle()
                     }
                 ],
                 right: [

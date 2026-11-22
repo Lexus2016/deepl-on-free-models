@@ -144,6 +144,8 @@ enum L10n {
     // MARK: - Tables
 
     private static let ukrainian: [String: String] = [
+        "Show rendered Markdown": "Показати відформатований Markdown",
+        "Show Markdown source": "Показати розмітку Markdown",
         // Core
         "Translate text": "Перекласти текст",
         "History": "Історія",
@@ -402,6 +404,8 @@ enum L10n {
     ]
 
     private static let russian: [String: String] = [
+        "Show rendered Markdown": "Показать отформатированный Markdown",
+        "Show Markdown source": "Показать разметку Markdown",
         // Core
         "Translate text": "Перевести текст",
         "History": "История",
@@ -661,6 +665,8 @@ enum L10n {
 
 
     private static let german: [String: String] = [
+        "Show rendered Markdown": "Gerendertes Markdown anzeigen",
+        "Show Markdown source": "Markdown-Quelltext anzeigen",
         "Translate text": "Text übersetzen",
         "History": "Verlauf",
         "Settings": "Einstellungen",
@@ -898,6 +904,8 @@ enum L10n {
     ]
 
     private static let french: [String: String] = [
+        "Show rendered Markdown": "Afficher le Markdown rendu",
+        "Show Markdown source": "Afficher la source Markdown",
         "Translate text": "Traduire le texte",
         "History": "Historique",
         "Settings": "Paramètres",
@@ -1135,6 +1143,8 @@ enum L10n {
     ]
 
     private static let spanish: [String: String] = [
+        "Show rendered Markdown": "Mostrar Markdown renderizado",
+        "Show Markdown source": "Mostrar código Markdown",
         "Translate text": "Traducir texto",
         "History": "Historial",
         "Settings": "Configuración",
@@ -1372,6 +1382,8 @@ enum L10n {
     ]
 
     private static let polish: [String: String] = [
+        "Show rendered Markdown": "Pokaż wyrenderowany Markdown",
+        "Show Markdown source": "Pokaż źródło Markdown",
         "Translate text": "Przetłumacz tekst",
         "History": "Historia",
         "Settings": "Ustawienia",
@@ -1609,6 +1621,8 @@ enum L10n {
     ]
 
     private static let portuguese: [String: String] = [
+        "Show rendered Markdown": "Mostrar Markdown renderizado",
+        "Show Markdown source": "Mostrar código Markdown",
         "Translate text": "Traduzir texto",
         "History": "Histórico",
         "Settings": "Configurações",
@@ -1846,6 +1860,8 @@ enum L10n {
     ]
 
     private static let italian: [String: String] = [
+        "Show rendered Markdown": "Mostra Markdown renderizzato",
+        "Show Markdown source": "Mostra sorgente Markdown",
         "Translate text": "Traduci testo",
         "History": "Cronologia",
         "Settings": "Impostazioni",

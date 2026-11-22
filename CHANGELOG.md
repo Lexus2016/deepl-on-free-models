@@ -13,6 +13,7 @@ All notable changes to DeepL-oFM. The format follows
 - Formatting-aware paste: HTML or RTF copied from a browser or a word processor
   is converted to Markdown, so headings, lists, links and emphasis survive
   translation.
+- Rendered Markdown view in both panes, with a toggle back to the raw markup.
 - Paste from clipboard and Translate now actions in the empty panes.
 
 ### Fixed

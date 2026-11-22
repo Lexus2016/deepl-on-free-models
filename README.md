@@ -51,6 +51,9 @@ The same window can use a cloud model when you need more speed or quality.
 - **Formatting-aware paste.** A page or a document copied from another app keeps
   its headings, lists, links and emphasis: HTML/RTF is converted to Markdown
   before translation.
+- **Markdown view.** Both panes can show the text as formatted Markdown —
+  headings, lists, links, bold and code — with one click back to the raw markup
+  for editing. The clipboard still receives Markdown, HTML and RTF.
 - **Automatic updates** through Sparkle 2: a daily signed-feed check, a manual
   **Check for Updates…** button, and an optional fully automatic install.
 - **Optional fallback provider and model.** If the primary provider fails, the

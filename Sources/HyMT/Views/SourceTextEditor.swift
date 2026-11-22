@@ -9,6 +9,7 @@ struct SourceTextEditor: NSViewRepresentable {
 
     var fontSize: CGFloat = 17
     var lineSpacing: CGFloat = 7
+    var onRichPaste: (() -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -48,6 +49,7 @@ struct SourceTextEditor: NSViewRepresentable {
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
         textView.string = text
+        textView.onRichPaste = onRichPaste
         applyBaseAttributes(to: textView)
 
         scrollView.documentView = textView
@@ -62,6 +64,7 @@ struct SourceTextEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? SourceTextView else { return }
         context.coordinator.text = $text
+        textView.onRichPaste = onRichPaste
 
         if textView.string != text {
             let selection = textView.selectedRange()
@@ -118,10 +121,15 @@ struct SourceTextEditor: NSViewRepresentable {
 /// `NSTextView` sends paste through the responder chain; overriding `paste(_:)`
 /// is the one hook that sees the rich clipboard before AppKit flattens it.
 final class SourceTextView: NSTextView {
+    var onRichPaste: (() -> Void)?
+
     override func paste(_ sender: Any?) {
         let plain = NSPasteboard.general.string(forType: .string)
         if let markdown = RichTextPasteboard.markdown(), markdown != plain {
             insertText(markdown, replacementRange: selectedRange())
+            // Let the paste finish before the pane swaps the editor for the
+            // rendered preview.
+            DispatchQueue.main.async { [weak self] in self?.onRichPaste?() }
             return
         }
         super.paste(sender)
