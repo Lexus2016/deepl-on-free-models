@@ -255,6 +255,7 @@ enum L10n {
         "Server returned error %@: %@": "Сервер повернув помилку %@: %@",
         "Model “%@” not found on the server.": "Модель «%@» не знайдена на сервері.",
         "The model returned an empty translation. Try again.": "Модель повернула порожній переклад. Спробуйте ще раз.",
+        "The model could not produce a stable translation. Try again or switch the style/model.": "Модель не змогла стабільно перекласти фрагмент. Спробуйте ще раз або змініть стиль/модель.",
         "Server returned an unexpected response.": "Сервер повернув неочікувану відповідь.",
 
         // Catalog entries
@@ -482,6 +483,7 @@ enum L10n {
         "Server returned error %@: %@": "Сервер вернул ошибку %@: %@",
         "Model “%@” not found on the server.": "Модель «%@» не найдена на сервере.",
         "The model returned an empty translation. Try again.": "Модель вернула пустой перевод. Попробуйте ещё раз.",
+        "The model could not produce a stable translation. Try again or switch the style/model.": "Модель не смогла стабильно перевести фрагмент. Попробуйте ещё раз или смените стиль/модель.",
         "Server returned an unexpected response.": "Сервер вернул неожиданный ответ.",
 
         // Catalog entries

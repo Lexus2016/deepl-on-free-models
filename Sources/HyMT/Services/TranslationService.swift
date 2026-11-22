@@ -13,6 +13,7 @@ enum TranslationError: LocalizedError {
     case backend(String)
     case modelNotFound(String)
     case emptyResponse
+    case degenerateResponse
 
     func message(_ language: AppLanguage) -> String {
         switch self {
@@ -35,6 +36,8 @@ enum TranslationError: LocalizedError {
             return L10n.format("Model “%@” not found on the server.", language, model)
         case .emptyResponse:
             return L10n.t("The model returned an empty translation. Try again.", language)
+        case .degenerateResponse:
+            return L10n.t("The model could not produce a stable translation. Try again or switch the style/model.", language)
         }
     }
 
@@ -67,9 +70,11 @@ enum TextChunker {
             let lines = block.text
                 .components(separatedBy: "\n")
                 .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            let logical = logicalLines(block.text)
+            let hasListMarkers = lines.contains(where: isListItem)
 
-            if lines.count > 1, lines.allSatisfy(isListItem) {
-                for (lineIndex, line) in lines.enumerated() {
+            if hasListMarkers || (lines.count > 1 && logical.count > 2) {
+                for (lineIndex, line) in logical.enumerated() {
                     append(line, separator: lineIndex == 0 ? blockSeparator : "\n", to: &result)
                 }
             } else {
@@ -136,6 +141,44 @@ enum TextChunker {
             blocks.append(Block(text: current.joined(separator: "\n"), separator: separator))
         }
         return blocks
+    }
+
+    /// Rebuilds logical lines from a block that has hard line breaks but no
+    /// blank lines: wrapped continuations are merged until sentence end, while
+    /// headings and list items start a new logical line.
+    private static func logicalLines(_ text: String) -> [String] {
+        let lines = text.components(separatedBy: "\n")
+        var result: [String] = []
+        var current = ""
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { continue }
+
+            let startsNew = isListItem(trimmed)
+                || trimmed.range(of: #"^#{1,6}\s+"#, options: .regularExpression) != nil
+            if startsNew && !current.isEmpty {
+                result.append(current)
+                current = trimmed
+                continue
+            }
+
+            if current.isEmpty {
+                current = trimmed
+            } else {
+                current += " " + trimmed
+            }
+
+            if current.range(of: #"[.!?;:…»”)]$"#, options: .regularExpression) != nil {
+                result.append(current)
+                current = ""
+            }
+        }
+
+        if !current.isEmpty {
+            result.append(current)
+        }
+        return result
     }
 
     private static func isListItem(_ line: String) -> Bool {
@@ -207,53 +250,48 @@ final class TranslationService {
                                 return
                             }
                         }
-                        if let segment = parseSegment(chunk.text),
-                           segment.prefix.isEmpty ? segment.body.count <= 80 : true {
-                            let prompt: String
-                            if segment.body.count <= 80 {
-                                prompt = PromptBuilder.headingPrompt(
-                                    text: segment.body,
-                                    style: style,
-                                    tone: tone,
-                                    targetLanguage: target.englishName
-                                )
-                            } else {
-                                prompt = PromptBuilder.prompt(
-                                    text: segment.body,
-                                    style: style,
-                                    tone: tone,
-                                    targetLanguage: target.englishName
-                                )
-                            }
-                            let translated = try await bufferedTranslation(prompt: prompt, config: config)
-                            let output = segment.prefix + translated
-                            if case .terminated = continuation.yield(.chunk(output)) {
-                                return
-                            }
-                            continue
+                        let segment = parseSegment(chunk.text)
+                            ?? Segment(prefix: "", body: chunk.text)
+                        let primary: String
+                        let alternate: String
+                        if segment.body.count <= 80 {
+                            primary = PromptBuilder.headingPrompt(
+                                text: segment.body,
+                                style: style,
+                                tone: tone,
+                                targetLanguage: target.englishName
+                            )
+                            alternate = PromptBuilder.prompt(
+                                text: segment.body,
+                                style: style,
+                                tone: tone,
+                                targetLanguage: target.englishName
+                            )
+                        } else {
+                            primary = PromptBuilder.prompt(
+                                text: segment.body,
+                                style: style,
+                                tone: tone,
+                                targetLanguage: target.englishName
+                            )
+                            alternate = PromptBuilder.headingPrompt(
+                                text: segment.body,
+                                style: style,
+                                tone: tone,
+                                targetLanguage: target.englishName
+                            )
                         }
 
-                        let prompt = PromptBuilder.prompt(
-                            text: chunk.text,
-                            style: style,
-                            tone: tone,
-                            targetLanguage: target.englishName
+                        let translated = try await bufferedTranslation(
+                            primary: primary,
+                            alternate: alternate,
+                            source: segment.body,
+                            target: target,
+                            config: config
                         )
-                        var produced = 0
-                        for attempt in 0..<3 {
-                            if attempt > 0 {
-                                try? await Task.sleep(nanoseconds: 150_000_000)
-                            }
-                            switch config.kind {
-                            case .ollama:
-                                produced = try await runOllama(prompt: prompt, config: config, continuation: continuation)
-                            case .openAI:
-                                produced = try await runOpenAI(prompt: prompt, config: config, continuation: continuation)
-                            }
-                            if produced > 0 { break }
-                        }
-                        if produced == 0 {
-                            throw TranslationError.emptyResponse
+                        let output = segment.prefix + translated
+                        if case .terminated = continuation.yield(.chunk(output)) {
+                            return
                         }
                     }
                     continuation.finish()
@@ -301,28 +339,75 @@ final class TranslationService {
         return Segment(prefix: prefix, body: trimmed)
     }
 
-    private func bufferedTranslation(prompt: String, config: BackendConfig) async throws -> String {
-        var last = ""
-        for attempt in 0..<3 {
-            if attempt > 0 {
-                try? await Task.sleep(nanoseconds: 120_000_000)
+    private func bufferedTranslation(
+        primary: String,
+        alternate: String,
+        source: String,
+        target: Language,
+        config: BackendConfig
+    ) async throws -> String {
+        let prompts = [primary, alternate]
+        for (promptIndex, prompt) in prompts.enumerated() {
+            let attempts = promptIndex == 0 ? 3 : 2
+            for attempt in 0..<attempts {
+                if attempt > 0 {
+                    try? await Task.sleep(nanoseconds: 120_000_000)
+                }
+                var retryConfig = config
+                if attempt > 0 {
+                    retryConfig.temperature = min(config.temperature, 0.3)
+                }
+                let raw = try await collect(prompt: prompt, config: retryConfig)
+                if let clean = validated(raw, source: source, target: target) {
+                    return clean
+                }
             }
-            let raw = try await collect(prompt: prompt, config: config)
-            let cleaned = OutputSanitizer.clean(raw)
-            last = cleaned
-            let lower = cleaned.lowercased()
-            let suspicious = cleaned.isEmpty
-                || lower.contains("hy-assistant")
-                || lower.contains("hy-user")
-                || lower.contains("hy_end")
-                || cleaned.contains("<|")
-                || cleaned.contains("</|")
-            if !suspicious { return cleaned }
         }
-        if last.isEmpty {
-            throw TranslationError.emptyResponse
+        throw TranslationError.degenerateResponse
+    }
+
+    private func validated(_ raw: String, source: String, target: Language) -> String? {
+        let cleaned = OutputSanitizer.clean(raw)
+        guard !cleaned.isEmpty else { return nil }
+
+        let lower = cleaned.lowercased()
+        if lower.contains("hy-assistant")
+            || lower.contains("hy-user")
+            || lower.contains("hy_end") {
+            return nil
         }
-        return last
+        if cleaned.contains("<｜") || cleaned.contains("<|")
+            || cleaned.contains("</|") || cleaned.contains("｜hy") {
+            return nil
+        }
+
+        let cjkTargets = ["zh", "zh-Hant", "yue"]
+        if !cjkTargets.contains(target.code) {
+            let hasCJK = cleaned.unicodeScalars.contains { scalar in
+                (0x4E00...0x9FFF).contains(scalar.value) || (0x3400...0x4DBF).contains(scalar.value)
+            }
+            if hasCJK { return nil }
+        }
+
+        if source.count >= 40, cleaned.count > source.count * 4 {
+            return nil
+        }
+
+        if cleaned.count > 120 {
+            let characters = Array(cleaned)
+            var shingles = Set<String>()
+            var duplicates = 0
+            var index = 0
+            while index + 40 <= characters.count {
+                let shingle = String(characters[index..<(index + 40)])
+                if shingles.contains(shingle) { duplicates += 1 }
+                shingles.insert(shingle)
+                index += 20
+            }
+            if duplicates > 1 { return nil }
+        }
+
+        return cleaned
     }
 
     private func collect(prompt: String, config: BackendConfig) async throws -> String {
