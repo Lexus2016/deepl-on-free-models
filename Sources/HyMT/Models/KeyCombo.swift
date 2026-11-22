@@ -4,6 +4,15 @@ import Carbon.HIToolbox
 struct KeyCombo: Codable, Equatable {
     var keyCode: UInt32
     var modifiers: UInt
+    /// What the recorder saw on the actual keyboard layout, e.g. "'" or "є".
+    /// Optional so old stored shortcuts keep working.
+    var label: String?
+
+    init(keyCode: UInt32, modifiers: UInt, label: String? = nil) {
+        self.keyCode = keyCode
+        self.modifiers = modifiers
+        self.label = label
+    }
 
     static let standard = KeyCombo(
         keyCode: UInt32(kVK_ANSI_T),
@@ -40,8 +49,28 @@ struct KeyCombo: Codable, Equatable {
         if flags.contains(.option) { parts += "⌥" }
         if flags.contains(.shift) { parts += "⇧" }
         if flags.contains(.command) { parts += "⌘" }
-        parts += Self.keyName(for: keyCode, language: language)
+        parts += keyDisplay(language)
         return parts
+    }
+
+    private func keyDisplay(_ language: AppLanguage) -> String {
+        if let label = Self.normalizedLabel(label) {
+            return label
+        }
+        return Self.keyName(for: keyCode, language: language)
+    }
+
+    static func normalizedLabel(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 3 else { return nil }
+        for scalar in trimmed.unicodeScalars {
+            let code = scalar.value
+            if code < 0x20 || (0x7F...0x9F).contains(code) { return nil }
+            if (0xF700...0xF8FF).contains(code) { return nil }
+            if CharacterSet.nonBaseCharacters.contains(scalar) { return nil }
+        }
+        return trimmed.count == 1 ? trimmed.uppercased() : trimmed
     }
 
     static func keyName(for code: UInt32, language: AppLanguage) -> String {
@@ -82,9 +111,38 @@ struct KeyCombo: Codable, Equatable {
         case kVK_ANSI_7: return "7"
         case kVK_ANSI_8: return "8"
         case kVK_ANSI_9: return "9"
+
+        // Punctuation — the fallback that used to show "key 39".
+        case kVK_ANSI_Equal: return "="
+        case kVK_ANSI_Minus: return "-"
+        case kVK_ANSI_RightBracket: return "]"
+        case kVK_ANSI_LeftBracket: return "["
+        case kVK_ANSI_Quote: return "'"
+        case kVK_ANSI_Semicolon: return ";"
+        case kVK_ANSI_Backslash: return "\\"
+        case kVK_ANSI_Comma: return ","
+        case kVK_ANSI_Slash: return "/"
+        case kVK_ANSI_Period: return "."
+        case kVK_ANSI_Grave: return "`"
+
+        // Navigation and editing keys.
         case kVK_Space: return L10n.t("Space", language)
         case kVK_Return: return "↩"
         case kVK_Escape: return "⎋"
+        case kVK_Tab: return "Tab"
+        case kVK_Delete: return L10n.t("Delete", language)
+        case kVK_ForwardDelete: return L10n.t("Forward Delete", language)
+        case kVK_Home: return "Home"
+        case kVK_End: return "End"
+        case kVK_PageUp: return "Page Up"
+        case kVK_PageDown: return "Page Down"
+        case kVK_LeftArrow: return "←"
+        case kVK_RightArrow: return "→"
+        case kVK_UpArrow: return "↑"
+        case kVK_DownArrow: return "↓"
+        case kVK_Help: return "Help"
+
+        // Function keys.
         case kVK_F1: return "F1"
         case kVK_F2: return "F2"
         case kVK_F3: return "F3"
@@ -97,6 +155,15 @@ struct KeyCombo: Codable, Equatable {
         case kVK_F10: return "F10"
         case kVK_F11: return "F11"
         case kVK_F12: return "F12"
+        case kVK_F13: return "F13"
+        case kVK_F14: return "F14"
+        case kVK_F15: return "F15"
+        case kVK_F16: return "F16"
+        case kVK_F17: return "F17"
+        case kVK_F18: return "F18"
+        case kVK_F19: return "F19"
+        case kVK_F20: return "F20"
+
         default: return L10n.format("key %d", language, Int(code))
         }
     }

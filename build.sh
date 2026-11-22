@@ -32,7 +32,24 @@ cp "$ICONSET/icon_512x512.png"   "$ICONSET/icon_512x512@2x.png" 2>/dev/null || t
 iconutil -c icns "$ICONSET" -o build/AppIcon.icns
 cp build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
-echo "==> Signing (ad-hoc)"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+echo "==> Signing"
+IDENTITY="${HYMT_SIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ]; then
+    IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
+        | sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p' | head -1)
+fi
+if [ -z "$IDENTITY" ]; then
+    IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null \
+        | sed -n 's/.*"\(Apple Development: .*\)"/\1/p' | head -1)
+fi
+
+if [ -n "$IDENTITY" ]; then
+    echo "    identity: $IDENTITY"
+    codesign --force --deep --sign "$IDENTITY" "$APP"
+else
+    echo "    no signing identity found; using ad-hoc signing"
+    echo "    TCC (Accessibility) may ask again after every rebuild."
+    codesign --force --deep --sign - "$APP"
+fi
 
 echo "==> Done: $APP"

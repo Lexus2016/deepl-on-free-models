@@ -631,6 +631,10 @@ final class AppState: NSObject, ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in self?.refreshAccessibility() }
+            .store(in: &cancellables)
+
         settings.$showInMenuBar
             .dropFirst()
             .sink { [weak self] show in

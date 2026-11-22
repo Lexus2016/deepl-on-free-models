@@ -492,11 +492,34 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.accent)
+
+                        Button(L10n.t("Check access", language)) {
+                            app.refreshAccessibility()
+                        }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(Theme.secondary)
                     }
                     Spacer()
                 }
 
+                if !app.accessibilityGranted {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L10n.t("If access is already granted, remove HyMT from the Accessibility list and add the current app again — a permission from an older build does not apply.", language))
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(Theme.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(Bundle.main.bundlePath)
+                            .font(.system(size: 9.5, design: .monospaced))
+                            .foregroundStyle(Theme.tertiary.opacity(0.8))
+                            .textSelection(.enabled)
+                    }
+                }
+
                 Text(L10n.t("At least one modifier is required — ⌘, ⌥ or ⌃. Press Esc to cancel.", language))
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.tertiary)
+                Text(L10n.t("Examples: ⌥⌘T or ⌥⌘C.", language))
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.tertiary)
             }
@@ -632,7 +655,7 @@ struct HotKeyRecorder: View {
             }
             .buttonStyle(.plain)
 
-            if combo != defaultCombo {
+            if !isDefaultCombo {
                 Button(L10n.t("Reset", language)) {
                     combo = defaultCombo
                 }
@@ -642,6 +665,10 @@ struct HotKeyRecorder: View {
             }
         }
         .onDisappear { stop() }
+    }
+
+    private var isDefaultCombo: Bool {
+        combo.keyCode == defaultCombo.keyCode && combo.modifiers == defaultCombo.modifiers
     }
 
     private func start() {
@@ -656,7 +683,11 @@ struct HotKeyRecorder: View {
             guard !flags.intersection([.command, .option, .control]).isEmpty else {
                 return nil
             }
-            combo = KeyCombo(keyCode: UInt32(event.keyCode), modifiers: UInt(flags.rawValue))
+            combo = KeyCombo(
+                keyCode: UInt32(event.keyCode),
+                modifiers: UInt(flags.rawValue),
+                label: event.charactersIgnoringModifiers
+            )
             stop()
             return nil
         }
