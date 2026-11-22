@@ -36,21 +36,65 @@ final class DocumentTranslatorTests: XCTestCase {
         XCTAssertEqual(document.text, "# Title\n\n- One\n- Two")
     }
 
-    func testReflowJoinsWrappedLines() {
-        let text = "A native macOS\ntranslator keeps paragraphs\n\ntogether.\n\nSecond paragraph."
-        XCTAssertEqual(
-            DocumentTranslator.reflow(text),
-            "A native macOS translator keeps paragraphs\n\ntogether.\n\nSecond paragraph."
+    func testPDFOverlayKeepsGraphicsAndAddsTranslation() throws {
+        let source = workDirectory.appendingPathComponent("source.pdf")
+        try makePDF(text: "Hello world", to: source)
+
+        let document = try DocumentTranslator.read(url: source)
+        XCTAssertEqual(document.kind, .pdf)
+        XCTAssertTrue(document.text.contains("Hello world"))
+
+        let output = workDirectory.appendingPathComponent("translated.pdf")
+        try DocumentTranslator.write(
+            document: document,
+            translated: "Привіт світе",
+            to: output
         )
+
+        let translated = try XCTUnwrap(PDFDocument(url: output))
+        XCTAssertEqual(translated.pageCount, 1)
+        XCTAssertTrue((translated.string ?? "").contains("Привіт світе"))
+
+        // The red rectangle from the original page must survive the overlay.
+        let page = try XCTUnwrap(translated.page(at: 0))
+        let image = page.thumbnail(of: NSSize(width: 400, height: 300), for: .mediaBox)
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(data: image.tiffRepresentation ?? Data()))
+        let red = try XCTUnwrap(bitmap.colorAt(x: 30, y: 270))
+        XCTAssertGreaterThan(red.redComponent, 0.7)
+        XCTAssertGreaterThan(red.redComponent - red.greenComponent, 0.4)
     }
 
-    func testPDFWriteAndRead() throws {
-        let url = workDirectory.appendingPathComponent("translated.pdf")
-        try DocumentTranslator.writePDF("Перекладений текст для перевірки.", to: url)
+    private func makePDF(text: String, to url: URL) throws {
+        var mediaBox = CGRect(x: 0, y: 0, width: 400, height: 300)
+        let consumer = try XCTUnwrap(CGDataConsumer(url: url as CFURL))
+        let context = try XCTUnwrap(
+            CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
+        )
+        context.beginPDFPage(nil)
+        context.setFillColor(NSColor.red.cgColor)
+        context.fill(CGRect(x: 10, y: 10, width: 50, height: 50))
 
-        let document = try DocumentTranslator.read(url: url)
-        XCTAssertEqual(document.kind, .pdf)
-        XCTAssertTrue(document.text.contains("Перекладений текст"))
+        let attributed = NSAttributedString(
+            string: text,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 18),
+                .foregroundColor: NSColor.black
+            ]
+        )
+        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
+        let path = CGPath(
+            rect: CGRect(x: 50, y: 150, width: 300, height: 100),
+            transform: nil
+        )
+        let frame = CTFramesetterCreateFrame(
+            framesetter,
+            CFRange(location: 0, length: 0),
+            path,
+            nil
+        )
+        CTFrameDraw(frame, context)
+        context.endPDFPage()
+        context.closePDF()
     }
 
     func testDocxParagraphsAndReplacement() throws {
@@ -78,10 +122,11 @@ final class DocumentTranslatorTests: XCTestCase {
         )
     }
 
-    func testDocxPackageRoundTrip() throws {
+    func testDocxUpdateKeepsOtherPackageEntries() throws {
         let package = workDirectory.appendingPathComponent("package", isDirectory: true)
         let word = package.appendingPathComponent("word", isDirectory: true)
-        try FileManager.default.createDirectory(at: word, withIntermediateDirectories: true)
+        let media = word.appendingPathComponent("media", isDirectory: true)
+        try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
 
         let documentXML = """
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -109,6 +154,8 @@ final class DocumentTranslatorTests: XCTestCase {
             atomically: true,
             encoding: .utf8
         )
+        let imageBytes = Data((0..<512).map { UInt8($0 % 251) })
+        try imageBytes.write(to: media.appendingPathComponent("image1.bin"))
 
         let docxURL = workDirectory.appendingPathComponent("sample.docx")
         try zip(package, to: docxURL)
@@ -126,6 +173,25 @@ final class DocumentTranslatorTests: XCTestCase {
 
         let translated = try DocumentTranslator.read(url: output)
         XCTAssertEqual(translated.text, "Привіт\nСвіт")
+        XCTAssertEqual(
+            try unzipEntry("word/media/image1.bin", from: output),
+            imageBytes
+        )
+    }
+
+    private func unzipEntry(_ entry: String, from url: URL) throws -> Data {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        process.arguments = ["-p", url.path, entry]
+        let output = Pipe()
+        let error = Pipe()
+        process.standardOutput = output
+        process.standardError = error
+        try process.run()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0)
+        return data
     }
 
     func testAlignmentFallsBackToNonEmptyLines() {

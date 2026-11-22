@@ -66,6 +66,12 @@ struct DeepLoFMApp: App {
                     app.tab = .settings
                 }
                 .keyboardShortcut(",", modifiers: .command)
+
+                Button(L10n.t("Back to translation", app.settings.interfaceLanguage)) {
+                    app.tab = .translate
+                }
+                .keyboardShortcut(.cancelAction)
+                .disabled(app.tab != .settings)
             }
         }
     }

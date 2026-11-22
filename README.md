@@ -29,6 +29,10 @@
 
 <p align="center"><sub>Not affiliated with DeepL SE. “DeepL-oFM” describes the interface style (“on Free Models”).</sub></p>
 
+<p align="center">
+  <img src="docs/demo.gif" width="900" alt="DeepL-oFM demo: three result views, PDF and DOCX translation, nine interface languages">
+</p>
+
 ## Why DeepL-oFM
 
 Most translators are a website first. DeepL-oFM is a native Mac app first:
@@ -96,10 +100,10 @@ pane, translated in the usual three views, and **Save translation…** (⌘S)
 writes the result back:
 
 - **Text and Markdown** keep their content and line structure.
-- **DOCX** keeps styles, images, tables and lists; paragraphs are translated in
-  place, so the document opens in Word looking like the original with new text.
-- **PDF** is rebuilt as a clean, selectable, reflowed document. The original
-  layout is not reproduced, and scanned PDFs need OCR before translation.
+- **DOCX** keeps the original package: only `word/document.xml` is updated in
+  place, so styles, images, tables, lists, headers and fonts remain untouched.
+- **PDF** keeps the original pages — layout, images, charts and typography —
+  and paints the translation into the same text blocks. Scanned PDFs need OCR.
 
 ## Providers
 

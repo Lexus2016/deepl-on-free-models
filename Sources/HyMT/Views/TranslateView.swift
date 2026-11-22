@@ -56,9 +56,11 @@ struct LanguageBar: View {
             HStack(spacing: 8) {
                 Spacer()
                 StyleToneControls()
+                    .layoutPriority(1)
             }
         }
         .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity)
         .frame(height: 56)
         .background(Theme.chrome)
     }
@@ -207,8 +209,13 @@ struct StyleToneControls: View {
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Menu {
+        HStack(spacing: 2) {
+            StyleToneSegment(
+                icon: "textformat",
+                title: L10n.t("Style", language),
+                value: L10n.t(app.style.title, language),
+                tint: Theme.accent
+            ) {
                 ForEach(TranslationStyle.allCases) { style in
                     Button {
                         app.style = style
@@ -223,17 +230,19 @@ struct StyleToneControls: View {
                         }
                     }
                 }
-            } label: {
-                chip(
-                    text: "\(L10n.t("Style", language)) · \(L10n.t(app.style.title, language))",
-                    icon: "textformat"
-                )
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
 
-            Menu {
+            Rectangle()
+                .fill(Theme.borderSoft)
+                .frame(width: 1, height: 16)
+                .padding(.horizontal, 2)
+
+            StyleToneSegment(
+                icon: "waveform",
+                title: L10n.t("Tone", language),
+                value: L10n.t(app.tone.title, language),
+                tint: Theme.accentAlt
+            ) {
                 ForEach(TranslationTone.allCases) { tone in
                     Button {
                         app.tone = tone
@@ -248,40 +257,72 @@ struct StyleToneControls: View {
                         }
                     }
                 }
-            } label: {
-                chip(
-                    text: "\(L10n.t("Tone", language)) · \(L10n.t(app.tone.title, language))",
-                    icon: "waveform"
-                )
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
         }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Theme.chromeRaised.opacity(0.55))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Theme.borderSoft, lineWidth: 1)
+        )
+        .fixedSize(horizontal: true, vertical: false)
     }
+}
 
-    private func chip(text: String, icon: String) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 9.5, weight: .semibold))
-            Text(text)
-                .font(.system(size: 11.5, weight: .medium))
-            Image(systemName: "chevron.down")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(Theme.tertiary)
-        }
-            .foregroundStyle(Theme.secondary)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
+private struct StyleToneSegment<Content: View>: View {
+    let icon: String
+    let title: String
+    let value: String
+    let tint: Color
+    @ViewBuilder let content: Content
+
+    @State private var hovering = false
+
+    var body: some View {
+        Menu {
+            content
+        } label: {
+            HStack(spacing: 7) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(tint.opacity(hovering ? 0.3 : 0.16))
+                    Image(systemName: icon)
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(tint)
+                }
+                .frame(width: 19, height: 19)
+
+                (
+                    Text(title)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundColor(Theme.tertiary)
+                    + Text("  ")
+                    + Text(value)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundColor(Theme.text)
+                )
+                .lineLimit(1)
+                .fixedSize()
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(Theme.tertiary.opacity(hovering ? 1 : 0.7))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
             .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Theme.chromeRaised)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(Theme.border, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(hovering ? Theme.chromeRaised : Color.clear)
             )
             .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .onHover { hovering = $0 }
     }
 }
 

@@ -75,6 +75,23 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertFalse(rendered.string.hasSuffix("\n"))
     }
 
+    func testSingleNewlinesStayAsLineBreaks() {
+        let rendered = MarkdownRenderer.render(
+            "Квартальний звіт\nПриватний перекладач\nПрацює офлайн."
+        )
+        XCTAssertEqual(
+            rendered.string.replacingOccurrences(of: "\u{2028}", with: "\n"),
+            "Квартальний звіт\nПриватний перекладач\nПрацює офлайн."
+        )
+    }
+
+    func testPlainTextKeepsLineBreaks() {
+        XCTAssertEqual(
+            MarkdownRenderer.plainText("One\nTwo\nThree"),
+            "One\nTwo\nThree"
+        )
+    }
+
     func testPlainTextSurvives() {
         let rendered = MarkdownRenderer.render("Just plain text without markers.")
         XCTAssertEqual(rendered.string, "Just plain text without markers.")

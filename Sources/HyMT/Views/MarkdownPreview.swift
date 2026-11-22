@@ -33,7 +33,8 @@ enum MarkdownRenderer {
     }
 
     private static func parse(_ source: String) -> [Block]? {
-        guard let parsed = try? AttributedString(markdown: source) else { return nil }
+        let prepared = withHardLineBreaks(source)
+        guard let parsed = try? AttributedString(markdown: prepared) else { return nil }
 
         var blocks: [Block] = []
         for run in parsed.runs {
@@ -211,9 +212,47 @@ enum MarkdownRenderer {
         if block.code {
             return text.trimmingCharacters(in: .newlines)
         }
-        return text
-            .replacingOccurrences(of: "\n", with: " ")
-            .trimmingCharacters(in: .whitespaces)
+        return text.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Plain text (a DOCX or a PDF) uses a single newline between paragraphs,
+    /// while Markdown treats it as a soft break and joins the lines. A hard
+    /// break keeps the document's line structure in the rendered view.
+    private static func withHardLineBreaks(_ text: String) -> String {
+        let lines = text.components(separatedBy: "\n")
+        guard lines.count > 1 else { return text }
+
+        var output: [String] = []
+        output.reserveCapacity(lines.count)
+        for index in lines.indices {
+            let line = lines[index]
+            if index < lines.count - 1 {
+                let next = lines[index + 1]
+                let current = line.trimmingCharacters(in: .whitespaces)
+                let following = next.trimmingCharacters(in: .whitespaces)
+                if !current.isEmpty, !following.isEmpty,
+                   !isBlockLine(current), !isBlockLine(following) {
+                    output.append(line + "  ")
+                    continue
+                }
+            }
+            output.append(line)
+        }
+        return output.joined(separator: "\n")
+    }
+
+    private static func isBlockLine(_ line: String) -> Bool {
+        let patterns = [
+            #"^#{1,6}\s"#,
+            #"^(?:[-*+]|\d+[.)])\s"#,
+            #"^>"#,
+            #"^```"#,
+            #"^\|"#,
+            #"^(?:---+|\*\*\*+|___+)$"#
+        ]
+        return patterns.contains {
+            line.range(of: $0, options: .regularExpression) != nil
+        }
     }
 
     private static func styled(_ span: Span, in block: Block, fontSize: CGFloat) -> NSAttributedString {
@@ -258,7 +297,9 @@ enum MarkdownRenderer {
         }
 
         if !block.code, text.contains("\n") {
-            text = text.replacingOccurrences(of: "\n", with: " ")
+            // U+2028 is a line break inside the same paragraph, so a DOCX or
+            // PDF block keeps its lines without gaining paragraph spacing.
+            text = text.replacingOccurrences(of: "\n", with: "\u{2028}")
         }
         return NSAttributedString(string: text, attributes: attributes)
     }

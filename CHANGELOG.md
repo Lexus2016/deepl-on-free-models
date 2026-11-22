@@ -4,7 +4,7 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.0.8] — 2026-11-22
 
 ### Added
 
@@ -16,6 +16,12 @@ All notable changes to DeepL-oFM. The format follows
 - Rendered Markdown view in both panes, with a toggle back to the raw markup.
 - File translation for `.txt`, `.md`, `.pdf` and `.docx`, including drag and
   drop and saving the translation back in the original format.
+- DOCX is updated in place (only `word/document.xml`), and PDF keeps the
+  original pages, images and layout with the translation drawn over each text
+  block.
+- Refined style and tone selectors; Settings moved into the ⋯ menu, with Escape
+  returning to the translation. The Markdown view keeps the line structure of
+  PDF and DOCX documents.
 - Result pane with three views — rendered Markdown, plain text without markup,
   and the raw Markdown source — with Copy following the active view.
 - Paste from clipboard and Translate now actions in the empty panes.
@@ -119,6 +125,7 @@ All notable changes to DeepL-oFM. The format follows
 - Initial native SwiftUI translator with Hy-MT2 7B through Ollama.
 - Two-pane translation, history, hotkeys and Ukrainian/Russian/English UI.
 
+[1.0.8]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.8
 [1.0.7]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.7
 [1.0.6]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.6
 [1.0.5]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.5

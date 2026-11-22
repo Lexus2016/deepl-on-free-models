@@ -4,6 +4,30 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>1.0.8</title>
+            <pubDate>Sun, 22 Nov 2026 16:36:00 +0100</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>1.0.8</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.0.8
+
+Nine interface languages, a Markdown view, and file translation that keeps the original document.
+
+- Interface in English, Ukrainian, Russian, German, French, Spanish, Polish, Portuguese and Italian.
+- Three result views: rendered Markdown, plain text without markup, and the raw Markdown source. Copy follows the active view.
+- Rich paste: HTML/RTF from a browser or a word processor becomes Markdown, so headings, lists, links and emphasis survive translation.
+- File translation for `.txt`, `.md`, `.pdf` and `.docx`, from the File menu or by dropping a file onto the window.
+- DOCX is updated in place — only `word/document.xml` changes — so styles, images, tables, headers and fonts stay untouched.
+- PDF keeps the original pages, layout, images and typography; the translation is drawn into the same text blocks.
+- Refined style and tone selectors, Settings in the ⋯ menu (Escape returns to translation), and a fix for model ids at the end of a sentence.
+
+Signed and notarized DMG; the previous 1.0.7 installs this update through Sparkle.
+]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.8/DeepL-oFM-1.0.8.dmg" length="3467657" type="application/octet-stream" sparkle:edSignature="HcH51a3aO2r07LUOKP74cL0tHU4iQy2wcLIjQPdIWftaVmc9zQqnl1i+d43EirLPJr7kLw2c0LSPeDeap1FHAg=="></enclosure>
+        </item>
+    <item>
             <title>1.0.7</title>
             <pubDate>Sun, 22 Nov 2026 14:46:27 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -31,7 +55,8 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
             <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.7/DeepL-oFM-1.0.7.dmg" length="3253413" type="application/octet-stream" sparkle:edSignature="WvFr1Z+2nl4qJtKGt+Nmis45rd+DfXoo1OaVlcJ1wKX7zGRNvwATxjwxi6oOsjdsBqfhQJGod5Y/p1f4ugGQBQ=="></enclosure>
         </item>
     </channel>
-</rss><!-- sparkle-signatures:
-edSignature: P1/7erT5jGL9Qw/8aaDiat8FBROjpJzMKavAHp9dkhqgaOnxc93F+WjlM1zXU2gRVJ0SDqVlrUP8vb0aC7XUDg==
-length: 2147
+</rss>
+<!-- sparkle-signatures:
+edSignature: lnjiMZiAJpVDm6Wm1uYyYn2088ad79zk5NVo1ZNkhzLxzzdG7O3PA/iPsFE7yMlDiIQnJBmuTLGmYObhkiT3Cg==
+length: 4072
 -->

@@ -649,9 +649,6 @@ final class AppState: NSObject, ObservableObject {
     }
 
     func discardDocument() {
-        if let package = document?.docx {
-            DocumentTranslator.discard(package)
-        }
         document = nil
     }
 

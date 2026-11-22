@@ -1,9 +1,11 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct RootView: View {
     @EnvironmentObject private var app: AppState
     @State private var dropTargeted = false
+    @State private var escapeMonitor: Any?
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
@@ -100,6 +102,25 @@ struct RootView: View {
         .task {
             app.bootstrap()
         }
+        .onAppear {
+            escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard event.keyCode == 53,
+                      app.tab == .settings,
+                      let window = NSApp.keyWindow,
+                      !(window is NSPanel),
+                      window.attachedSheet == nil else {
+                    return event
+                }
+                app.tab = .translate
+                return nil
+            }
+        }
+        .onDisappear {
+            if let escapeMonitor {
+                NSEvent.removeMonitor(escapeMonitor)
+            }
+            escapeMonitor = nil
+        }
     }
 }
 
@@ -128,7 +149,7 @@ struct TopBar: View {
 
             HStack(spacing: 4) {
                 ForEach(AppState.Tab.allCases.filter { tab in
-                    tab != .history || app.settings.keepHistory
+                    tab != .settings && (tab != .history || app.settings.keepHistory)
                 }) { tab in
                     tabButton(tab)
                 }
@@ -183,7 +204,15 @@ struct TopBar: View {
                 if app.settings.keepHistory {
                     Button(L10n.t("History", language)) { app.tab = .history }
                 }
-                Button(L10n.t("Settings", language)) { app.tab = .settings }
+                Button {
+                    app.tab = .settings
+                } label: {
+                    if app.tab == .settings {
+                        Label(L10n.t("Settings", language), systemImage: "checkmark")
+                    } else {
+                        Text(L10n.t("Settings", language))
+                    }
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 14, weight: .semibold))

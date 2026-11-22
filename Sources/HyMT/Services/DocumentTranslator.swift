@@ -40,21 +40,34 @@ enum DocumentKind: String, Sendable {
     }
 }
 
-/// A DOCX is a zip package; the extracted directory is kept so the translated
-/// `document.xml` can be written back without touching images, styles or
-/// headers.
-struct DocxPackage {
-    let directory: URL
+/// One paragraph-like run of text on a PDF page. The original page is kept as
+/// the background; this rectangle is the only part that gets replaced.
+struct PDFTextBlock {
+    let pageIndex: Int
+    let bounds: CGRect
+    let text: String
+    let fontSize: CGFloat
+    let isBold: Bool
+    let fontName: String?
+    let color: NSColor
+    let alignment: NSTextAlignment
+    let lineSpacing: CGFloat
+}
+
+struct PDFLayout {
+    let url: URL
+    let pageCount: Int
+    let blocks: [PDFTextBlock]
 }
 
 struct OpenedDocument {
     let url: URL
     let kind: DocumentKind
     let text: String
-    /// DOCX only: the original paragraph texts, one per `<w:p>`, used to align
-    /// the translated lines back into the XML.
+    /// One entry per DOCX paragraph or PDF text block, used to align the
+    /// translated lines back to the original document.
     let paragraphs: [String]
-    let docx: DocxPackage?
+    let pdf: PDFLayout?
 }
 
 enum DocumentError: Error {
@@ -102,43 +115,31 @@ enum DocumentTranslator {
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw DocumentError.noText
             }
-            return OpenedDocument(url: url, kind: kind, text: text, paragraphs: [], docx: nil)
+            return OpenedDocument(
+                url: url, kind: kind, text: text, paragraphs: [], pdf: nil
+            )
 
         case .pdf:
-            let text = try readPDF(url)
+            let layout = try readPDFLayout(url: url)
+            return OpenedDocument(
+                url: url,
+                kind: kind,
+                text: layout.blocks.map(\.text).joined(separator: "\n"),
+                paragraphs: layout.blocks.map(\.text),
+                pdf: layout
+            )
+
+        case .docx:
+            let data = try unzipEntry("word/document.xml", from: url)
+            let paragraphs = try paragraphs(fromDocumentXML: data)
+            let text = paragraphs.joined(separator: "\n")
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw DocumentError.noText
             }
-            return OpenedDocument(url: url, kind: kind, text: text, paragraphs: [], docx: nil)
-
-        case .docx:
-            let package = try unzip(url)
-            do {
-                let xmlURL = package.directory.appendingPathComponent("word/document.xml")
-                guard let data = try? Data(contentsOf: xmlURL) else {
-                    throw DocumentError.docxFailed
-                }
-                let paragraphs = try paragraphs(fromDocumentXML: data)
-                let text = paragraphs.joined(separator: "\n")
-                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                    throw DocumentError.noText
-                }
-                return OpenedDocument(
-                    url: url,
-                    kind: kind,
-                    text: text,
-                    paragraphs: paragraphs,
-                    docx: package
-                )
-            } catch {
-                discard(package)
-                throw error
-            }
+            return OpenedDocument(
+                url: url, kind: kind, text: text, paragraphs: paragraphs, pdf: nil
+            )
         }
-    }
-
-    static func discard(_ package: DocxPackage) {
-        try? FileManager.default.removeItem(at: package.directory)
     }
 
     static func readText(_ url: URL) throws -> String {
@@ -148,48 +149,155 @@ enum DocumentTranslator {
         throw DocumentError.unreadable
     }
 
-    static func readPDF(_ url: URL) throws -> String {
+    // MARK: - PDF reading
+
+    static func readPDFLayout(url: URL) throws -> PDFLayout {
         guard let document = PDFDocument(url: url) else {
             throw DocumentError.unreadable
         }
-        var pages: [String] = []
-        for index in 0..<document.pageCount {
-            pages.append(document.page(at: index)?.string ?? "")
+
+        var blocks: [PDFTextBlock] = []
+        for pageIndex in 0..<document.pageCount {
+            guard let page = document.page(at: pageIndex) else { continue }
+            let pageBox = page.bounds(for: .mediaBox)
+            guard let selection = page.selection(for: pageBox) else { continue }
+
+            let lines = selection.selectionsByLine().compactMap { line -> PDFLine? in
+                let text = (line.string ?? "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { return nil }
+                let bounds = line.bounds(for: page)
+                guard bounds.width > 1, bounds.height > 1 else { return nil }
+
+                var fontSize = bounds.height * 0.8
+                var bold = false
+                var fontName: String?
+                var color = NSColor.black
+                if let attributed = line.attributedString, attributed.length > 0 {
+                    if let font = attributed.attribute(.font, at: 0, effectiveRange: nil) as? NSFont {
+                        fontSize = font.pointSize
+                        bold = font.fontDescriptor.symbolicTraits.contains(.bold)
+                        fontName = font.fontName
+                    }
+                    if let value = attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor {
+                        color = value
+                    }
+                }
+                return PDFLine(
+                    text: text,
+                    bounds: bounds,
+                    fontSize: fontSize,
+                    isBold: bold,
+                    fontName: fontName,
+                    color: color
+                )
+            }
+            blocks.append(contentsOf: group(lines, pageIndex: pageIndex, pageBox: pageBox))
         }
-        return reflow(pages.joined(separator: "\n\n"))
+
+        guard !blocks.isEmpty else { throw DocumentError.noText }
+        return PDFLayout(url: url, pageCount: document.pageCount, blocks: blocks)
     }
 
-    /// PDF text arrives with a line break at every visual line. Joining lines
-    /// back into paragraphs gives the translator whole sentences instead of
-    /// fragments; blank lines and page breaks remain paragraph boundaries.
-    static func reflow(_ text: String) -> String {
-        var paragraphs: [String] = []
-        var current = ""
+    private struct PDFLine {
+        let text: String
+        let bounds: CGRect
+        let fontSize: CGFloat
+        let isBold: Bool
+        let fontName: String?
+        let color: NSColor
+    }
 
-        func flush() {
-            let trimmed = current.trimmingCharacters(in: .whitespaces)
-            if !trimmed.isEmpty { paragraphs.append(trimmed) }
-            current = ""
+    /// Lines become paragraphs when the vertical gap is small, the font matches
+    /// and the lines overlap horizontally. A side-by-side column does not
+    /// overlap, so it starts its own block.
+    private static func group(
+        _ lines: [PDFLine],
+        pageIndex: Int,
+        pageBox: CGRect
+    ) -> [PDFTextBlock] {
+        let sorted = lines.sorted { first, second in
+            if abs(first.bounds.maxY - second.bounds.maxY) > 1.5 {
+                return first.bounds.maxY > second.bounds.maxY
+            }
+            return first.bounds.minX < second.bounds.minX
         }
 
-        for rawLine in text.components(separatedBy: .newlines) {
-            let line = rawLine.trimmingCharacters(in: .whitespaces)
-            if line.isEmpty {
-                flush()
-                continue
+        var groups: [[PDFLine]] = []
+        for line in sorted {
+            var target: Int?
+            for (index, group) in groups.enumerated() {
+                guard let previous = group.last,
+                      previous.bounds.maxY > line.bounds.maxY,
+                      sameBlock(previous, line) else { continue }
+                target = index
             }
-            if current.isEmpty {
-                current = line
-            } else if current.hasSuffix("-") {
-                // A word split across lines: glue it back together.
-                current.removeLast()
-                current += line
+            if let target {
+                groups[target].append(line)
             } else {
-                current += " " + line
+                groups.append([line])
             }
         }
-        flush()
-        return paragraphs.joined(separator: "\n\n")
+
+        let ordered = groups.sorted { first, second in
+            guard let a = first.first, let b = second.first else { return false }
+            if abs(a.bounds.maxY - b.bounds.maxY) > 1.5 {
+                return a.bounds.maxY > b.bounds.maxY
+            }
+            return a.bounds.minX < b.bounds.minX
+        }
+
+        return ordered.map { group in
+            let bounds = group.dropFirst().reduce(group[0].bounds) { $0.union($1.bounds) }
+            let first = group[0]
+
+            var alignment = NSTextAlignment.left
+            if bounds.width < pageBox.width * 0.75 {
+                if abs(bounds.midX - pageBox.midX) < pageBox.width * 0.06 {
+                    alignment = .center
+                } else if bounds.maxX > pageBox.maxX - pageBox.width * 0.08 {
+                    alignment = .right
+                }
+            }
+
+            var spacing: CGFloat = 0
+            if group.count > 1 {
+                var gaps: [CGFloat] = []
+                for index in 1..<group.count {
+                    let gap = group[index - 1].bounds.minY - group[index].bounds.maxY
+                    if gap > 0 { gaps.append(gap) }
+                }
+                if !gaps.isEmpty {
+                    spacing = min(10, gaps.reduce(0, +) / CGFloat(gaps.count))
+                }
+            }
+
+            return PDFTextBlock(
+                pageIndex: pageIndex,
+                bounds: bounds,
+                text: group.map(\.text).joined(separator: " "),
+                fontSize: group.map(\.fontSize).max() ?? 12,
+                isBold: first.isBold,
+                fontName: first.fontName,
+                color: first.color,
+                alignment: alignment,
+                lineSpacing: spacing
+            )
+        }
+    }
+
+    private static func sameBlock(_ previous: PDFLine, _ line: PDFLine) -> Bool {
+        guard abs(previous.fontSize - line.fontSize) < 1.5 else { return false }
+
+        let height = max(previous.bounds.height, line.bounds.height)
+        let gap = previous.bounds.minY - line.bounds.maxY
+        guard gap <= max(2.5, height * 0.45), gap >= -height * 1.2 else { return false }
+
+        let overlap = min(previous.bounds.maxX, line.bounds.maxX)
+            - max(previous.bounds.minX, line.bounds.minX)
+        let width = min(previous.bounds.width, line.bounds.width)
+        guard width > 0 else { return true }
+        return overlap >= width * 0.35
     }
 
     // MARK: - Write
@@ -200,89 +308,292 @@ enum DocumentTranslator {
             try translated.write(to: url, atomically: true, encoding: .utf8)
 
         case .pdf:
-            try writePDF(translated, to: url)
+            guard let layout = document.pdf else { throw DocumentError.unreadable }
+            try writePDF(layout: layout, translated: translated, to: url)
 
         case .docx:
-            guard let package = document.docx else {
-                throw DocumentError.docxFailed
-            }
             try writeDocx(
-                package: package,
+                original: document.url,
+                paragraphs: document.paragraphs,
                 translated: translated,
-                sourceParagraphs: document.paragraphs,
                 to: url
             )
         }
     }
 
-    /// A clean reflowed PDF: A4, vector text, one paragraph after another. The
-    /// original layout is not reproduced — a rebuilt page keeps the text
-    /// selectable and readable.
-    static func writePDF(_ text: String, to url: URL) throws {
-        guard !text.isEmpty else { throw DocumentError.noText }
+    /// Keeps the original page as the visual layer and paints the translation
+    /// into the same rectangles. Images, charts, borders, fonts and page size
+    /// stay untouched; only the text areas are covered and redrawn.
+    static func writePDF(layout: PDFLayout, translated: String, to url: URL) throws {
+        guard let document = PDFDocument(url: layout.url) else {
+            throw DocumentError.unreadable
+        }
+        guard let firstPage = document.page(at: 0) else { throw DocumentError.unreadable }
 
-        var mediaBox = CGRect(x: 0, y: 0, width: 595.28, height: 841.89)
+        let lines = align(translated, with: layout.blocks.map(\.text))
+        var mediaBox = firstPage.bounds(for: .mediaBox)
+        try? FileManager.default.removeItem(at: url)
         guard let consumer = CGDataConsumer(url: url as CFURL),
-              let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
+              let context = CGContext(
+                  consumer: consumer,
+                  mediaBox: &mediaBox,
+                  [
+                      kCGPDFContextTitle as String: layout.url.deletingPathExtension().lastPathComponent,
+                      kCGPDFContextCreator as String: "DeepL-oFM"
+                  ] as CFDictionary
+              ) else {
             throw DocumentError.unreadable
         }
 
-        let style = NSMutableParagraphStyle()
-        style.lineSpacing = 3
-        style.paragraphSpacing = 7
-        let attributed = NSAttributedString(
-            string: text,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 11),
-                .foregroundColor: NSColor.black,
-                .paragraphStyle: style
-            ]
+        let blocksByPage = Dictionary(
+            grouping: layout.blocks.indices,
+            by: { layout.blocks[$0].pageIndex }
         )
-        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
-        let textRect = mediaBox.insetBy(dx: 56, dy: 56)
-        var location = 0
 
-        while location < attributed.length {
-            context.beginPDFPage(nil)
-            let path = CGPath(rect: textRect, transform: nil)
-            let frame = CTFramesetterCreateFrame(
-                framesetter,
-                CFRange(location: location, length: 0),
-                path,
-                nil
+        for pageIndex in 0..<document.pageCount {
+            guard let page = document.page(at: pageIndex) else { continue }
+            let box = page.bounds(for: .mediaBox)
+            let boxData = withUnsafeBytes(of: box) { Data($0) }
+            context.beginPDFPage(
+                [kCGPDFContextMediaBox as String: boxData] as CFDictionary
             )
-            CTFrameDraw(frame, context)
-            let visible = CTFrameGetVisibleStringRange(frame)
+            page.draw(with: .mediaBox, to: context)
+
+            let bitmap = pageBitmap(page, scale: 2)
+            for index in blocksByPage[pageIndex] ?? [] {
+                let block = layout.blocks[index]
+                guard index < lines.count else { continue }
+                let translation = lines[index]
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !translation.isEmpty, translation != block.text else { continue }
+
+                let background = bitmap
+                    .flatMap { sampledColor(around: block.bounds, in: $0, pageBox: box) }
+                    ?? .white
+                context.setFillColor(background.cgColor)
+                context.fill(block.bounds.insetBy(dx: -2, dy: -1))
+                draw(
+                    translation,
+                    in: block.bounds,
+                    block: block,
+                    background: background,
+                    context: context
+                )
+            }
             context.endPDFPage()
-            guard visible.length > 0 else { break }
-            location += visible.length
         }
         context.closePDF()
+
+        copyAnnotations(from: document, to: url)
     }
 
-    // MARK: - DOCX package
+    /// Links and notes live outside the page content, so they are copied onto
+    /// the new pages after the overlay is written.
+    private static func copyAnnotations(from source: PDFDocument, to url: URL) {
+        guard let target = PDFDocument(url: url) else { return }
+        var copied = false
+        for index in 0..<min(source.pageCount, target.pageCount) {
+            guard let sourcePage = source.page(at: index),
+                  let targetPage = target.page(at: index) else { continue }
+            for annotation in sourcePage.annotations {
+                guard let copy = annotation.copy() as? PDFAnnotation else { continue }
+                targetPage.addAnnotation(copy)
+                copied = true
+            }
+        }
+        if copied {
+            target.write(to: url)
+        }
+    }
 
+    private static func pageBitmap(_ page: PDFPage, scale: CGFloat) -> CGContext? {
+        let box = page.bounds(for: .mediaBox)
+        let width = max(1, Int(box.width * scale))
+        let height = max(1, Int(box.height * scale))
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+
+        context.setFillColor(NSColor.white.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.scaleBy(x: scale, y: scale)
+        page.draw(with: .mediaBox, to: context)
+        return context
+    }
+
+    private static func sampledColor(
+        around bounds: CGRect,
+        in context: CGContext,
+        pageBox: CGRect
+    ) -> NSColor? {
+        let points = [
+            CGPoint(x: bounds.minX - 4, y: bounds.midY),
+            CGPoint(x: bounds.maxX + 4, y: bounds.midY),
+            CGPoint(x: bounds.midX, y: bounds.maxY + 4),
+            CGPoint(x: bounds.midX, y: bounds.minY - 4)
+        ].filter { pageBox.contains($0) }
+
+        guard !points.isEmpty, let data = context.data else { return nil }
+        let scale = CGFloat(context.width) / max(pageBox.width, 1)
+        let bytes = data.assumingMemoryBound(to: UInt8.self)
+        var samples: [(Int, Int, Int)] = []
+
+        for point in points {
+            let x = Int(point.x * scale)
+            let y = Int(point.y * scale)
+            guard x >= 0, x < context.width, y >= 0, y < context.height else { continue }
+            let offset = y * context.bytesPerRow + x * 4
+            samples.append((
+                Int(bytes[offset]),
+                Int(bytes[offset + 1]),
+                Int(bytes[offset + 2])
+            ))
+        }
+        guard !samples.isEmpty else { return nil }
+
+        let red = samples.map(\.0).reduce(0, +) / samples.count
+        let green = samples.map(\.1).reduce(0, +) / samples.count
+        let blue = samples.map(\.2).reduce(0, +) / samples.count
+        return NSColor(
+            srgbRed: CGFloat(red) / 255,
+            green: CGFloat(green) / 255,
+            blue: CGFloat(blue) / 255,
+            alpha: 1
+        )
+    }
+
+    private static func draw(
+        _ text: String,
+        in rect: CGRect,
+        block: PDFTextBlock,
+        background: NSColor,
+        context: CGContext
+    ) {
+        let original = block.color.usingColorSpace(.sRGB) ?? .black
+        let color: NSColor
+        if abs(luminance(original) - luminance(background)) > 0.25 {
+            color = original
+        } else {
+            color = luminance(background) < 0.55 ? .white : .black
+        }
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = block.alignment
+        paragraph.lineSpacing = block.lineSpacing
+
+        var size = max(4.5, block.fontSize)
+        while size >= 4.5 {
+            let font = resolvedFont(
+                name: block.fontName,
+                bold: block.isBold,
+                size: size,
+                text: text
+            )
+            let attributed = NSAttributedString(
+                string: text,
+                attributes: [
+                    .font: font,
+                    .foregroundColor: color,
+                    .paragraphStyle: paragraph
+                ]
+            )
+            let framesetter = CTFramesetterCreateWithAttributedString(attributed)
+            let suggested = CTFramesetterSuggestFrameSizeWithConstraints(
+                framesetter,
+                CFRange(location: 0, length: 0),
+                nil,
+                CGSize(width: rect.width, height: .greatestFiniteMagnitude),
+                nil
+            )
+            if suggested.height <= rect.height + 1.5 || size <= 4.6 {
+                let path = CGPath(rect: rect, transform: nil)
+                let frame = CTFramesetterCreateFrame(
+                    framesetter,
+                    CFRange(location: 0, length: 0),
+                    path,
+                    nil
+                )
+                CTFrameDraw(frame, context)
+                return
+            }
+            size -= 0.5
+        }
+    }
+
+    /// Keeps the original typeface when it has glyphs for the translation;
+    /// otherwise falls back to the system font, which covers every script the
+    /// app supports.
+    private static func resolvedFont(
+        name: String?,
+        bold: Bool,
+        size: CGFloat,
+        text: String
+    ) -> NSFont {
+        if let name, let original = NSFont(name: name, size: size),
+           supports(original, text: text) {
+            return original
+        }
+        return bold
+            ? NSFont.boldSystemFont(ofSize: size)
+            : NSFont.systemFont(ofSize: size)
+    }
+
+    private static func supports(_ font: NSFont, text: String) -> Bool {
+        let characters = Array(text.utf16)
+        guard !characters.isEmpty else { return true }
+        var glyphs = [CGGlyph](repeating: 0, count: characters.count)
+        let ctFont = font as CTFont
+        return characters.withUnsafeBufferPointer { buffer in
+            glyphs.withUnsafeMutableBufferPointer { output in
+                guard let chars = buffer.baseAddress, let glyphs = output.baseAddress else {
+                    return false
+                }
+                return CTFontGetGlyphsForCharacters(ctFont, chars, glyphs, characters.count)
+            }
+        }
+    }
+
+    private static func luminance(_ color: NSColor) -> CGFloat {
+        guard let rgb = color.usingColorSpace(.sRGB) else { return 1 }
+        return 0.2126 * rgb.redComponent
+            + 0.7152 * rgb.greenComponent
+            + 0.0722 * rgb.blueComponent
+    }
+
+    // MARK: - DOCX
+
+    /// Only `word/document.xml` is replaced inside the existing archive. Every
+    /// other entry — styles, media, fonts, headers — stays byte-for-byte as it
+    /// was, so the document keeps its layout and visual identity.
     static func writeDocx(
-        package: DocxPackage,
+        original: URL,
+        paragraphs: [String],
         translated: String,
-        sourceParagraphs: [String],
         to url: URL
     ) throws {
-        let xmlURL = package.directory.appendingPathComponent("word/document.xml")
-        let data = try Data(contentsOf: xmlURL)
-        let lines = align(translated, with: sourceParagraphs)
-        let updated = try replacingParagraphs(in: data, with: lines)
-        try updated.write(to: xmlURL, options: .atomic)
+        let xml = try unzipEntry("word/document.xml", from: original)
+        let lines = align(translated, with: paragraphs)
+        let updated = try replacingParagraphs(in: xml, with: lines)
+
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DeepL-oFM-docx-\(UUID().uuidString)", isDirectory: true)
+        let word = directory.appendingPathComponent("word", isDirectory: true)
+        try FileManager.default.createDirectory(at: word, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try updated.write(
+            to: word.appendingPathComponent("document.xml"),
+            options: .atomic
+        )
 
         try? FileManager.default.removeItem(at: url)
-        let contents = try FileManager.default
-            .contentsOfDirectory(atPath: package.directory.path)
-            .filter { $0 != "__MACOSX" && $0 != ".DS_Store" }
-        try run(
-            "/usr/bin/zip",
-            ["-q", "-r", "-X", url.path] + contents,
-            in: package.directory
-        )
+        try FileManager.default.copyItem(at: original, to: url)
+        try run("/usr/bin/zip", ["-q", "-X", url.path, "word/document.xml"], in: directory)
     }
 
     /// The translator keeps the line structure, so paragraph i maps to line i.
@@ -366,20 +677,21 @@ enum DocumentTranslator {
 
     // MARK: - Zip
 
-    private static func unzip(_ url: URL) throws -> DocxPackage {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("DeepL-oFM-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
-        do {
-            try run("/usr/bin/unzip", ["-q", "-o", url.path, "-d", directory.path])
-        } catch {
-            try? FileManager.default.removeItem(at: directory)
+    private static func unzipEntry(_ entry: String, from url: URL) throws -> Data {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        process.arguments = ["-p", url.path, entry]
+        let output = Pipe()
+        let error = Pipe()
+        process.standardOutput = output
+        process.standardError = error
+        try process.run()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0, !data.isEmpty else {
             throw DocumentError.docxFailed
         }
-        return DocxPackage(directory: directory)
+        return data
     }
 
     private static func run(

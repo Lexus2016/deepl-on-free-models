@@ -144,6 +144,7 @@ enum L10n {
     // MARK: - Tables
 
     private static let ukrainian: [String: String] = [
+        "Back to translation": "Назад до перекладу",
         "File": "Файл",
         "Translate file…": "Перекласти файл…",
         "Save translation…": "Зберегти переклад…",
@@ -422,6 +423,7 @@ enum L10n {
     ]
 
     private static let russian: [String: String] = [
+        "Back to translation": "Назад к переводу",
         "File": "Файл",
         "Translate file…": "Перевести файл…",
         "Save translation…": "Сохранить перевод…",
@@ -701,6 +703,7 @@ enum L10n {
 
 
     private static let german: [String: String] = [
+        "Back to translation": "Zurück zur Übersetzung",
         "File": "Datei",
         "Translate file…": "Datei übersetzen…",
         "Save translation…": "Übersetzung sichern…",
@@ -958,6 +961,7 @@ enum L10n {
     ]
 
     private static let french: [String: String] = [
+        "Back to translation": "Retour à la traduction",
         "File": "Fichier",
         "Translate file…": "Traduire un fichier…",
         "Save translation…": "Enregistrer la traduction…",
@@ -1215,6 +1219,7 @@ enum L10n {
     ]
 
     private static let spanish: [String: String] = [
+        "Back to translation": "Volver a la traducción",
         "File": "Archivo",
         "Translate file…": "Traducir archivo…",
         "Save translation…": "Guardar traducción…",
@@ -1472,6 +1477,7 @@ enum L10n {
     ]
 
     private static let polish: [String: String] = [
+        "Back to translation": "Powrót do tłumaczenia",
         "File": "Plik",
         "Translate file…": "Przetłumacz plik…",
         "Save translation…": "Zapisz tłumaczenie…",
@@ -1729,6 +1735,7 @@ enum L10n {
     ]
 
     private static let portuguese: [String: String] = [
+        "Back to translation": "Voltar à tradução",
         "File": "Arquivo",
         "Translate file…": "Traduzir arquivo…",
         "Save translation…": "Salvar tradução…",
@@ -1986,6 +1993,7 @@ enum L10n {
     ]
 
     private static let italian: [String: String] = [
+        "Back to translation": "Torna alla traduzione",
         "File": "File",
         "Translate file…": "Traduci file…",
         "Save translation…": "Salva traduzione…",
