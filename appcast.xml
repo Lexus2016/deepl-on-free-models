@@ -1,5 +1,6 @@
-<?xml version="1.0" standalone="yes"?>
-<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>DeepL-oFM</title>
         <item>
@@ -27,7 +28,10 @@ Fallback provider, automatic preload, better Groq support and wider text.
 
 If you are on 1.0.6, this is the first update delivered through Sparkle.
 ]]></description>
-            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.7/DeepL-oFM-1.0.7.dmg" length="3253413" type="application/octet-stream" sparkle:edSignature="WvFr1Z+2nl4qJtKGt+Nmis45rd+DfXoo1OaVlcJ1wKX7zGRNvwATxjwxi6oOsjdsBqfhQJGod5Y/p1f4ugGQBQ=="/>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.7/DeepL-oFM-1.0.7.dmg" length="3253413" type="application/octet-stream" sparkle:edSignature="WvFr1Z+2nl4qJtKGt+Nmis45rd+DfXoo1OaVlcJ1wKX7zGRNvwATxjwxi6oOsjdsBqfhQJGod5Y/p1f4ugGQBQ=="></enclosure>
         </item>
     </channel>
-</rss>
+</rss><!-- sparkle-signatures:
+edSignature: P1/7erT5jGL9Qw/8aaDiat8FBROjpJzMKavAHp9dkhqgaOnxc93F+WjlM1zXU2gRVJ0SDqVlrUP8vb0aC7XUDg==
+length: 2147
+-->

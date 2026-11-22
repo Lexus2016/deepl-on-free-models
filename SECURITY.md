@@ -1,5 +1,7 @@
 # Security
 
+**English** · [Українська](SECURITY.uk.md) · [Русский](SECURITY.ru.md)
+
 ## Keys and secrets
 
 - API keys are stored in the **macOS Keychain**, one item per provider

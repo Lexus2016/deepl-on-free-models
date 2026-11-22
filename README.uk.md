@@ -15,9 +15,9 @@ Ollama Cloud, OpenRouter, Groq, Cerebras, LM Studio, oMLX, llama.cpp і
 > Не пов'язаний із DeepL SE. «DeepL-oFM» описує стиль інтерфейсу
 > («on Free Models»); це незалежний open-source проєкт.
 
-![Переклад](docs/screenshot-uk.png)
+![Переклад](docs/screenshots/uk/translation.png)
 
-![Налаштування](docs/settings-uk.png)
+![Налаштування](docs/screenshots/uk/settings.png)
 
 ## Можливості
 
@@ -200,7 +200,7 @@ HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh
 
 ## Оновлення
 
-![Оновлення](docs/updates-uk.png)
+![Оновлення](docs/screenshots/uk/updates.png)
 
 Застосунок використовує **Sparkle 2** із підписаним appcast:
 
@@ -326,7 +326,7 @@ num_ctx        = 8192
 - Accessibility використовується лише для надсилання `⌘C` перед перекладом
   виділеного.
 
-Див. [SECURITY.md](SECURITY.md). Якщо ключ витік, негайно відкличте його в
+Див. [SECURITY.uk.md](SECURITY.uk.md). Якщо ключ витік, негайно відкличте його в
 панелі провайдера.
 
 ## Усунення проблем
@@ -362,6 +362,7 @@ Sources/HyMT/
   Views/                    інтерфейс SwiftUI
   Support/                  локалізація, Keychain, буфер, санітайзери
 Tests/HyMTTests/            юніт-тести (промпти, чанкер, токени, буфер)
+docs/screenshots/{en,uk,ru}/ скріншоти реального застосунку для кожної мови README
 ```
 
 Дані: `~/Library/Application Support/DeepL-oFM/history.json`; налаштування в
@@ -428,15 +429,23 @@ cp release-notes.md build/appcast/DeepL-oFM.md
   --account deepl-ofm \
   --download-url-prefix "https://github.com/Lexus2016/deepl-on-free-models/releases/download/vX.Y.Z/" \
   build/appcast
+
+cp build/appcast/appcast.xml appcast.xml
+.build/artifacts/sparkle/Sparkle/bin/sign_update --account deepl-ofm appcast.xml
+.build/artifacts/sparkle/Sparkle/bin/sign_update --account deepl-ofm --verify appcast.xml
 ```
 
-Закомітьте згенерований `appcast.xml` і завантажте DMG та appcast у GitHub
+Закомітьте підписаний `appcast.xml` і завантажте DMG та appcast у GitHub
 release. Приватний ключ EdDSA залишається в Keychain; у `Info.plist` є лише
-публічний.
+публічний. Підпис каналу й кожного файлу оновлення перевіряється цим ключем.
 
 `notarytool` використовує профіль, створений один раз через
 `xcrun notarytool store-credentials`; пароль не повинен потрапляти в
 репозиторій.
+
+## Участь у розробці
+
+Див. [CONTRIBUTING.uk.md](CONTRIBUTING.uk.md) — правила збірки, тестів, скріншотів і релізів. Зміни — у [CHANGELOG.md](CHANGELOG.md).
 
 ## Ліцензія
 

@@ -15,9 +15,9 @@ and any OpenAI-compatible server.
 > Not affiliated with DeepL SE. “DeepL-oFM” describes the interface style
 > (“on Free Models”); it is an independent open-source project.
 
-![Translation](docs/screenshot-en.png)
+![Translation](docs/screenshots/en/translation.png)
 
-![Settings](docs/settings-en.png)
+![Settings](docs/screenshots/en/settings.png)
 
 ## Features
 
@@ -193,7 +193,7 @@ English — the language Hy-MT2 was trained on.
 
 ## Updates
 
-![Updates](docs/updates-en.png)
+![Updates](docs/screenshots/en/updates.png)
 
 The app uses **Sparkle 2** with a signed appcast:
 
@@ -349,6 +349,7 @@ Sources/HyMT/
   Views/                    SwiftUI interface
   Support/                  localization, Keychain, clipboard, sanitizers
 Tests/HyMTTests/            unit tests (prompts, chunker, tokens, clipboard)
+docs/screenshots/{en,uk,ru}/ real-app screenshots for each README language
 ```
 
 Data: `~/Library/Application Support/DeepL-oFM/history.json`; settings in
@@ -414,14 +415,23 @@ cp release-notes.md build/appcast/DeepL-oFM.md
   --account deepl-ofm \
   --download-url-prefix "https://github.com/Lexus2016/deepl-on-free-models/releases/download/vX.Y.Z/" \
   build/appcast
+
+cp build/appcast/appcast.xml appcast.xml
+.build/artifacts/sparkle/Sparkle/bin/sign_update --account deepl-ofm appcast.xml
+.build/artifacts/sparkle/Sparkle/bin/sign_update --account deepl-ofm --verify appcast.xml
 ```
 
-Commit the generated `appcast.xml` and upload the DMG and appcast to the GitHub
+Commit the signed `appcast.xml` and upload the DMG and appcast to the GitHub
 release. The EdDSA private key stays in the login Keychain; only the public key
-is in `Info.plist`.
+is in `Info.plist`. The feed signature and every update enclosure are verified
+against that key.
 
 `notarytool` uses a profile created once with
 `xcrun notarytool store-credentials`; no password belongs in the repository.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, screenshot and release rules. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

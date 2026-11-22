@@ -15,9 +15,9 @@ OpenAI-совместимый сервер.
 > Не связан с DeepL SE. «DeepL-oFM» описывает стиль интерфейса
 > («on Free Models»); это независимый open-source проект.
 
-![Перевод](docs/screenshot-ru.png)
+![Перевод](docs/screenshots/ru/translation.png)
 
-![Настройки](docs/settings-ru.png)
+![Настройки](docs/screenshots/ru/settings.png)
 
 ## Возможности
 
@@ -201,7 +201,7 @@ HYMT_SIGN_IDENTITY="Developer ID Application: …" ./build.sh
 
 ## Обновления
 
-![Обновления](docs/updates-ru.png)
+![Обновления](docs/screenshots/ru/updates.png)
 
 Приложение использует **Sparkle 2** с подписанным appcast:
 
@@ -328,7 +328,7 @@ num_ctx        = 8192
 - Accessibility используется только для отправки `⌘C` перед переводом
   выделенного.
 
-См. [SECURITY.md](SECURITY.md). Если ключ утёк, немедленно отзовите его в панели
+См. [SECURITY.ru.md](SECURITY.ru.md). Если ключ утёк, немедленно отзовите его в панели
 провайдера.
 
 ## Устранение проблем
@@ -366,6 +366,7 @@ Sources/HyMT/
   Views/                    интерфейс SwiftUI
   Support/                  локализация, Keychain, буфер, санитайзеры
 Tests/HyMTTests/            юнит-тесты (промпты, чанкер, токены, буфер)
+docs/screenshots/{en,uk,ru}/ скриншоты реального приложения для каждого языка README
 ```
 
 Данные: `~/Library/Application Support/DeepL-oFM/history.json`; настройки в
@@ -432,14 +433,22 @@ cp release-notes.md build/appcast/DeepL-oFM.md
   --account deepl-ofm \
   --download-url-prefix "https://github.com/Lexus2016/deepl-on-free-models/releases/download/vX.Y.Z/" \
   build/appcast
+
+cp build/appcast/appcast.xml appcast.xml
+.build/artifacts/sparkle/Sparkle/bin/sign_update --account deepl-ofm appcast.xml
+.build/artifacts/sparkle/Sparkle/bin/sign_update --account deepl-ofm --verify appcast.xml
 ```
 
-Закоммитьте сгенерированный `appcast.xml` и загрузите DMG и appcast в GitHub
+Закоммитьте подписанный `appcast.xml` и загрузите DMG и appcast в GitHub
 release. Приватный ключ EdDSA остаётся в Keychain; в `Info.plist` только
-публичный.
+публичный. Подпись канала и каждого файла обновления проверяется этим ключом.
 
 `notarytool` использует профиль, созданный один раз через
 `xcrun notarytool store-credentials`; пароль не должен попадать в репозиторий.
+
+## Участие в разработке
+
+См. [CONTRIBUTING.ru.md](CONTRIBUTING.ru.md) — правила сборки, тестов, скриншотов и релизов. Изменения — в [CHANGELOG.md](CHANGELOG.md).
 
 ## Лицензия
 

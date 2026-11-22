@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a focused improvement for DeepL-oFM.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: What should the app do instead?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Translation quality
+        - Providers and models
+        - Updates
+        - Interface and accessibility
+        - Documentation
+        - Other
+    validations:
+      required: true

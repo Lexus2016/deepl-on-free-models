@@ -1,0 +1,84 @@
+name: Bug report
+description: Report a reproducible problem in DeepL-oFM.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Remove API keys, tokens and personal text before posting.
+  - type: input
+    id: version
+    attributes:
+      label: DeepL-oFM version
+      description: Settings → About, or the DMG filename.
+      placeholder: "1.0.7"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac model
+      placeholder: "macOS 26.1, MacBook Pro M1 Pro"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Ollama (local)
+        - Ollama Cloud
+        - LM Studio
+        - oMLX
+        - llama.cpp
+        - OpenRouter
+        - Groq
+        - Cerebras
+        - Custom
+        - Not provider-specific
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model ID
+      placeholder: "openai/gpt-oss-120b"
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Settings → ...
+        2. Paste ...
+        3. Press ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the warning banner or error text if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Run with `DEEPLOFM_DEBUG=1` if useful. Never paste API keys.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed API keys, tokens and private text from this report.
+          required: true
+        - label: I checked that the same problem is not already reported.
+          required: true
