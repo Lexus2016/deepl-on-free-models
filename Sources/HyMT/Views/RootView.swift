@@ -1,7 +1,11 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct RootView: View {
     @EnvironmentObject private var app: AppState
+    @State private var dropTargeted = false
+
+    private var language: AppLanguage { app.settings.interfaceLanguage }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,6 +49,54 @@ struct RootView: View {
             }
             .frame(width: 0, height: 0)
         )
+        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $dropTargeted) { providers in
+            guard let provider = providers.first else { return false }
+            provider.loadItem(
+                forTypeIdentifier: UTType.fileURL.identifier,
+                options: nil
+            ) { item, _ in
+                let url: URL?
+                if let data = item as? Data {
+                    url = URL(dataRepresentation: data, relativeTo: nil)
+                } else if let value = item as? URL {
+                    url = value
+                } else {
+                    url = nil
+                }
+                guard let url else { return }
+                DispatchQueue.main.async {
+                    app.openDocument(at: url)
+                }
+            }
+            return true
+        }
+        .overlay {
+            if dropTargeted {
+                ZStack {
+                    Color.black.opacity(0.55)
+                    VStack(spacing: 10) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 32, weight: .light))
+                            .foregroundStyle(Theme.text)
+                        Text(L10n.t("Drop a file to translate", language))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Theme.text)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 22)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Theme.chromeRaised)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Theme.accent.opacity(0.6), lineWidth: 1)
+                    )
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            }
+        }
         .task {
             app.bootstrap()
         }
@@ -80,6 +132,7 @@ struct TopBar: View {
                 }) { tab in
                     tabButton(tab)
                 }
+                fileMenu
             }
 
             Spacer(minLength: 12)
@@ -149,6 +202,41 @@ struct TopBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(Theme.border).frame(height: 1)
         }
+    }
+
+    private var fileMenu: some View {
+        Menu {
+            Button(L10n.t("Translate file…", language)) {
+                app.openDocument()
+            }
+            Button(L10n.t("Save translation…", language)) {
+                app.saveTranslation()
+            }
+            .disabled(app.document == nil || app.translatedText.isEmpty)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 12, weight: .medium))
+                Text(L10n.t("File", language))
+                    .font(.system(size: 12.5, weight: .medium))
+            }
+            .foregroundStyle(app.document == nil ? Theme.secondary : Theme.text)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(app.document == nil ? Color.clear : Theme.chromeRaised)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(app.document == nil ? Color.clear : Theme.border, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(L10n.t("Translate file…", language))
     }
 
     private var logo: some View {

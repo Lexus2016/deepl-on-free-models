@@ -14,7 +14,18 @@ struct DeepLoFMApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1220, height: 800)
         .commands {
-            CommandGroup(replacing: .newItem) {}
+            CommandGroup(replacing: .newItem) {
+                Button(L10n.t("Translate file…", app.settings.interfaceLanguage)) {
+                    app.openDocument()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+
+                Button(L10n.t("Save translation…", app.settings.interfaceLanguage)) {
+                    app.saveTranslation()
+                }
+                .keyboardShortcut("s", modifiers: .command)
+                .disabled(app.document == nil || app.translatedText.isEmpty)
+            }
 
             CommandGroup(after: .appInfo) {
                 Button(L10n.t("Check for Updates…", app.settings.interfaceLanguage)) {

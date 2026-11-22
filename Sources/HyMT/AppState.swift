@@ -52,6 +52,8 @@ final class AppState: NSObject, ObservableObject {
     @Published var errorMessage: String?
     @Published var tokensPerSecond: Double?
     @Published var lastDurationMs: Int?
+    @Published var document: OpenedDocument?
+    private var pendingSaveURL: URL?
 
     @Published var sourceLanguage: Language {
         didSet {
@@ -181,6 +183,12 @@ final class AppState: NSObject, ObservableObject {
             sourceText = text
             detectedLanguage = Language.detect(text, preferred: settings.interfaceLanguage)
             translate(force: true)
+        }
+        if let index = arguments.firstIndex(of: "--open-file"), arguments.count > index + 1 {
+            openDocument(at: URL(fileURLWithPath: arguments[index + 1]))
+        }
+        if let index = arguments.firstIndex(of: "--save-file"), arguments.count > index + 1 {
+            pendingSaveURL = URL(fileURLWithPath: arguments[index + 1])
         }
         if arguments.contains("--translate-clipboard") {
             translateClipboard()
@@ -383,6 +391,7 @@ final class AppState: NSObject, ObservableObject {
             self.translationWarningCount = result.warnings
             self.debugLog("translate done in \(duration) ms: \(self.translatedText)")
             self.isTranslating = false
+            self.flushPendingSave()
             if result.warnings > 0 {
                 self.errorMessage = L10n.format(
                     "Some lines could not be translated (%d); they are left in the source language.",
@@ -489,6 +498,7 @@ final class AppState: NSObject, ObservableObject {
 
     func clearSource() {
         cancelTranslation()
+        discardDocument()
         sourceText = ""
         translatedText = ""
         errorMessage = nil
@@ -559,6 +569,90 @@ final class AppState: NSObject, ObservableObject {
     func copySource() {
         guard !sourceText.isEmpty else { return }
         ClipboardWriter.copy(sourceText)
+    }
+
+    // MARK: - Files
+
+    func openDocument() {
+        let panel = NSOpenPanel()
+        panel.title = L10n.t("Open a document", settings.interfaceLanguage)
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = DocumentTranslator.supportedContentTypes
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        openDocument(at: url)
+    }
+
+    func openDocument(at url: URL) {
+        do {
+            let opened = try DocumentTranslator.read(url: url)
+            discardDocument()
+            cancelTranslation()
+            document = opened
+            suppressRetranslation = true
+            sourceText = opened.text
+            translatedText = ""
+            errorMessage = nil
+            suppressRetranslation = false
+            detectedLanguage = sourceLanguage == .auto
+                ? Language.detect(opened.text, preferred: settings.interfaceLanguage)
+                : nil
+            tab = .translate
+            showWindow()
+            translate(force: true)
+        } catch let error as DocumentError {
+            errorMessage = error.message(settings.interfaceLanguage)
+            showWindow()
+        } catch {
+            errorMessage = L10n.t("The file could not be read.", settings.interfaceLanguage)
+            showWindow()
+        }
+    }
+
+    func saveTranslation() {
+        guard let document, !translatedText.isEmpty else { return }
+        let panel = NSSavePanel()
+        panel.title = L10n.t("Translated file", settings.interfaceLanguage)
+        panel.nameFieldStringValue = defaultFileName(for: document)
+        if let type = document.kind.contentType {
+            panel.allowedContentTypes = [type]
+        }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        saveTranslation(to: url)
+    }
+
+    func saveTranslation(to url: URL) {
+        guard let document, !translatedText.isEmpty else { return }
+        do {
+            try DocumentTranslator.write(
+                document: document,
+                translated: translatedText,
+                to: url
+            )
+        } catch {
+            errorMessage = L10n.t(
+                "The translation could not be saved.",
+                settings.interfaceLanguage
+            )
+        }
+    }
+
+    private func defaultFileName(for document: OpenedDocument) -> String {
+        let base = document.url.deletingPathExtension().lastPathComponent
+        return "\(base)-\(targetLanguage.code).\(document.kind.fileExtension)"
+    }
+
+    private func flushPendingSave() {
+        guard let url = pendingSaveURL else { return }
+        pendingSaveURL = nil
+        saveTranslation(to: url)
+    }
+
+    func discardDocument() {
+        if let package = document?.docx {
+            DocumentTranslator.discard(package)
+        }
+        document = nil
     }
 
     // MARK: - Updates

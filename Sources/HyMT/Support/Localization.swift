@@ -144,6 +144,17 @@ enum L10n {
     // MARK: - Tables
 
     private static let ukrainian: [String: String] = [
+        "File": "Файл",
+        "Translate file…": "Перекласти файл…",
+        "Save translation…": "Зберегти переклад…",
+        "Translated file": "Перекладений файл",
+        "Open a document": "Відкрити документ",
+        "This file type is not supported.": "Цей тип файлу не підтримується.",
+        "The file could not be read.": "Не вдалося прочитати файл.",
+        "The document contains no text. Scanned PDFs need OCR first.": "Документ не містить тексту. Скановані PDF спершу потребують OCR.",
+        "The Word document could not be processed.": "Не вдалося обробити документ Word.",
+        "The translation could not be saved.": "Не вдалося зберегти переклад.",
+        "Drop a file to translate": "Перетягніть файл для перекладу",
         "Preview": "Перегляд",
         "Text only": "Тільки текст",
         "Markdown": "Markdown",
@@ -411,6 +422,17 @@ enum L10n {
     ]
 
     private static let russian: [String: String] = [
+        "File": "Файл",
+        "Translate file…": "Перевести файл…",
+        "Save translation…": "Сохранить перевод…",
+        "Translated file": "Переведённый файл",
+        "Open a document": "Открыть документ",
+        "This file type is not supported.": "Этот тип файла не поддерживается.",
+        "The file could not be read.": "Не удалось прочитать файл.",
+        "The document contains no text. Scanned PDFs need OCR first.": "Документ не содержит текста. Сканированные PDF сначала требуют OCR.",
+        "The Word document could not be processed.": "Не удалось обработать документ Word.",
+        "The translation could not be saved.": "Не удалось сохранить перевод.",
+        "Drop a file to translate": "Перетащите файл для перевода",
         "Preview": "Просмотр",
         "Text only": "Только текст",
         "Markdown": "Markdown",
@@ -679,6 +701,17 @@ enum L10n {
 
 
     private static let german: [String: String] = [
+        "File": "Datei",
+        "Translate file…": "Datei übersetzen…",
+        "Save translation…": "Übersetzung sichern…",
+        "Translated file": "Übersetzte Datei",
+        "Open a document": "Dokument öffnen",
+        "This file type is not supported.": "Dieser Dateityp wird nicht unterstützt.",
+        "The file could not be read.": "Die Datei konnte nicht gelesen werden.",
+        "The document contains no text. Scanned PDFs need OCR first.": "Das Dokument enthält keinen Text. Gescannte PDFs benötigen zuerst OCR.",
+        "The Word document could not be processed.": "Das Word-Dokument konnte nicht verarbeitet werden.",
+        "The translation could not be saved.": "Die Übersetzung konnte nicht gesichert werden.",
+        "Drop a file to translate": "Datei zum Übersetzen ablegen",
         "Preview": "Vorschau",
         "Text only": "Nur Text",
         "Markdown": "Markdown",
@@ -925,6 +958,17 @@ enum L10n {
     ]
 
     private static let french: [String: String] = [
+        "File": "Fichier",
+        "Translate file…": "Traduire un fichier…",
+        "Save translation…": "Enregistrer la traduction…",
+        "Translated file": "Fichier traduit",
+        "Open a document": "Ouvrir un document",
+        "This file type is not supported.": "Ce type de fichier n'est pas pris en charge.",
+        "The file could not be read.": "Impossible de lire le fichier.",
+        "The document contains no text. Scanned PDFs need OCR first.": "Le document ne contient pas de texte. Les PDF scannés nécessitent d'abord une OCR.",
+        "The Word document could not be processed.": "Impossible de traiter le document Word.",
+        "The translation could not be saved.": "Impossible d'enregistrer la traduction.",
+        "Drop a file to translate": "Déposez un fichier à traduire",
         "Preview": "Aperçu",
         "Text only": "Texte seul",
         "Markdown": "Markdown",
@@ -1171,6 +1215,17 @@ enum L10n {
     ]
 
     private static let spanish: [String: String] = [
+        "File": "Archivo",
+        "Translate file…": "Traducir archivo…",
+        "Save translation…": "Guardar traducción…",
+        "Translated file": "Archivo traducido",
+        "Open a document": "Abrir un documento",
+        "This file type is not supported.": "Este tipo de archivo no es compatible.",
+        "The file could not be read.": "No se pudo leer el archivo.",
+        "The document contains no text. Scanned PDFs need OCR first.": "El documento no contiene texto. Los PDF escaneados necesitan OCR primero.",
+        "The Word document could not be processed.": "No se pudo procesar el documento de Word.",
+        "The translation could not be saved.": "No se pudo guardar la traducción.",
+        "Drop a file to translate": "Suelta un archivo para traducir",
         "Preview": "Vista previa",
         "Text only": "Solo texto",
         "Markdown": "Markdown",
@@ -1417,6 +1472,17 @@ enum L10n {
     ]
 
     private static let polish: [String: String] = [
+        "File": "Plik",
+        "Translate file…": "Przetłumacz plik…",
+        "Save translation…": "Zapisz tłumaczenie…",
+        "Translated file": "Przetłumaczony plik",
+        "Open a document": "Otwórz dokument",
+        "This file type is not supported.": "Ten typ pliku nie jest obsługiwany.",
+        "The file could not be read.": "Nie udało się odczytać pliku.",
+        "The document contains no text. Scanned PDFs need OCR first.": "Dokument nie zawiera tekstu. Zeskanowane pliki PDF wymagają najpierw OCR.",
+        "The Word document could not be processed.": "Nie udało się przetworzyć dokumentu Word.",
+        "The translation could not be saved.": "Nie udało się zapisać tłumaczenia.",
+        "Drop a file to translate": "Przeciągnij plik do tłumaczenia",
         "Preview": "Podgląd",
         "Text only": "Tylko tekst",
         "Markdown": "Markdown",
@@ -1663,6 +1729,17 @@ enum L10n {
     ]
 
     private static let portuguese: [String: String] = [
+        "File": "Arquivo",
+        "Translate file…": "Traduzir arquivo…",
+        "Save translation…": "Salvar tradução…",
+        "Translated file": "Arquivo traduzido",
+        "Open a document": "Abrir documento",
+        "This file type is not supported.": "Este tipo de arquivo não é compatível.",
+        "The file could not be read.": "Não foi possível ler o arquivo.",
+        "The document contains no text. Scanned PDFs need OCR first.": "O documento não contém texto. PDFs digitalizados precisam de OCR primeiro.",
+        "The Word document could not be processed.": "Não foi possível processar o documento do Word.",
+        "The translation could not be saved.": "Não foi possível salvar a tradução.",
+        "Drop a file to translate": "Solte um arquivo para traduzir",
         "Preview": "Pré-visualização",
         "Text only": "Somente texto",
         "Markdown": "Markdown",
@@ -1909,6 +1986,17 @@ enum L10n {
     ]
 
     private static let italian: [String: String] = [
+        "File": "File",
+        "Translate file…": "Traduci file…",
+        "Save translation…": "Salva traduzione…",
+        "Translated file": "File tradotto",
+        "Open a document": "Apri documento",
+        "This file type is not supported.": "Questo tipo di file non è supportato.",
+        "The file could not be read.": "Impossibile leggere il file.",
+        "The document contains no text. Scanned PDFs need OCR first.": "Il documento non contiene testo. I PDF scansionati richiedono prima l'OCR.",
+        "The Word document could not be processed.": "Impossibile elaborare il documento Word.",
+        "The translation could not be saved.": "Impossibile salvare la traduzione.",
+        "Drop a file to translate": "Trascina un file da tradurre",
         "Preview": "Anteprima",
         "Text only": "Solo testo",
         "Markdown": "Markdown",

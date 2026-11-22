@@ -364,7 +364,13 @@ struct SourcePane: View {
                         app.copySource()
                     }
                 ],
-                counter: L10n.characters(app.sourceText.count, language)
+                counter: {
+                    let characters = L10n.characters(app.sourceText.count, language)
+                    if let name = app.document?.url.lastPathComponent {
+                        return "\(name) · \(characters)"
+                    }
+                    return characters
+                }()
             )
         }
         .background(Theme.editor)
@@ -527,6 +533,13 @@ struct TargetPane: View {
                 left: [
                     PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the translation", language), active: !app.translatedText.isEmpty) {
                         app.speakTranslation()
+                    },
+                    PaneAction(
+                        icon: "square.and.arrow.down",
+                        help: L10n.t("Save translation…", language),
+                        active: app.document != nil && !app.translatedText.isEmpty
+                    ) {
+                        app.saveTranslation()
                     }
                 ],
                 accessory: AnyView(
@@ -659,6 +672,8 @@ struct PaneFooter: View {
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.tertiary)
                 .monospacedDigit()
+                .lineLimit(1)
+                .truncationMode(.middle)
             ForEach(right) { item in
                 if let title = item.title {
                     Button(action: item.action) {

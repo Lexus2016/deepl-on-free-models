@@ -54,6 +54,8 @@ The same window can use a cloud model when you need more speed or quality.
 - **Markdown view.** The result pane has three views: rendered Markdown, plain
   text with every marker removed, and the raw Markdown source. Copy follows the
   active view — rich text, clean text, or Markdown.
+- **Files.** Open `.txt`, `.md`, `.pdf` or `.docx`, or drop one onto the window;
+  Save writes the translated document back in its original format.
 - **Automatic updates** through Sparkle 2: a daily signed-feed check, a manual
   **Check for Updates…** button, and an optional fully automatic install.
 - **Optional fallback provider and model.** If the primary provider fails, the
@@ -85,6 +87,19 @@ The application interface is available in English, Ukrainian, Russian, German,
 French, Spanish, Polish, Portuguese and Italian. The translation
 picker itself exposes every language above, and its names follow the interface
 locale.
+
+## Files
+
+**File → Translate file…** (⌘O) opens a `.txt`, `.md`, `.pdf` or `.docx` file;
+you can also drop one onto the window. The text is extracted into the source
+pane, translated in the usual three views, and **Save translation…** (⌘S)
+writes the result back:
+
+- **Text and Markdown** keep their content and line structure.
+- **DOCX** keeps styles, images, tables and lists; paragraphs are translated in
+  place, so the document opens in Word looking like the original with new text.
+- **PDF** is rebuilt as a clean, selectable, reflowed document. The original
+  layout is not reproduced, and scanned PDFs need OCR before translation.
 
 ## Providers
 
