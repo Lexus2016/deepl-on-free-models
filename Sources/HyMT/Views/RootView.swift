@@ -20,7 +20,24 @@ struct RootView: View {
             StatusBar()
         }
         .frame(minWidth: 1000, minHeight: 640)
-        .background(Theme.window.ignoresSafeArea())
+        .background(
+            ZStack {
+                Theme.window
+                RadialGradient(
+                    colors: [Theme.accent.opacity(0.10), .clear],
+                    center: .topLeading,
+                    startRadius: 20,
+                    endRadius: 900
+                )
+                RadialGradient(
+                    colors: [Theme.accentAlt.opacity(0.06), .clear],
+                    center: .bottomTrailing,
+                    startRadius: 20,
+                    endRadius: 800
+                )
+            }
+            .ignoresSafeArea()
+        )
         .preferredColorScheme(.dark)
         .background(
             WindowAccessor { window in
@@ -49,7 +66,13 @@ struct TopBar: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            logo
+            HStack(spacing: 8) {
+                logo
+                Text("DeepL-oFM")
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(Theme.text)
+                    .fixedSize()
+            }
 
             HStack(spacing: 4) {
                 ForEach(AppState.Tab.allCases.filter { tab in
@@ -65,6 +88,9 @@ struct TopBar: View {
                 app.tab = .settings
             } label: {
                 HStack(spacing: 7) {
+                    Image(systemName: app.settings.provider.icon)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Theme.secondary)
                     Circle()
                         .fill(statusColor)
                         .frame(width: 7, height: 7)

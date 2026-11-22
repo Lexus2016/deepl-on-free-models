@@ -34,14 +34,20 @@ struct SettingsCard<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Theme.text)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.tertiary)
+            HStack(alignment: .top, spacing: 10) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(Theme.accentGradient)
+                    .frame(width: 3, height: 34)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Theme.text)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.tertiary)
+                    }
                 }
             }
             content

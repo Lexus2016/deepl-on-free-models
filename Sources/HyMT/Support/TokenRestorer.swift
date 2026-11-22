@@ -6,7 +6,10 @@ import Foundation
 /// still translated normally.
 enum TokenRestorer {
 
-    private static let pattern = #"(?:[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})|(?:https?://[^\s)\]>"']+)|(?:(?:[A-Za-z0-9][A-Za-z0-9-]*\.)+(?:com|ai|org|io|dev|net|app|co|ua|me|info|biz|xyz|tech|cloud|pro)\b(?:/[^\s)\]]*)?)|(?:`[^`\n]+`)|(?<![A-Za-z0-9._-])[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._:-]*(?![A-Za-z0-9._-])|(?<![A-Za-z0-9._-])(?=[A-Za-z0-9.-]*\d)[A-Za-z][A-Za-z0-9]*(?:[.-][A-Za-z0-9]+)+(?![A-Za-z0-9._-])"#
+    // The trailing lookahead must allow a sentence period: `Hy-MT2.` at the
+    // end of a sentence is the same protected token as `Hy-MT2 ` in the
+    // middle. The dot is not part of the token and stays in the translation.
+    private static let pattern = #"(?:[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})|(?:https?://[^\s)\]>"']+)|(?:(?:[A-Za-z0-9][A-Za-z0-9-]*\.)+(?:com|ai|org|io|dev|net|app|co|ua|me|info|biz|xyz|tech|cloud|pro)\b(?:/[^\s)\]]*)?)|(?:`[^`\n]+`)|(?<![A-Za-z0-9._-])[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._:-]*(?![A-Za-z0-9_-])|(?<![A-Za-z0-9._-])(?=[A-Za-z0-9.-]*\d)[A-Za-z][A-Za-z0-9]*(?:[.-][A-Za-z0-9]+)+(?![A-Za-z0-9_-])"#
 
     private static let trailingPunctuation: Set<Character> = [".", ",", ";", ":", "!", "?", "…"]
 
@@ -22,17 +25,24 @@ enum TokenRestorer {
         guard !sourceTokens.isEmpty else { return translated }
 
         let translatedTokens = matches(in: translated)
-        guard sourceTokens.count == translatedTokens.count else {
-            return nil
+        if sourceTokens.count == translatedTokens.count {
+            var result = translated
+            for (sourceMatch, translatedMatch) in zip(sourceTokens, translatedTokens).reversed() {
+                // Preserve the source spelling, including Unicode hyphens.
+                let sourceToken = String(source[sourceMatch.range])
+                result.replaceSubrange(translatedMatch.range, with: sourceToken)
+            }
+            return result
         }
 
-        var result = translated
-        for (sourceMatch, translatedMatch) in zip(sourceTokens, translatedTokens).reversed() {
-            // Preserve the source spelling, including Unicode hyphens.
-            let sourceToken = String(source[sourceMatch.range])
-            result.replaceSubrange(translatedMatch.range, with: sourceToken)
+        // Counts differ when the model repeats an id or writes it twice with
+        // different casing. Accept the line only when every token survived;
+        // a dropped or mangled URL still falls back to the source line.
+        let normalized = normalizeHyphens(translated).lowercased()
+        let keptEveryToken = sourceTokens.allSatisfy { match in
+            normalized.contains(normalizeHyphens(match.token).lowercased())
         }
-        return result
+        return keptEveryToken ? translated : nil
     }
 
     static func preserveTrailingPunctuation(source: String, translated: String) -> String {
@@ -48,17 +58,22 @@ enum TokenRestorer {
         return trimmed + String(lastSource)
     }
 
-    private static func matches(in text: String) -> [Match] {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-        // Models often replace ASCII hyphens with U+2010/U+2011 in model ids
-        // (Hy‑MT2). Normalize them only for matching; restore the source text.
-        let normalized = text
+    /// Models often replace ASCII hyphens with U+2010…U+2212 in model ids
+    /// (Hy‑MT2). Normalizing keeps matching stable; the source spelling is
+    /// restored afterwards.
+    private static func normalizeHyphens(_ text: String) -> String {
+        text
             .replacingOccurrences(of: "\u{2010}", with: "-")
             .replacingOccurrences(of: "\u{2011}", with: "-")
             .replacingOccurrences(of: "\u{2012}", with: "-")
             .replacingOccurrences(of: "\u{2013}", with: "-")
             .replacingOccurrences(of: "\u{2014}", with: "-")
             .replacingOccurrences(of: "\u{2212}", with: "-")
+    }
+
+    private static func matches(in text: String) -> [Match] {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let normalized = normalizeHyphens(text)
         let nsRange = NSRange(normalized.startIndex..., in: normalized)
         return regex.matches(in: normalized, range: nsRange).compactMap { match in
             guard let normalizedRange = Range(match.range, in: normalized),

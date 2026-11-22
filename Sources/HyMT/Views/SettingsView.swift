@@ -587,12 +587,15 @@ struct SettingsView: View {
                     .font(.system(size: 12.5))
 
                 FieldRow(label: L10n.t("Interface language", language)) {
-                    SegmentedChoice(
-                        options: AppLanguage.allCases,
-                        title: { $0.pickerTitle(current: language) },
-                        selection: $settings.interfaceLanguage
-                    )
-                    .frame(width: 460)
+                    Picker("", selection: $settings.interfaceLanguage) {
+                        ForEach(AppLanguage.allCases) { languageOption in
+                            Text(languageOption.pickerTitle(current: language))
+                                .tag(languageOption)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 240)
                 }
             }
         }

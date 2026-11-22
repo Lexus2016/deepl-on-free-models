@@ -283,13 +283,7 @@ final class AppState: NSObject, ObservableObject {
            let detected = Language.detect(trimmed, preferred: settings.interfaceLanguage),
            detected == target {
             let interface = settings.interfaceLanguage.resolved
-            let preferredCode: String
-            switch interface {
-            case .uk: preferredCode = "uk"
-            case .ru: preferredCode = "ru"
-            default: preferredCode = "en"
-            }
-            var fallback = Language.with(code: preferredCode)
+            var fallback = Language.with(code: interface.rawValue)
             if fallback == nil || fallback == detected {
                 fallback = Language.with(code: detected.code == "en" ? "uk" : "en")
             }
@@ -533,8 +527,10 @@ final class AppState: NSObject, ObservableObject {
     }
 
     func translateClipboard() {
-        let clipboard = NSPasteboard.general.string(forType: .string)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        // Keep the formatting of a copied page or document: HTML/RTF becomes
+        // Markdown, so headings, lists and links survive translation.
+        let clipboard = (RichTextPasteboard.markdown() ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         showWindow()
         guard !clipboard.isEmpty else { return }
 
@@ -797,12 +793,13 @@ final class AppState: NSObject, ObservableObject {
             for _ in 0..<24 {
                 try? await Task.sleep(nanoseconds: 50_000_000)
                 if Task.isCancelled { return }
-                if pasteboard.changeCount != initialChange,
-                   let text = pasteboard.string(forType: .string)?
-                        .trimmingCharacters(in: .whitespacesAndNewlines),
-                   !text.isEmpty {
-                    captured = text
-                    break
+                if pasteboard.changeCount != initialChange {
+                    let plain = pasteboard.string(forType: .string)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    if !plain.isEmpty {
+                        captured = RichTextPasteboard.markdown() ?? plain
+                        break
+                    }
                 }
             }
 
@@ -866,13 +863,19 @@ final class AppState: NSObject, ObservableObject {
         settings.$hotKey
             .dropFirst()
             .removeDuplicates()
-            .sink { [weak self] _ in self?.registerHotKeys() }
+            .sink { [weak self] combo in
+                // @Published fires in willSet: use the emitted value, not the
+                // stored property, or the status text and registration stay old.
+                self?.registerHotKeys(clipboardCombo: combo)
+            }
             .store(in: &cancellables)
 
         settings.$selectionHotKey
             .dropFirst()
             .removeDuplicates()
-            .sink { [weak self] _ in self?.registerHotKeys() }
+            .sink { [weak self] combo in
+                self?.registerHotKeys(selectionCombo: combo)
+            }
             .store(in: &cancellables)
 
         settings.$interfaceLanguage
@@ -946,10 +949,13 @@ final class AppState: NSObject, ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func registerHotKeys() {
+    private func registerHotKeys(
+        clipboardCombo: KeyCombo? = nil,
+        selectionCombo: KeyCombo? = nil
+    ) {
         let language = settings.interfaceLanguage
-        let clipboardCombo = settings.hotKey
-        let selectionCombo = settings.selectionHotKey
+        let clipboardCombo = clipboardCombo ?? settings.hotKey
+        let selectionCombo = selectionCombo ?? settings.selectionHotKey
 
         let clipboardOK = hotKeys.register(clipboardCombo, id: 1) { [weak self] in
             Task { @MainActor in self?.translateClipboard() }

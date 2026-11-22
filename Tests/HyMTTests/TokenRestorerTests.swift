@@ -103,4 +103,50 @@ final class TokenRestorerTests: XCTestCase {
             "Hy\u{2011}MT2 7B model"
         )
     }
+
+    /// A model id that ends a sentence must not be read as a different token
+    /// count — that used to send the whole line back to the source language.
+    func testModelIDAtEndOfSentenceIsRestored() {
+        let source = "Styles Auto / Literal / Natural and tones Default / Formal / Casual, matching the Hy-MT2 model card."
+        let translated = "Стилі Авто / Дослівний / Натуральний та тони За замовчуванням / Формальний / Неформальний, відповідно до картки моделі Hy-MT2."
+        XCTAssertEqual(
+            TokenRestorer.restore(source: source, translated: translated),
+            translated
+        )
+    }
+
+    func testHyphenatedIDBeforePeriodIsRestoredExactly() {
+        let source = "The engine is Hy-MT2."
+        let translated = "Рушій — hy\u{2011}mt2."
+        XCTAssertEqual(
+            TokenRestorer.restore(source: source, translated: translated),
+            "Рушій — Hy-MT2."
+        )
+    }
+
+    func testModelIDBeforeCommaIsRestored() {
+        let source = "Hy-MT2, our translator"
+        let translated = "hy-mt2, наш перекладач"
+        XCTAssertEqual(
+            TokenRestorer.restore(source: source, translated: translated),
+            "Hy-MT2, наш перекладач"
+        )
+    }
+
+    /// The model sometimes repeats an id in parentheses. The translation is
+    /// still usable, so it must not fall back to the untranslated line.
+    func testRepeatedTokenKeepsTranslation() {
+        let source = "Model Hy-MT2 here"
+        let translated = "Модель Hy-MT2 (Hy-MT2) тут"
+        XCTAssertEqual(
+            TokenRestorer.restore(source: source, translated: translated),
+            translated
+        )
+    }
+
+    func testDroppedTokenStillFallsBack() {
+        let source = "Download from example.com/keys now"
+        let translated = "Завантажте звідси зараз"
+        XCTAssertNil(TokenRestorer.restore(source: source, translated: translated))
+    }
 }

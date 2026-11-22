@@ -25,7 +25,7 @@ struct LanguageBar: View {
 
     var body: some View {
         ZStack {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 LanguagePicker(
                     selection: app.sourceLanguage,
                     includeAuto: true,
@@ -42,6 +42,16 @@ struct LanguageBar: View {
                     app.targetLanguage = language
                 }
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Theme.chromeRaised.opacity(0.55))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Theme.borderSoft, lineWidth: 1)
+            )
 
             HStack(spacing: 8) {
                 Spacer()
@@ -214,7 +224,10 @@ struct StyleToneControls: View {
                     }
                 }
             } label: {
-                chip(text: "\(L10n.t("Style", language)) · \(L10n.t(app.style.title, language))  ⌄")
+                chip(
+                    text: "\(L10n.t("Style", language)) · \(L10n.t(app.style.title, language))",
+                    icon: "textformat"
+                )
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -236,7 +249,10 @@ struct StyleToneControls: View {
                     }
                 }
             } label: {
-                chip(text: "\(L10n.t("Tone", language)) · \(L10n.t(app.tone.title, language))  ⌄")
+                chip(
+                    text: "\(L10n.t("Tone", language)) · \(L10n.t(app.tone.title, language))",
+                    icon: "waveform"
+                )
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
@@ -244,9 +260,16 @@ struct StyleToneControls: View {
         }
     }
 
-    private func chip(text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11.5, weight: .medium))
+    private func chip(text: String, icon: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 9.5, weight: .semibold))
+            Text(text)
+                .font(.system(size: 11.5, weight: .medium))
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(Theme.tertiary)
+        }
             .foregroundStyle(Theme.secondary)
             .padding(.horizontal, 9)
             .padding(.vertical, 6)
@@ -264,7 +287,6 @@ struct StyleToneControls: View {
 
 struct SourcePane: View {
     @EnvironmentObject private var app: AppState
-    @FocusState private var focused: Bool
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
@@ -287,16 +309,8 @@ struct SourcePane: View {
                         .padding(.leading, 16)
                         .allowsHitTesting(false)
                 }
-                TextEditor(text: binding)
-                    .font(.system(size: 17))
-                    .lineSpacing(7)
-                    .foregroundStyle(Theme.text)
-                    .scrollContentBackground(.hidden)
-                    .scrollIndicators(.hidden)
-                    .padding(.leading, 10)
-                    .padding(.trailing, 28)
-                    .padding(.vertical, 12)
-                    .focused($focused)
+                SourceTextEditor(text: binding)
+                    .padding(.trailing, 18)
 
                 VStack {
                     HStack {
@@ -316,6 +330,9 @@ struct SourcePane: View {
                 left: [
                     PaneAction(icon: "speaker.wave.2", help: L10n.t("Listen to the original", language), active: !app.sourceText.isEmpty) {
                         app.speakSource()
+                    },
+                    PaneAction(icon: "doc.on.clipboard", help: L10n.t("Paste from clipboard", language), active: true) {
+                        app.translateClipboard()
                     }
                 ],
                 right: [
@@ -327,9 +344,6 @@ struct SourcePane: View {
             )
         }
         .background(Theme.editor)
-        .onAppear {
-            DispatchQueue.main.async { focused = true }
-        }
     }
 }
 
@@ -385,10 +399,30 @@ struct TargetPane: View {
                             Text(L10n.t("Translation will appear here", language))
                                 .font(.system(size: 13))
                                 .foregroundStyle(Theme.tertiary)
+                            if !app.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Button {
+                                    app.translate(force: true)
+                                } label: {
+                                    HStack(spacing: 7) {
+                                        Image(systemName: "arrow.right.circle.fill")
+                                            .font(.system(size: 12, weight: .semibold))
+                                        Text(L10n.t("Translate now", language))
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 13)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        Capsule().fill(Theme.accentGradient)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .focusEffectDisabled()
+                                .padding(.top, 4)
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .allowsHitTesting(false)
                 } else {
                     ScrollView {
                         HStack(alignment: .top, spacing: 1) {
