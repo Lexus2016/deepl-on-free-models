@@ -1105,6 +1105,10 @@ struct TranslationOutput {
     private var bytes = Data()
     private(set) var exceededLimit = false
 
+    init(maxBytes: Int) {
+        self.maxBytes = maxBytes
+    }
+
     var text: String { String(decoding: bytes, as: UTF8.self) }
 
     mutating func append(_ piece: String) -> Bool {
