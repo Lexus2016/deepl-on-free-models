@@ -27,6 +27,12 @@ enum TranslationError: LocalizedError {
         case .connection(let host):
             return L10n.format("Could not connect to %@. Check that the server is running.", language, host)
         case .http(let code, let body):
+            if code == 429 {
+                return L10n.t(
+                    "The provider rate limit was reached. Please wait a moment and try again.",
+                    language
+                )
+            }
             let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
             let short = trimmed.count > 400 ? String(trimmed.prefix(400)) + "…" : trimmed
             if short.isEmpty {
@@ -287,6 +293,51 @@ final class TranslationService {
         }
     }
 
+    /// One request per paragraph: the file form uses this instead of the
+    /// line-by-line stream, so a document does not spend one request per line.
+    func streamBlock(
+        text: String,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        target: Language,
+        config: BackendConfig
+    ) -> AsyncThrowingStream<TranslationEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let preserve = MarkdownDetector.contains(text)
+                    let prompts = [
+                        PromptBuilder.prompt(
+                            text: text,
+                            style: style,
+                            tone: tone,
+                            targetLanguage: target.englishName,
+                            preserveMarkdown: preserve
+                        ),
+                        PromptBuilder.plainPrompt(
+                            text: text,
+                            targetLanguage: target.englishName
+                        )
+                    ]
+                    let result = try await bufferedTranslation(
+                        prompts: prompts,
+                        source: text,
+                        target: target,
+                        config: config
+                    )
+                    continuation.yield(.chunk(result.text))
+                    if result.warning {
+                        continuation.yield(.warning)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     /// Raw completion for the writing mode: no translation prompts or target
     /// validation, just the provider's answer.
     func streamRaw(
@@ -510,7 +561,7 @@ final class TranslationService {
                     retryConfig.temperature = min(config.temperature, 0.3)
                 }
                 let maxLength = max(200, source.count * 4 + 100)
-                let raw = try await collect(
+                let raw = try await collectWithRetry(
                     prompt: prompt,
                     config: retryConfig,
                     maxLength: maxLength,
@@ -568,7 +619,7 @@ final class TranslationService {
                 var retryConfig = config
                 retryConfig.temperature = min(config.temperature, 0.3)
                 let maxLength = max(200, piece.count * 4 + 100)
-                let raw = try await collect(
+                let raw = try await collectWithRetry(
                     prompt: prompt,
                     config: retryConfig,
                     maxLength: maxLength,
@@ -743,6 +794,32 @@ final class TranslationService {
             }
         }
         return text
+    }
+
+    private func collectWithRetry(
+        prompt: String,
+        config: BackendConfig,
+        maxLength: Int,
+        target: Language
+    ) async throws -> String {
+        var attempt = 0
+        while true {
+            do {
+                return try await collect(
+                    prompt: prompt,
+                    config: config,
+                    maxLength: maxLength,
+                    target: target
+                )
+            } catch let error as TranslationError {
+                if case .http(let code, _) = error, code == 429, attempt < 5 {
+                    attempt += 1
+                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    continue
+                }
+                throw error
+            }
+        }
     }
 
     private func degenerateIndex(in text: String, target: Language) -> String.Index? {

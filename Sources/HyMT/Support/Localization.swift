@@ -144,6 +144,8 @@ enum L10n {
     // MARK: - Tables
 
     private static let ukrainian: [String: String] = [
+        "Fallback": "Резерв",
+        "The provider rate limit was reached. Please wait a moment and try again.": "Досягнуто ліміт запитів провайдера. Зачекайте мить і спробуйте ще раз.",
         "Improve clarity, grammar and style while keeping the meaning.": "Покращуйте ясність, граматику й стиль, зберігаючи зміст.",
         "Improve in": "Покращити мовою",
         "Improve text": "Покращити текст",
@@ -453,6 +455,8 @@ enum L10n {
     ]
 
     private static let russian: [String: String] = [
+        "Fallback": "Резерв",
+        "The provider rate limit was reached. Please wait a moment and try again.": "Достигнут лимит запросов провайдера. Подождите немного и попробуйте снова.",
         "Improve clarity, grammar and style while keeping the meaning.": "Улучшайте ясность, грамматику и стиль, сохраняя смысл.",
         "Improve in": "Улучшить на языке",
         "Improve text": "Улучшить текст",
@@ -763,6 +767,8 @@ enum L10n {
 
 
     private static let german: [String: String] = [
+        "Fallback": "Ausweich",
+        "The provider rate limit was reached. Please wait a moment and try again.": "Das Anfrage-Limit des Anbieters wurde erreicht. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
         "Improve clarity, grammar and style while keeping the meaning.": "Verbessern Sie Klarheit, Grammatik und Stil, ohne den Sinn zu verändern.",
         "Improve in": "Verbessern auf",
         "Improve text": "Text verbessern",
@@ -1051,6 +1057,8 @@ enum L10n {
     ]
 
     private static let french: [String: String] = [
+        "Fallback": "Secours",
+        "The provider rate limit was reached. Please wait a moment and try again.": "La limite de requêtes du fournisseur est atteinte. Patientez un instant et réessayez.",
         "Improve clarity, grammar and style while keeping the meaning.": "Améliorez la clarté, la grammaire et le style tout en gardant le sens.",
         "Improve in": "Améliorer en",
         "Improve text": "Améliorer le texte",
@@ -1339,6 +1347,8 @@ enum L10n {
     ]
 
     private static let spanish: [String: String] = [
+        "Fallback": "Respaldo",
+        "The provider rate limit was reached. Please wait a moment and try again.": "Se alcanzó el límite de solicitudes del proveedor. Espera un momento e inténtalo de nuevo.",
         "Improve clarity, grammar and style while keeping the meaning.": "Mejora la claridad, la gramática y el estilo sin cambiar el significado.",
         "Improve in": "Mejorar en",
         "Improve text": "Mejorar texto",
@@ -1627,6 +1637,8 @@ enum L10n {
     ]
 
     private static let polish: [String: String] = [
+        "Fallback": "Zapas",
+        "The provider rate limit was reached. Please wait a moment and try again.": "Osiągnięto limit żądań dostawcy. Poczekaj chwilę i spróbuj ponownie.",
         "Improve clarity, grammar and style while keeping the meaning.": "Popraw klarowność, gramatykę i styl, zachowując sens.",
         "Improve in": "Popraw w języku",
         "Improve text": "Popraw tekst",
@@ -1915,6 +1927,8 @@ enum L10n {
     ]
 
     private static let portuguese: [String: String] = [
+        "Fallback": "Reserva",
+        "The provider rate limit was reached. Please wait a moment and try again.": "O limite de pedidos do fornecedor foi atingido. Aguarde um momento e tente novamente.",
         "Improve clarity, grammar and style while keeping the meaning.": "Melhore a clareza, a gramática e o estilo mantendo o significado.",
         "Improve in": "Melhorar em",
         "Improve text": "Melhorar texto",
@@ -2203,6 +2217,8 @@ enum L10n {
     ]
 
     private static let italian: [String: String] = [
+        "Fallback": "Riserva",
+        "The provider rate limit was reached. Please wait a moment and try again.": "È stato raggiunto il limite di richieste del provider. Attendi un momento e riprova.",
         "Improve clarity, grammar and style while keeping the meaning.": "Migliora chiarezza, grammatica e stile mantenendo il significato.",
         "Improve in": "Migliora in",
         "Improve text": "Migliora testo",

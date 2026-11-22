@@ -4,6 +4,18 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.2] — 2026-11-22
+
+### Fixed
+
+- File translation uses the configured fallback provider and model when the
+  primary fails, including HTTP 429 rate limits, and shows which fallback is
+  active.
+- The file form sends one request per paragraph, not one per line; a paragraph
+  of three lines is now a single request.
+- A 429 rate limit is shown as a short human-readable message instead of the
+  provider's raw JSON; cloud file requests are paced and retried.
+
 ## [1.1.1] — 2026-11-22
 
 ### Changed
@@ -177,6 +189,7 @@ All notable changes to DeepL-oFM. The format follows
 - Initial native SwiftUI translator with Hy-MT2 7B through Ollama.
 - Two-pane translation, history, hotkeys and Ukrainian/Russian/English UI.
 
+[1.1.2]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.1.0
 [1.0.10]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.10

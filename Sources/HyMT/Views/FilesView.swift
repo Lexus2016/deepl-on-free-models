@@ -235,6 +235,16 @@ struct FilesView: View {
                     .controlSize(.small)
             }
 
+            if store.usingFallback, let label = store.fallbackLabel {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.triangle.swap")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text("\(L10n.t("Fallback", language)): \(label)")
+                        .font(.system(size: 11))
+                }
+                .foregroundStyle(Theme.tertiary)
+            }
+
             Button(L10n.t("Stop", language)) {
                 store.cancel()
             }
