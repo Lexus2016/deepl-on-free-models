@@ -4,7 +4,7 @@
         <title>DeepL-oFM</title>
         <item>
             <title>1.0.6</title>
-            <pubDate>Sun, 22 Nov 2026 13:10:59 +0100</pubDate>
+            <pubDate>Sun, 22 Nov 2026 13:34:29 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
             <sparkle:version>6</sparkle:version>
             <sparkle:shortVersionString>1.0.6</sparkle:shortVersionString>
@@ -13,17 +13,18 @@
             <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.0.6
 
 Automatic updates with Sparkle 2, a manual **Check for Updates…** button, and a
-drag-and-drop DMG.
+drag-and-drop signed DMG.
 
 - Sparkle 2 with a signed appcast and EdDSA update signatures; daily checks.
 - Optional automatic download and installation.
-- DMG now contains an **Applications** shortcut; drag the app to install.
+- The About window shows whether the app is up to date.
+- DMG contains an **Applications** shortcut; drag the app to install.
 - Signed and notarized DMG and app bundle.
 
 The base model is still Hy-MT2 7B via Ollama; use 30B-A3B or a cloud model for
 publication-quality long texts.
 ]]></description>
-            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.6/DeepL-oFM-1.0.6.dmg" length="3198631" type="application/octet-stream" sparkle:edSignature="SZMCh0aE9v3eCTCWGxiK+v9pSlm9kHcdRFCGb/redvgCntEFt+jQ44xX/LbzRB+j3k7P36g+erWTp/84qDJ1Dg=="/>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.0.6/DeepL-oFM-1.0.6.dmg" length="3203792" type="application/octet-stream" sparkle:edSignature="r+r6aZ+NhcOOSVX/RZnl6XhmvTKuCpDOWadDlmw1xGAniLVaC8eIeCuE64MbVGrpNngqEqHGv2tItK+gf67MDw=="/>
         </item>
     </channel>
 </rss>

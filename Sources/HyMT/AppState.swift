@@ -91,12 +91,13 @@ final class AppState: NSObject, ObservableObject {
     @Published var modelsLoading: Bool = false
     @Published var modelsError: String?
     @Published var showCatalog: Bool = false
+    @Published var updateStatus: String?
 
     // MARK: Dependencies
 
     let settings: AppSettings
     let history: HistoryStore
-    let updaterController: SPUStandardUpdaterController
+    private(set) var updaterController: SPUStandardUpdaterController!
 
     private let translator = TranslationService()
     private let hotKeys = HotKeyManager()
@@ -119,16 +120,22 @@ final class AppState: NSObject, ObservableObject {
         let settings = AppSettings()
         self.settings = settings
         self.history = HistoryStore()
-        self.updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
-        )
         self.sourceLanguage = Language.with(code: settings.lastSourceCode) ?? .auto
         self.targetLanguage = Language.with(code: settings.lastTargetCode) ?? Language.with(code: "en") ?? .auto
         self.style = settings.lastStyle
         self.tone = settings.lastTone
         super.init()
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: self,
+            userDriverDelegate: nil
+        )
+        // SUEnableAutomaticChecks in Info.plist only suppresses the first-run
+        // permission prompt. Seed the user default once so daily checks are on
+        // by default; an explicit user choice is never overwritten.
+        if UserDefaults.standard.object(forKey: "SUEnableAutomaticChecks") == nil {
+            updaterController.updater.automaticallyChecksForUpdates = true
+        }
         configureBindings()
         registerHotKeys()
         if settings.showInMenuBar { installStatusItem() }
@@ -141,6 +148,18 @@ final class AppState: NSObject, ObservableObject {
         didBootstrap = true
         debugLog("accessibility trusted: \(AXIsProcessTrusted())")
         checkConnection()
+
+        // Sparkle starts on the next run loop; refresh once so the update
+        // toggles show the real state instead of their pre-start defaults.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            self.debugLog(
+                "updates: automaticChecks=\(self.updaterController.updater.automaticallyChecksForUpdates) "
+                + "automaticDownloads=\(self.updaterController.updater.automaticallyDownloadsUpdates) "
+                + "default=\(UserDefaults.standard.bool(forKey: "SUEnableAutomaticChecks"))"
+            )
+            self.objectWillChange.send()
+        }
 
         let arguments = CommandLine.arguments
         if let index = arguments.firstIndex(of: "--prefill"), arguments.count > index + 1 {
@@ -159,7 +178,9 @@ final class AppState: NSObject, ObservableObject {
             showCatalog = true
         }
         if arguments.contains("--check-updates") {
-            checkForUpdates()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                self?.checkForUpdates()
+            }
         }
         if let index = arguments.firstIndex(of: "--tab"), arguments.count > index + 1 {
             switch arguments[index + 1] {
@@ -442,6 +463,7 @@ final class AppState: NSObject, ObservableObject {
     // MARK: - Updates
 
     func checkForUpdates() {
+        updateStatus = L10n.t("Checking for updates…", settings.interfaceLanguage)
         updaterController.checkForUpdates(nil)
     }
 
@@ -849,5 +871,27 @@ final class AppState: NSObject, ObservableObject {
 
     @objc private func menuQuit() {
         NSApp.terminate(nil)
+    }
+}
+
+extension AppState: SPUUpdaterDelegate {
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        updateStatus = L10n.format(
+            "Update available: %@",
+            settings.interfaceLanguage,
+            item.displayVersionString
+        )
+    }
+
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        updateStatus = L10n.t("You're up to date.", settings.interfaceLanguage)
+    }
+
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        updateStatus = L10n.format(
+            "Update check failed: %@",
+            settings.interfaceLanguage,
+            error.localizedDescription
+        )
     }
 }

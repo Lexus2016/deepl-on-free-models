@@ -6,6 +6,8 @@ struct SettingsView: View {
     @EnvironmentObject private var app: AppState
     @ObservedObject var settings: AppSettings
     @State private var modelFilter = ""
+    @AppStorage("SUEnableAutomaticChecks") private var automaticChecks = true
+    @AppStorage("SUAutomaticallyUpdate") private var automaticDownloads = false
 
     private var language: AppLanguage { settings.interfaceLanguage }
 
@@ -633,27 +635,34 @@ struct SettingsView: View {
                         .foregroundStyle(Theme.tertiary)
                 }
 
+                if let status = app.updateStatus {
+                    Text(status)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Toggle(
                     L10n.t("Automatically check for updates", language),
-                    isOn: Binding(
-                        get: { app.automaticallyChecksForUpdates },
-                        set: { app.automaticallyChecksForUpdates = $0 }
-                    )
+                    isOn: $automaticChecks
                 )
                 .toggleStyle(.switch)
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.secondary)
+                .onChange(of: automaticChecks) { _, value in
+                    app.automaticallyChecksForUpdates = value
+                }
 
                 Toggle(
                     L10n.t("Automatically download and install updates", language),
-                    isOn: Binding(
-                        get: { app.automaticallyDownloadsUpdates },
-                        set: { app.automaticallyDownloadsUpdates = $0 }
-                    )
+                    isOn: $automaticDownloads
                 )
                 .toggleStyle(.switch)
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.secondary)
+                .onChange(of: automaticDownloads) { _, value in
+                    app.automaticallyDownloadsUpdates = value
+                }
 
                 HStack(spacing: 14) {
                     Link("huggingface.co/tencent/Hy-MT2-7B", destination: URL(string: "https://huggingface.co/tencent/Hy-MT2-7B")!)
