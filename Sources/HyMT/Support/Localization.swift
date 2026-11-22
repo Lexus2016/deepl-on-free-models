@@ -144,6 +144,13 @@ enum L10n {
     // MARK: - Tables
 
     private static let ukrainian: [String: String] = [
+        "Done": "Готово",
+        "Share": "Поділитися",
+        "Version": "Версія",
+        "Source": "Джерело",
+        "Result": "Результат",
+        "Add your API key in Settings.": "Додайте ключ API у Налаштуваннях.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "Хмарним провайдерам потрібен ключ. Mac у тій самій мережі можна використати як власний сервер.",
         "Dock icon": "Іконка в Dock",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Вимкніть іконку в Dock, щоб DeepL-oFM залишався лише в меню-барі.",
         "Back to translation": "Назад до перекладу",
@@ -425,6 +432,13 @@ enum L10n {
     ]
 
     private static let russian: [String: String] = [
+        "Done": "Готово",
+        "Share": "Поделиться",
+        "Version": "Версия",
+        "Source": "Источник",
+        "Result": "Результат",
+        "Add your API key in Settings.": "Добавьте ключ API в Настройках.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "Облачным провайдерам нужен ключ. Mac в той же сети можно использовать как собственный сервер.",
         "Dock icon": "Иконка в Dock",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Отключите иконку в Dock, чтобы DeepL-oFM оставался только в меню-баре.",
         "Back to translation": "Назад к переводу",
@@ -707,6 +721,13 @@ enum L10n {
 
 
     private static let german: [String: String] = [
+        "Done": "Fertig",
+        "Share": "Teilen",
+        "Version": "Version",
+        "Source": "Quelle",
+        "Result": "Ergebnis",
+        "Add your API key in Settings.": "Fügen Sie Ihren API-Schlüssel in den Einstellungen hinzu.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "Cloud-Anbieter brauchen einen Schlüssel. Ein Mac im selben Netzwerk kann als eigener Server dienen.",
         "Dock icon": "Dock-Symbol",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Dock-Symbol ausblenden, damit DeepL-oFM nur in der Menüleiste bleibt.",
         "Back to translation": "Zurück zur Übersetzung",
@@ -967,6 +988,13 @@ enum L10n {
     ]
 
     private static let french: [String: String] = [
+        "Done": "Terminé",
+        "Share": "Partager",
+        "Version": "Version",
+        "Source": "Source",
+        "Result": "Résultat",
+        "Add your API key in Settings.": "Ajoutez votre clé API dans les Réglages.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "Les fournisseurs cloud nécessitent une clé. Un Mac sur le même réseau peut servir de serveur personnalisé.",
         "Dock icon": "Icône du Dock",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Masquez l’icône du Dock pour garder DeepL-oFM uniquement dans la barre des menus.",
         "Back to translation": "Retour à la traduction",
@@ -1227,6 +1255,13 @@ enum L10n {
     ]
 
     private static let spanish: [String: String] = [
+        "Done": "Listo",
+        "Share": "Compartir",
+        "Version": "Versión",
+        "Source": "Origen",
+        "Result": "Resultado",
+        "Add your API key in Settings.": "Añade tu clave API en Ajustes.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "Los proveedores en la nube necesitan una clave. Un Mac en la misma red puede usarse como servidor personalizado.",
         "Dock icon": "Icono del Dock",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Oculta el icono del Dock para mantener DeepL-oFM solo en la barra de menús.",
         "Back to translation": "Volver a la traducción",
@@ -1487,6 +1522,13 @@ enum L10n {
     ]
 
     private static let polish: [String: String] = [
+        "Done": "Gotowe",
+        "Share": "Udostępnij",
+        "Version": "Wersja",
+        "Source": "Źródło",
+        "Result": "Wynik",
+        "Add your API key in Settings.": "Dodaj klucz API w Ustawieniach.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "Dostawcy chmurowi wymagają klucza. Maca w tej samej sieci można użyć jako własnego serwera.",
         "Dock icon": "Ikona w Docku",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Ukryj ikonę w Docku, aby DeepL-oFM pozostał tylko w pasku menu.",
         "Back to translation": "Powrót do tłumaczenia",
@@ -1747,6 +1789,13 @@ enum L10n {
     ]
 
     private static let portuguese: [String: String] = [
+        "Done": "Concluído",
+        "Share": "Partilhar",
+        "Version": "Versão",
+        "Source": "Origem",
+        "Result": "Resultado",
+        "Add your API key in Settings.": "Adicione a sua chave API nas Definições.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "Os fornecedores na nuvem precisam de uma chave. Um Mac na mesma rede pode ser usado como servidor personalizado.",
         "Dock icon": "Ícone no Dock",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Oculte o ícone no Dock para manter o DeepL-oFM apenas na barra de menus.",
         "Back to translation": "Voltar à tradução",
@@ -2007,6 +2056,13 @@ enum L10n {
     ]
 
     private static let italian: [String: String] = [
+        "Done": "Fatto",
+        "Share": "Condividi",
+        "Version": "Versione",
+        "Source": "Origine",
+        "Result": "Risultato",
+        "Add your API key in Settings.": "Aggiungi la tua chiave API nelle Impostazioni.",
+        "Cloud providers need a key. A Mac on the same network can be used as a custom server.": "I provider cloud richiedono una chiave. Un Mac sulla stessa rete può essere usato come server personalizzato.",
         "Dock icon": "Icona nel Dock",
         "Hide the Dock icon to keep DeepL-oFM in the menu bar only.": "Nascondi l’icona nel Dock per tenere DeepL-oFM solo nella barra dei menu.",
         "Back to translation": "Torna alla traduzione",

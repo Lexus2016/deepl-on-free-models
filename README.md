@@ -105,6 +105,13 @@ writes the result back:
 - **PDF** keeps the original pages — layout, images, charts and typography —
   and paints the translation into the same text blocks. Scanned PDFs need OCR.
 
+## iPhone
+
+An iPhone app lives in [`ios/`](ios/README.md): the same translation core,
+SwiftUI interface, nine interface languages, cloud providers and a custom LAN
+endpoint. It builds with XcodeGen and Xcode; App Store distribution needs an
+App Store Connect record and a distribution certificate.
+
 ## Providers
 
 | Provider | Type | API key | Notes |

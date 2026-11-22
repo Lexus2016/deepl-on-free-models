@@ -4,6 +4,19 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.10] — 2026-11-22
+
+### Added
+
+- iPhone app source in `ios/`: the same translation core, SwiftUI interface,
+  nine interface languages, cloud providers and a custom LAN endpoint. Build
+  instructions are in `ios/README.md`.
+
+### Fixed
+
+- Closing the window keeps DeepL-oFM in the menu bar; the clipboard hotkey now
+  brings the window back instead of leaving the app active without a window.
+
 ## [1.0.9] — 2026-11-22
 
 ### Added
@@ -136,6 +149,7 @@ All notable changes to DeepL-oFM. The format follows
 - Initial native SwiftUI translator with Hy-MT2 7B through Ollama.
 - Two-pane translation, history, hotkeys and Ukrainian/Russian/English UI.
 
+[1.0.10]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.10
 [1.0.9]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.9
 [1.0.8]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.8
 [1.0.7]: https://github.com/Lexus2016/deepl-on-free-models/releases/tag/v1.0.7

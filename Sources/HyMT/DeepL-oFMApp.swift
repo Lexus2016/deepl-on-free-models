@@ -7,7 +7,7 @@ struct DeepLoFMApp: App {
     @StateObject private var app = AppState()
 
     var body: some Scene {
-        WindowGroup("DeepL-oFM") {
+        WindowGroup("DeepL-oFM", id: "main") {
             RootView()
                 .environmentObject(app)
         }
@@ -101,7 +101,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            sender.windows.first(where: { $0.canBecomeMain })?.makeKeyAndOrderFront(nil)
+            if let window = sender.windows.first(where: { $0.canBecomeMain }) {
+                window.makeKeyAndOrderFront(nil)
+            } else {
+                NotificationCenter.default.post(name: .showMainWindow, object: nil)
+            }
         }
         return true
     }

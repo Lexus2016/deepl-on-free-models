@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct RootView: View {
     @EnvironmentObject private var app: AppState
+    @Environment(\.openWindow) private var openWindow
     @State private var dropTargeted = false
     @State private var escapeMonitor: Any?
 
@@ -101,6 +102,12 @@ struct RootView: View {
         }
         .task {
             app.bootstrap()
+        }
+        .onChange(of: app.windowRequest) { _, _ in
+            openWindow(id: "main")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showMainWindow)) { _ in
+            app.showWindow()
         }
         .onAppear {
             escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in

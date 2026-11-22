@@ -5,6 +5,10 @@ import Combine
 import Foundation
 import Sparkle
 
+extension Notification.Name {
+    static let showMainWindow = Notification.Name("ua.admin.hymt.showMainWindow")
+}
+
 @MainActor
 final class AppState: NSObject, ObservableObject {
 
@@ -53,6 +57,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var tokensPerSecond: Double?
     @Published var lastDurationMs: Int?
     @Published var document: OpenedDocument?
+    @Published var windowRequest = 0
     private var pendingSaveURL: URL?
 
     @Published var sourceLanguage: Language {
@@ -234,6 +239,11 @@ final class AppState: NSObject, ObservableObject {
         window.isReleasedWhenClosed = false
         window.isRestorable = false
         window.minSize = NSSize(width: 1000, height: 640)
+        window.delegate = self
+        if let close = window.standardWindowButton(.closeButton) {
+            close.target = self
+            close.action = #selector(hideMainWindow)
+        }
 
         guard !didActivateWindow else { return }
         didActivateWindow = true
@@ -251,12 +261,36 @@ final class AppState: NSObject, ObservableObject {
             NSApp.activate(ignoringOtherApps: true)
         }
         if let window = mainWindow {
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
             window.makeKeyAndOrderFront(nil)
         } else if let window = NSApp.windows.first(where: { $0.canBecomeMain }) {
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
             window.makeKeyAndOrderFront(nil)
+        } else {
+            // The window was destroyed (for example after a close on another
+            // path): ask SwiftUI to create the scene again.
+            windowRequest += 1
         }
     }
 
+    @objc private func hideMainWindow() {
+        mainWindow?.orderOut(nil)
+    }
+
+}
+
+extension AppState: NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
+    }
+}
+
+extension AppState {
     // MARK: - Translation
 
     func sourceChanged(_ text: String) {

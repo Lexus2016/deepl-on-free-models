@@ -36,3 +36,7 @@ docs/.local*
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Xcode user data
+ios/**/xcuserdata/
+ios/**/*.xcuserstate

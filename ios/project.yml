@@ -1,0 +1,43 @@
+name: DeepL-oFM
+options:
+  bundleIdPrefix: ua.admin.hymt
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+targets:
+  DeepL-oFM:
+    type: application
+    platform: iOS
+    sources:
+      - path: DeepL-oFM
+        excludes:
+          - Info.plist
+      - path: ../Sources/HyMT/Models/BackendConfig.swift
+      - path: ../Sources/HyMT/Models/Language.swift
+      - path: ../Sources/HyMT/Models/Prompt.swift
+      - path: ../Sources/HyMT/Models/Provider.swift
+      - path: ../Sources/HyMT/Services/TranslationService.swift
+      - path: ../Sources/HyMT/Support/Keychain.swift
+      - path: ../Sources/HyMT/Support/Localization.swift
+      - path: ../Sources/HyMT/Support/TokenRestorer.swift
+      - path: ../Sources/HyMT/Support/OutputSanitizer.swift
+      - path: ../Sources/HyMT/Support/MarkdownDetector.swift
+      - path: ../Sources/HyMT/Support/ResultViewMode.swift
+    settings:
+      base:
+        PRODUCT_NAME: DeepL-oFM
+        PRODUCT_BUNDLE_IDENTIFIER: ua.admin.hymt.ios
+        INFOPLIST_FILE: DeepL-oFM/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        MARKETING_VERSION: "1.0.10"
+        CURRENT_PROJECT_VERSION: "10"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
