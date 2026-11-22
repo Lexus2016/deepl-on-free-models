@@ -4,6 +4,23 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>1.1.1</title>
+            <pubDate>Sun, 22 Nov 2026 18:40:00 +0100</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>12</sparkle:version>
+            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# DeepL-oFM 1.1.1
+
+File translation lives only in the Files tab.
+
+- Removed the in-window File menu; the Files tab is the single place to choose a document, pick the target language and translate it.
+- Removed the global drop target from the translation view, so a file can no longer be dropped into the text/chat screen.
+]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v1.1.1/DeepL-oFM-1.1.1.dmg" length="3621682" type="application/octet-stream" sparkle:edSignature="N9WKsjMasQW06VnNfnLPxANLtQKRqaGZFCxa/RL41jyLIOWecBYho0cUghp4np3Qx51YXnqAvgzO7Nf3maOmCg=="></enclosure>
+        </item>
+    <item>
             <title>1.1.0</title>
             <pubDate>Sun, 22 Nov 2026 18:25:00 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -113,6 +130,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: Cmn92/gKdBYVT8YA0vFuXCybthvwRVIndhEYkUZbMzRG/ReDz4XtdSHe4yXXH5YT1ntr/LxiGBmQvOgeLJYRAw==
-length: 8431
+edSignature: ikoLBowrmHwdI+Ca2hqLWkbj1Og9+vCFEMyuhGfsZhJyKEPsJnQssoXkn6qLmgbZwo8PhxTKT55/PWPA8wb7DQ==
+length: 9608
 -->
