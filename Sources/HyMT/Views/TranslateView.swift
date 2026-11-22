@@ -24,7 +24,7 @@ struct LanguageBar: View {
     @EnvironmentObject private var app: AppState
 
     var body: some View {
-        ZStack {
+        HStack(spacing: 12) {
             HStack(spacing: 10) {
                 LanguagePicker(
                     selection: app.sourceLanguage,
@@ -53,11 +53,8 @@ struct LanguageBar: View {
                     .strokeBorder(Theme.borderSoft, lineWidth: 1)
             )
 
-            HStack(spacing: 8) {
-                Spacer()
-                StyleToneControls()
-                    .layoutPriority(1)
-            }
+            Spacer(minLength: 12)
+            StyleToneControls()
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity)
@@ -366,6 +363,8 @@ struct SourcePane: View {
                         // like, the eye toggle brings the raw text back.
                         preview = true
                     }
+                    .accessibilityLabel(L10n.t("Source", language))
+                    .accessibilityIdentifier("source-editor")
                     .padding(.trailing, 18)
                 }
 
@@ -412,7 +411,7 @@ struct SourcePane: View {
                         app.copySource()
                     }
                 ],
-                counter: L10n.characters(app.sourceText.count, language)
+                counter: L10n.characters(app.sourceCharacterCount, language)
             )
         }
         .background(Theme.editor)
@@ -422,7 +421,7 @@ struct SourcePane: View {
 struct TargetPane: View {
     @EnvironmentObject private var app: AppState
     @Binding var copied: Bool
-    @State private var caretVisible = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
@@ -470,6 +469,8 @@ struct TargetPane: View {
                                     .font(.system(size: 12.5))
                                     .foregroundStyle(Theme.tertiary)
                             }
+                            Button(L10n.t("Stop", language)) { app.cancelTranslation() }
+                                .accessibilityIdentifier("stop-translation")
                         } else if app.errorMessage != nil {
                             Image(systemName: "exclamationmark.triangle")
                                 .font(.system(size: 22, weight: .light))
@@ -498,7 +499,7 @@ struct TargetPane: View {
                                     .padding(.horizontal, 13)
                                     .padding(.vertical, 8)
                                     .background(
-                                        Capsule().fill(Theme.accentGradient)
+                                        Capsule().fill(Theme.primary)
                                     )
                                 }
                                 .buttonStyle(.plain)
@@ -515,42 +516,13 @@ struct TargetPane: View {
                             .padding(.trailing, 4)
                     case .text:
                         ResultText(
-                            text: MarkdownRenderer.plainText(app.translatedText),
-                            translating: app.isTranslating,
-                            caretVisible: caretVisible
+                            text: MarkdownRenderer.plainText(app.translatedText)
                         )
                     case .markdown:
                         ResultText(
-                            text: app.translatedText,
-                            translating: app.isTranslating,
-                            caretVisible: caretVisible
+                            text: app.translatedText
                         )
                     }
-                }
-
-                if app.isTranslating,
-                   app.settings.resultView == .preview,
-                   !app.translatedText.isEmpty {
-                    VStack(spacing: 6) {
-                        HStack(spacing: 8) {
-                            ProgressView(
-                                value: Double(app.translationCompleted),
-                                total: Double(max(app.translationTotal, 1))
-                            )
-                            .progressViewStyle(.linear)
-                            .tint(Theme.accent)
-                            .frame(width: 160)
-                            Text("\(app.translationPercent)%")
-                                .font(.system(size: 10.5, weight: .semibold))
-                                .foregroundStyle(Theme.secondary)
-                                .monospacedDigit()
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.top, 6)
-                        Spacer()
-                    }
-                    .allowsHitTesting(false)
                 }
 
                 if let error = app.errorMessage {
@@ -603,7 +575,7 @@ struct TargetPane: View {
                     ResultViewSwitch(selection: viewMode, language: language)
                 ),
                 right: [
-                    PaneAction(icon: "arrow.clockwise", help: L10n.t("Translate again", language), active: !app.sourceText.isEmpty) {
+                    PaneAction(icon: "arrow.clockwise", help: L10n.t("Translate again", language), active: !app.sourceText.isEmpty && !app.isTranslating) {
                         app.translate(force: true)
                     },
                     PaneAction(
@@ -613,21 +585,17 @@ struct TargetPane: View {
                         active: !app.translatedText.isEmpty
                     ) {
                         app.copyTranslation()
-                        withAnimation(.easeOut(duration: 0.15)) { copied = true }
+                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.15)) { copied = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
-                            withAnimation(.easeOut(duration: 0.2)) { copied = false }
+                            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { copied = false }
                         }
                     }
                 ],
-                counter: app.translatedText.isEmpty ? "" : L10n.characters(app.translatedText.count, language)
+                counter: app.translatedText.isEmpty ? "" : L10n.characters(app.translatedCharacterCount, language)
             )
         }
         .background(Theme.editorAlt)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                caretVisible = true
-            }
-        }
+
     }
 }
 
@@ -673,35 +641,24 @@ struct ResultViewSwitch: View {
 /// Selectable text for the "Text only" and "Markdown" result modes.
 struct ResultText: View {
     let text: String
-    let translating: Bool
-    let caretVisible: Bool
 
     var body: some View {
         ScrollView {
-            HStack(alignment: .top, spacing: 1) {
-                Text(text)
-                    .font(.system(size: 17))
-                    .lineSpacing(7)
-                    .foregroundStyle(Theme.text)
-                    .textSelection(.enabled)
-                if translating {
-                    Rectangle()
-                        .fill(Theme.accent)
-                        .frame(width: 2, height: 18)
-                        .opacity(caretVisible ? 1 : 0)
-                        .padding(.top, 4)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
+            Text(text)
+                .font(.system(size: 17))
+                .lineSpacing(7)
+                .foregroundStyle(Theme.text)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+
         }
         .scrollIndicators(.hidden)
     }
 }
 
 struct PaneAction: Identifiable {
-    let id = UUID()
+    var id: String { help }
     let icon: String
     let help: String
     var title: String? = nil

@@ -4,6 +4,9 @@ import Foundation
 final class TranslationModel: ObservableObject {
     @Published var sourceText = ""
     @Published var translatedText = ""
+    private(set) var plainText = ""
+    private(set) var renderedText = AttributedString()
+    @Published private(set) var hasInput = false
     @Published var isTranslating = false
     @Published var completed = 0
     @Published var total = 0
@@ -15,16 +18,51 @@ final class TranslationModel: ObservableObject {
 
     private let service = TranslationService()
     private var task: Task<Void, Never>?
+    private var detectionTask: Task<Void, Never>?
 
     func cancel() {
         task?.cancel()
-        isTranslating = false
+        task = nil
+        if isTranslating { isTranslating = false }
     }
 
-    func translate(settings: IOSSettings) {
+    func sourceDidChange(language: AppLanguage) {
+        invalidateResult()
+        hasInput = sourceText.contains { !$0.isWhitespace }
+        detectionTask?.cancel()
+        guard hasInput else {
+            detected = nil
+            return
+        }
+        let sample = String(sourceText.prefix(600))
+        detectionTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(220))
+            guard !Task.isCancelled else { return }
+            self?.detected = Language.detect(sample, preferred: language)
+        }
+    }
+
+    func invalidateResult() {
+        cancel()
+        if !translatedText.isEmpty {
+            translatedText = ""
+            plainText = ""
+            renderedText = AttributedString()
+        }
+        errorMessage = nil
+        durationMs = nil
+        completed = 0
+        total = 0
+        tokensPerSecond = nil
+        warningCount = 0
+    }
+
+    func translate(settings: IOSSettings, sourceCode: String) {
         let text = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         let language = settings.interfaceLanguage
+        invalidateResult()
+        detectionTask?.cancel()
 
         if settings.needsAPIKey,
            settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -32,16 +70,9 @@ final class TranslationModel: ObservableObject {
             return
         }
 
-        task?.cancel()
         isTranslating = true
-        translatedText = ""
-        errorMessage = nil
-        warningCount = 0
-        completed = 0
-        total = 0
-        durationMs = nil
-        tokensPerSecond = nil
-        detected = Language.detect(text, preferred: language)
+        let source = Language.with(code: sourceCode)
+        detected = source ?? Language.detect(text, preferred: language)
 
         let target = settings.target
         let style = settings.style
@@ -57,7 +88,8 @@ final class TranslationModel: ObservableObject {
                     style: style,
                     tone: tone,
                     target: target,
-                    config: config
+                    config: config,
+                    sourceLanguage: source
                 )
                 var buffer = ""
                 for try await event in stream {
@@ -65,7 +97,6 @@ final class TranslationModel: ObservableObject {
                     switch event {
                     case .chunk(let piece):
                         buffer += piece
-                        self.translatedText = buffer
                     case .stats(let speed):
                         self.tokensPerSecond = speed
                     case .progress(let done, let all):
@@ -75,6 +106,12 @@ final class TranslationModel: ObservableObject {
                         self.warningCount += 1
                     }
                 }
+                let text = buffer
+                let display = await Self.makeDisplay(text)
+                try Task.checkCancellation()
+                self.plainText = display.plain
+                self.renderedText = display.rendered
+                self.translatedText = text
                 self.isTranslating = false
                 self.durationMs = Int(Date().timeIntervalSince(started) * 1000)
                 if self.warningCount > 0 {
@@ -84,15 +121,15 @@ final class TranslationModel: ObservableObject {
                         self.warningCount
                     )
                 }
-            } catch is CancellationError {
-                self.isTranslating = false
-            } catch let translation as TranslationError {
-                self.isTranslating = false
-                self.errorMessage = translation.message(language)
             } catch {
+                guard !Task.isCancelled, !(error is CancellationError) else { return }
                 self.isTranslating = false
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = (error as? TranslationError)?.message(language) ?? error.localizedDescription
             }
         }
     }
+    private nonisolated static func makeDisplay(_ text: String) async -> (plain: String, rendered: AttributedString) {
+        (IOSMarkdown.plain(text), IOSMarkdown.rendered(text))
+    }
+
 }

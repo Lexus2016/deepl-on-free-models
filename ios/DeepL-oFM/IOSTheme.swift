@@ -7,16 +7,13 @@ enum IOSTheme {
     static let border = Color(hex: 0x2A2D34)
     static let text = Color(hex: 0xEDEFF3)
     static let secondary = Color(hex: 0x9BA1AC)
-    static let tertiary = Color(hex: 0x6C7280)
+    static let tertiary = Color(hex: 0x9099AA)
     static let warning = Color(hex: 0xE5B454)
     static let danger = Color(hex: 0xF26D6D)
-    static let accent = Color(hex: 0x3B7BF6)
+    static let accent = Color(hex: 0x72A6FF)
     static let accentAlt = Color(hex: 0x11B8C7)
-    static let gradient = LinearGradient(
-        colors: [accent, accentAlt],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static let primary = Color(hex: 0x245ABD)
+
 }
 
 extension Color {

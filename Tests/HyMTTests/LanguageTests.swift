@@ -19,3 +19,10 @@ final class LanguageTests: XCTestCase {
         XCTAssertEqual(Language.detect("ключ", preferred: .ru)?.code, "ru")
     }
 }
+
+extension LanguageTests {
+    func testRecognizesLatinLanguagesInsteadOfCallingThemEnglish() {
+        XCTAssertEqual(Language.detect("Bonjour, je voudrais savoir à quelle heure commence la réunion.")?.code, "fr")
+        XCTAssertEqual(Language.detect("Este documento explica cómo funciona el servicio de traducción.")?.code, "es")
+    }
+}

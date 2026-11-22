@@ -13,7 +13,9 @@
 		17047058F55C2D232D66C6B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97B5D72D9D0D7CF6FE6DCAD0 /* Assets.xcassets */; };
 		2337C7751FFBAFABA85E155D /* DeepL_oFMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126D1871234695F0209DAD14 /* DeepL_oFMApp.swift */; };
 		29961AA6AD77104263A7C7ED /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CCD49952BBC7418FA74386 /* BackendConfig.swift */; };
+		2B59CE97491CEBD731CE78A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6E48472DBD239421D9D4AEF3 /* PrivacyInfo.xcprivacy */; };
 		2B6739617C792106B957F7D0 /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED9E1D10D3DB9CBFFB28814 /* Provider.swift */; };
+		310689E89395D4A09B10006A /* TranslationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10E9CB463760AC7E18D5F031 /* TranslationUITests.swift */; };
 		3145B51336C3DE30FF7B00D0 /* IOSSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6B300ABEDE240C2271C2159 /* IOSSettings.swift */; };
 		504F7E64920FF8D71DF2F5E2 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4AAD4BED7D8636F4EA3E8CC /* Language.swift */; };
 		5797B1CD52EFAEFE3A0FA162 /* TokenRestorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248AAACCEC59C642AC115E11 /* TokenRestorer.swift */; };
@@ -28,7 +30,18 @@
 		FFC0D45ACD15D685351632DF /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB6260437BAD3D1BE93CD1F /* Keychain.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		F9A6A823A1E80066208B7EC3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4341F99D39A929ED388D667E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ADE346AA6DBCBDCC8117E796;
+			remoteInfo = "DeepL-oFM";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		10E9CB463760AC7E18D5F031 /* TranslationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationUITests.swift; sourceTree = "<group>"; };
 		126D1871234695F0209DAD14 /* DeepL_oFMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepL_oFMApp.swift; sourceTree = "<group>"; };
 		1D6C82962C36FF08F8D58E2B /* OutputSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputSanitizer.swift; sourceTree = "<group>"; };
 		248AAACCEC59C642AC115E11 /* TokenRestorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenRestorer.swift; sourceTree = "<group>"; };
@@ -36,8 +49,10 @@
 		4ED9E1D10D3DB9CBFFB28814 /* Provider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Provider.swift; sourceTree = "<group>"; };
 		4FBE39315FA0B1F66A105427 /* IOSSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSSettingsView.swift; sourceTree = "<group>"; };
 		5281FCE74BC42083D95B07AD /* ResultViewMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultViewMode.swift; sourceTree = "<group>"; };
+		6E48472DBD239421D9D4AEF3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		70CCD49952BBC7418FA74386 /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendConfig.swift; sourceTree = "<group>"; };
 		7CDD685FE41F2F5A51FDD94D /* TranslationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationService.swift; sourceTree = "<group>"; };
+		8D81343C41D560A44FC19A18 /* DeepL-oFMUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "DeepL-oFMUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		97B5D72D9D0D7CF6FE6DCAD0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		ADE8E67FEE5EBA19B94C952C /* IOSTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSTheme.swift; sourceTree = "<group>"; };
 		BE750E49B83C637528711F92 /* IOSMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSMarkdown.swift; sourceTree = "<group>"; };
@@ -52,6 +67,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		1D767D48A4A9083A46E40F50 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				10E9CB463760AC7E18D5F031 /* TranslationUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
 		4ED9B5EC1A4B8F87EA8CFC6C /* HyMT */ = {
 			isa = PBXGroup;
 			children = (
@@ -75,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				F6ADBD0D28B902EA96E9A845 /* DeepL-oFM.app */,
+				8D81343C41D560A44FC19A18 /* DeepL-oFMUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,6 +132,7 @@
 			children = (
 				574680E2DD0FCA268C267602 /* DeepL */,
 				F521CF2067BA339A60288BA5 /* DeepL-oFM */,
+				1D767D48A4A9083A46E40F50 /* UITests */,
 				7F6D7EDE83818FCC00C131E7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -130,6 +155,7 @@
 				E6B300ABEDE240C2271C2159 /* IOSSettings.swift */,
 				4FBE39315FA0B1F66A105427 /* IOSSettingsView.swift */,
 				ADE8E67FEE5EBA19B94C952C /* IOSTheme.swift */,
+				6E48472DBD239421D9D4AEF3 /* PrivacyInfo.xcprivacy */,
 				37A9542E4703AEE9BF017B98 /* TranslationModel.swift */,
 			);
 			path = "DeepL-oFM";
@@ -146,6 +172,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		500EB2CBBC35754EC72575A5 /* DeepL-oFMUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E6DBF2CD3FA108E992758C7F /* Build configuration list for PBXNativeTarget "DeepL-oFMUITests" */;
+			buildPhases = (
+				0D37C95899E00DDEEC0A9239 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6E4C310E1DC86FB94E6CDE41 /* PBXTargetDependency */,
+			);
+			name = "DeepL-oFMUITests";
+			packageProductDependencies = (
+			);
+			productName = "DeepL-oFMUITests";
+			productReference = 8D81343C41D560A44FC19A18 /* DeepL-oFMUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		ADE346AA6DBCBDCC8117E796 /* DeepL-oFM */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D9A400F381CF1B52DF73A42E /* Build configuration list for PBXNativeTarget "DeepL-oFM" */;
@@ -173,6 +217,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					500EB2CBBC35754EC72575A5 = {
+						TestTargetID = ADE346AA6DBCBDCC8117E796;
+					};
 					ADE346AA6DBCBDCC8117E796 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -194,6 +241,7 @@
 			projectRoot = "";
 			targets = (
 				ADE346AA6DBCBDCC8117E796 /* DeepL-oFM */,
+				500EB2CBBC35754EC72575A5 /* DeepL-oFMUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -204,12 +252,21 @@
 			buildActionMask = 2147483647;
 			files = (
 				17047058F55C2D232D66C6B9 /* Assets.xcassets in Resources */,
+				2B59CE97491CEBD731CE78A5 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0D37C95899E00DDEEC0A9239 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				310689E89395D4A09B10006A /* TranslationUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DA97765F045114720F1F1C61 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -236,6 +293,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6E4C310E1DC86FB94E6CDE41 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ADE346AA6DBCBDCC8117E796 /* DeepL-oFM */;
+			targetProxy = F9A6A823A1E80066208B7EC3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1D6ACF10B3CA30E0727B2A9A /* Debug */ = {
@@ -309,7 +374,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "DeepL-oFM/Info.plist";
@@ -317,7 +382,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.10;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ua.admin.hymt.ios;
 				PRODUCT_NAME = "DeepL-oFM";
 				SDKROOT = iphoneos;
@@ -384,13 +449,30 @@
 			};
 			name = Release;
 		};
+		7F1FAE8B790D5D6F75B03913 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "ua.admin.hymt.DeepL-oFMUITests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "DeepL-oFM";
+			};
+			name = Release;
+		};
 		F2F9E2592A6420D562BC94B9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "DeepL-oFM/Info.plist";
@@ -398,7 +480,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.10;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = ua.admin.hymt.ios;
 				PRODUCT_NAME = "DeepL-oFM";
 				SDKROOT = iphoneos;
@@ -406,6 +488,23 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
+		};
+		F43459B6C85E3D85F35343D9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "ua.admin.hymt.DeepL-oFMUITests";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "DeepL-oFM";
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -424,6 +523,15 @@
 			buildConfigurations = (
 				1E94225A7E303933063D4A38 /* Debug */,
 				F2F9E2592A6420D562BC94B9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E6DBF2CD3FA108E992758C7F /* Build configuration list for PBXNativeTarget "DeepL-oFMUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F43459B6C85E3D85F35343D9 /* Debug */,
+				7F1FAE8B790D5D6F75B03913 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

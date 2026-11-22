@@ -17,7 +17,7 @@ extension Provider {
         }
     }
 
-    var needsAPIKey: Bool { self != .custom }
+
 }
 
 @MainActor
@@ -26,13 +26,11 @@ final class IOSSettings: ObservableObject {
         didSet {
             store(provider.rawValue, Keys.provider)
             guard oldValue != provider else { return }
-            if baseURL.isEmpty || baseURL == oldValue.baseURL {
-                baseURL = provider.baseURL
-            }
+            store(baseURL, "\(Keys.baseURL).\(oldValue.rawValue)")
+            store(model, "\(Keys.model).\(oldValue.rawValue)")
+            baseURL = defaults.string(forKey: "\(Keys.baseURL).\(provider.rawValue)") ?? provider.baseURL
+            model = defaults.string(forKey: "\(Keys.model).\(provider.rawValue)") ?? provider.iosDefaultModel
             apiKey = Keychain.read(provider.keyAccount)
-            if model.isEmpty || model == oldValue.iosDefaultModel {
-                model = provider.iosDefaultModel
-            }
         }
     }
     @Published var apiKey: String {
@@ -96,9 +94,10 @@ final class IOSSettings: ObservableObject {
         Language.with(code: targetCode) ?? Language.with(code: "en")!
     }
 
-    var needsAPIKey: Bool { provider.needsAPIKey }
+    var needsAPIKey: Bool { provider.requiresKey }
 
     var normalizedBaseURL: String {
+        guard provider == .custom else { return provider.baseURL }
         var value = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         while value.hasSuffix("/") { value.removeLast() }
         return value.isEmpty ? provider.baseURL : value
@@ -114,7 +113,8 @@ final class IOSSettings: ObservableObject {
             topP: 0.6,
             topK: 20,
             repetitionPenalty: 1.05,
-            contextWindow: 8192
+            contextWindow: 8192,
+            requiresAPIKey: provider.requiresKey
         )
     }
 

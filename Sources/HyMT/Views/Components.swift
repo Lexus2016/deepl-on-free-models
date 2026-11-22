@@ -14,7 +14,8 @@ struct IconButton: View {
             Image(systemName: systemName)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(active ? (hovering ? Theme.text : Theme.secondary) : Theme.tertiary.opacity(0.5))
-                .frame(width: 28, height: 28)
+                .frame(width: 34, height: 34)
+                .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(hovering && active ? Theme.chromeRaised : Color.clear)
@@ -37,7 +38,7 @@ struct SettingsCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 10) {
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .fill(Theme.accentGradient)
+                    .fill(Theme.primary)
                     .frame(width: 3, height: 34)
                     .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 3) {
@@ -118,19 +119,29 @@ struct SmallChip: View {
 struct WindowAccessor: NSViewRepresentable {
     let onWindow: (NSWindow) -> Void
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView(frame: .zero)
-        DispatchQueue.main.async {
-            if let window = view.window { onWindow(window) }
-        }
-        return view
+    func makeNSView(context: Context) -> Observer {
+        let observer = Observer()
+        observer.onWindow = onWindow
+        return observer
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            if let window = nsView.window { onWindow(window) }
+    func updateNSView(_ observer: Observer, context: Context) {
+        observer.onWindow = onWindow
+    }
+
+    final class Observer: NSView {
+        var onWindow: ((NSWindow) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self, let window, self.window === window else { return }
+                self.onWindow?(window)
+            }
         }
     }
+
 }
 
 struct DividerLine: View {

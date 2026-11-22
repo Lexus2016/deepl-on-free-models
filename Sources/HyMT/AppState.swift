@@ -24,7 +24,7 @@ final class AppState: NSObject, ObservableObject {
         func title(_ language: AppLanguage) -> String {
             switch self {
             case .translate: return L10n.t("Translate text", language)
-            case .write: return "DeepL Write"
+            case .write: return L10n.t("Improve text", language)
             case .files: return L10n.t("Files", language)
             case .history: return L10n.t("History", language)
             case .settings: return L10n.t("Settings", language)
@@ -53,8 +53,14 @@ final class AppState: NSObject, ObservableObject {
     // MARK: Published state
 
     @Published var tab: Tab = .translate
-    @Published var sourceText: String = ""
-    @Published var translatedText: String = ""
+    @Published var sourceText: String = "" {
+        didSet { sourceCharacterCount = sourceText.count }
+    }
+    @Published var translatedText: String = "" {
+        didSet { translatedCharacterCount = translatedText.count }
+    }
+    private(set) var sourceCharacterCount = 0
+    private(set) var translatedCharacterCount = 0
     @Published var isTranslating: Bool = false
     @Published var translationCompleted: Int = 0
     @Published var translationTotal: Int = 0
@@ -70,7 +76,8 @@ final class AppState: NSObject, ObservableObject {
     @Published var sourceLanguage: Language {
         didSet {
             settings.lastSourceCode = sourceLanguage.code
-            detectedLanguage = sourceLanguage == .auto ? Language.detect(sourceText, preferred: settings.interfaceLanguage) : nil
+            scheduleLanguageDetection()
+            if oldValue != sourceLanguage { retranslateIfPossible() }
         }
     }
     @Published var targetLanguage: Language {
@@ -121,6 +128,7 @@ final class AppState: NSObject, ObservableObject {
     private let hotKeys = HotKeyManager()
     private var translationTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
+    private var detectionTask: Task<Void, Never>?
     private var selectionTask: Task<Void, Never>?
     private var probeTask: Task<Void, Never>?
     private var modelsTask: Task<Void, Never>?
@@ -130,7 +138,15 @@ final class AppState: NSObject, ObservableObject {
     private weak var mainWindow: NSWindow?
 
     private var currentGeneration = UUID()
-    private var lastCompletedKey: String?
+    private var lastCompletedKey: TranslationKey?
+    private struct TranslationKey: Equatable {
+        let text: String
+        let source: Language
+        let target: Language
+        let style: TranslationStyle
+        let tone: TranslationTone
+        let config: BackendConfig
+    }
     private var suppressRetranslation = false
     private var didBootstrap = false
     private var didActivateWindow = false
@@ -159,6 +175,9 @@ final class AppState: NSObject, ObservableObject {
             self?.speaking = nil
         }
         configureBindings()
+        NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
+            .sink { [history] _ in history.flush() }
+            .store(in: &cancellables)
         registerHotKeys()
         if settings.showInMenuBar { installStatusItem() }
         applyActivationPolicy()
@@ -271,7 +290,7 @@ final class AppState: NSObject, ObservableObject {
         window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         window.isRestorable = false
-        window.minSize = NSSize(width: 1000, height: 640)
+        window.minSize = NSSize(width: 880, height: 580)
         window.delegate = self
         if let close = window.standardWindowButton(.closeButton) {
             close.target = self
@@ -334,31 +353,48 @@ extension AppState: NSWindowDelegate {
 extension AppState {
     // MARK: - Translation
 
-    func sourceChanged(_ text: String) {
-        sourceText = text
-        detectedLanguage = sourceLanguage == .auto ? Language.detect(text, preferred: settings.interfaceLanguage) : nil
-
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            cancelTranslation()
-            translatedText = ""
-            errorMessage = nil
-            lastDurationMs = nil
-            tokensPerSecond = nil
-            translationCompleted = 0
-            translationTotal = 0
-            translationWarningCount = 0
+    private func scheduleLanguageDetection() {
+        detectionTask?.cancel()
+        guard sourceLanguage == .auto, !sourceText.isEmpty else {
+            detectedLanguage = nil
             return
         }
-        guard settings.autoTranslate, !suppressRetranslation else { return }
+        let input = String(sourceText.prefix(600))
+        let language = settings.interfaceLanguage
+        detectionTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(220))
+            guard let self, !Task.isCancelled else { return }
+            let detected = Language.detect(input, preferred: language)
+            if detected != detectedLanguage { detectedLanguage = detected }
+        }
+    }
 
-        debounceTask?.cancel()
+    func sourceChanged(_ text: String) {
+        guard text != sourceText else { return }
+        cancelTranslation()
+        sourceText = text
+        scheduleLanguageDetection()
+        lastCompletedKey = nil
+        resetTranslationResult()
+
+        guard !text.isEmpty, settings.autoTranslate, !suppressRetranslation else { return }
         let delay = max(0.1, settings.debounce)
         debounceTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
             self?.translate(force: false)
         }
+    }
+
+    private func resetTranslationResult() {
+        if !translatedText.isEmpty { translatedText = "" }
+        if errorMessage != nil { errorMessage = nil }
+        if lastDurationMs != nil { lastDurationMs = nil }
+        if tokensPerSecond != nil { tokensPerSecond = nil }
+        if translationCompleted != 0 { translationCompleted = 0 }
+        if translationTotal != 0 { translationTotal = 0 }
+        if translationWarningCount != 0 { translationWarningCount = 0 }
+        if usingFallback { usingFallback = false }
     }
 
     func translate(force: Bool) {
@@ -369,27 +405,12 @@ extension AppState {
             return
         }
 
-        var target = targetLanguage
-        if sourceLanguage == .auto,
-           let detected = Language.detect(trimmed, preferred: settings.interfaceLanguage),
-           detected == target {
-            let interface = settings.interfaceLanguage.resolved
-            var fallback = Language.with(code: interface.rawValue)
-            if fallback == nil || fallback == detected {
-                fallback = Language.with(code: detected.code == "en" ? "uk" : "en")
-            }
-            if let fallback, fallback != detected {
-                suppressRetranslation = true
-                targetLanguage = fallback
-                suppressRetranslation = false
-                target = fallback
-            }
-        }
-
+        let source = sourceLanguage
+        let target = targetLanguage
         let style = self.style
         let tone = self.tone
         let config = settings.snapshot
-        let key = "\(trimmed)|\(target.code)|\(style.rawValue)|\(tone.rawValue)|\(config.kind.rawValue)|\(config.baseURL)|\(config.model)"
+        let key = TranslationKey(text: trimmed, source: source, target: target, style: style, tone: tone, config: config)
 
         if !force, key == lastCompletedKey {
             return
@@ -399,19 +420,12 @@ extension AppState {
         debounceTask?.cancel()
         let generation = UUID()
         currentGeneration = generation
+        resetTranslationResult()
         isTranslating = true
-        errorMessage = nil
-        translatedText = ""
-        translationCompleted = 0
-        translationTotal = 0
-        translationWarningCount = 0
-        lastDurationMs = nil
-        tokensPerSecond = nil
         debugLog("translate start: model=\(config.model) target=\(target.englishName) style=\(style.rawValue) tone=\(tone.rawValue) chars=\(trimmed.count)")
-        usingFallback = false
 
         let primaryEngine = "\(settings.provider.title) · \(config.model)"
-        let fallbackConfig = settings.fallbackConfig
+        let fallbackConfig = settings.fallbackConfig.flatMap { config.usesSameEndpoint(as: $0) ? nil : $0 }
         let fallbackEngine = fallbackConfig.map {
             "\(settings.fallbackProvider.title) · \($0.model) (fallback)"
         }
@@ -428,14 +442,16 @@ extension AppState {
                     tone: tone,
                     target: target,
                     config: config,
-                    generation: generation
+                    generation: generation,
+                    retryRateLimit: fallbackConfig == nil,
+                    source: source
                 )
             } catch is CancellationError {
                 return
             } catch {
                 guard self.currentGeneration == generation, !Task.isCancelled else { return }
                 let primaryError = error
-                if let fallbackConfig, !Self.sameBackend(config, fallbackConfig) {
+                if let fallbackConfig {
                     self.debugLog("primary failed, using fallback: \(error.localizedDescription)")
                     self.usingFallback = true
                     self.translationCompleted = 0
@@ -449,12 +465,15 @@ extension AppState {
                             tone: tone,
                             target: target,
                             config: fallbackConfig,
-                            generation: generation
+                            generation: generation,
+                            retryRateLimit: true,
+                            source: source
                         )
                         engine = fallbackEngine ?? engine
                     } catch is CancellationError {
                         return
                     } catch {
+                        guard self.currentGeneration == generation, !Task.isCancelled else { return }
                         self.isTranslating = false
                         self.usingFallback = false
                         self.presentTranslationError(error, generation: generation)
@@ -472,7 +491,7 @@ extension AppState {
             self.translatedText = result.text
             self.translationCompleted = self.translationTotal
             self.translationWarningCount = result.warnings
-            self.debugLog("translate done in \(duration) ms: \(self.translatedText)")
+            self.debugLog("Translation finished in \(duration) ms.")
             self.isTranslating = false
             if result.warnings > 0 {
                 self.errorMessage = L10n.format(
@@ -482,7 +501,7 @@ extension AppState {
                 )
             }
             self.lastDurationMs = duration
-            self.lastCompletedKey = key
+            self.lastCompletedKey = result.warnings == 0 ? key : nil
             self.backendStatus = .ready
             self.probeMessage = L10n.t(
                 self.usingFallback ? "Fallback provider works." : "Connection works.",
@@ -493,7 +512,7 @@ extension AppState {
                 self.history.add(HistoryEntry(
                     sourceText: trimmed,
                     translatedText: self.translatedText.trimmingCharacters(in: .whitespacesAndNewlines),
-                    sourceCode: self.sourceLanguage.code,
+                    sourceCode: source.code,
                     targetCode: target.code,
                     style: style,
                     tone: tone,
@@ -510,7 +529,9 @@ extension AppState {
         tone: TranslationTone,
         target: Language,
         config: BackendConfig,
-        generation: UUID
+        generation: UUID,
+        retryRateLimit: Bool,
+        source: Language
     ) async throws -> (text: String, warnings: Int, duration: Int) {
         let started = Date()
         let stream = translator.stream(
@@ -518,7 +539,9 @@ extension AppState {
             style: style,
             tone: tone,
             target: target,
-            config: config
+            config: config,
+            retryRateLimit: retryRateLimit,
+            sourceLanguage: source
         )
         var buffer = ""
         var warnings = 0
@@ -532,8 +555,8 @@ extension AppState {
             case .stats(let tps):
                 tokensPerSecond = tps
             case .progress(let completed, let total):
-                translationCompleted = completed
-                translationTotal = total
+                if translationCompleted != completed { translationCompleted = completed }
+                if translationTotal != total { translationTotal = total }
             case .warning:
                 warnings += 1
             }
@@ -561,10 +584,6 @@ extension AppState {
         }
     }
 
-    private static func sameBackend(_ lhs: BackendConfig, _ rhs: BackendConfig) -> Bool {
-        lhs.kind == rhs.kind && lhs.baseURL == rhs.baseURL && lhs.model == rhs.model
-    }
-
     private func retranslateIfPossible() {
         guard !suppressRetranslation else { return }
         guard !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
@@ -575,20 +594,16 @@ extension AppState {
         translationTask?.cancel()
         debounceTask?.cancel()
         currentGeneration = UUID()
-        isTranslating = false
+        if isTranslating { isTranslating = false }
     }
 
     func clearSource() {
         cancelTranslation()
+        detectionTask?.cancel()
         sourceText = ""
-        translatedText = ""
-        errorMessage = nil
         detectedLanguage = nil
-        lastDurationMs = nil
-        tokensPerSecond = nil
-        translationCompleted = 0
-        translationTotal = 0
-        translationWarningCount = 0
+        lastCompletedKey = nil
+        resetTranslationResult()
     }
 
     func swapLanguages() {
@@ -607,8 +622,10 @@ extension AppState {
 
         targetLanguage = detected
         sourceLanguage = oldTarget
-        sourceText = oldTranslation
-        translatedText = oldSource
+        if !oldTranslation.isEmpty {
+            sourceText = oldTranslation
+            translatedText = oldSource
+        }
         detectedLanguage = nil
         suppressRetranslation = false
 
@@ -744,6 +761,8 @@ extension AppState {
     // MARK: - Connection
 
     func checkConnection() {
+        modelsTask?.cancel()
+        modelsLoading = false
         probeTask?.cancel()
         probeTask = Task { [weak self] in
             await self?.runProbe()
@@ -751,6 +770,8 @@ extension AppState {
     }
 
     func scheduleProbe() {
+        modelsTask?.cancel()
+        modelsLoading = false
         probeTask?.cancel()
         probeTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 700_000_000)
@@ -764,6 +785,7 @@ extension AppState {
         let provider = settings.provider
         let config = settings.snapshot
 
+        probeTask?.cancel()
         modelsTask?.cancel()
         modelsLoading = true
         modelsError = nil
@@ -882,6 +904,7 @@ extension AppState {
 
         do {
             let models = try await Probe.models(config)
+            try Task.checkCancellation()
             debugLog("probe \(config.baseURL): \(models.count) models, has=\(Probe.model(config.model, isListedIn: models))")
             if models.isEmpty {
                 backendStatus = .modelMissing
@@ -900,6 +923,7 @@ extension AppState {
                 )
             }
         } catch {
+            guard !Task.isCancelled else { return }
             let message = (error as? TranslationError)?.message(language) ?? error.localizedDescription
             backendStatus = .error(message)
             probeMessage = message
@@ -1071,7 +1095,18 @@ extension AppState {
             .sink { [weak self] _ in
                 self?.fallbackModels = []
                 self?.fallbackModelsError = nil
+                self?.fallbackModelsTask?.cancel()
+                self?.fallbackModelsLoading = false
                 self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+        settings.$fallbackBaseURL
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.fallbackModelsTask?.cancel()
+                self?.fallbackModels = []
+                self?.fallbackModelsLoading = false
             }
             .store(in: &cancellables)
         settings.$apiKey

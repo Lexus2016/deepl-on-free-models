@@ -2,7 +2,15 @@ import Foundation
 
 @MainActor
 final class WriteStore: ObservableObject {
-    @Published var sourceText = ""
+    @Published var sourceText = "" {
+        didSet {
+            guard oldValue != sourceText else { return }
+            cancel()
+            if !resultText.isEmpty { resultText = "" }
+            if errorMessage != nil { errorMessage = nil }
+            if durationMs != nil { durationMs = nil }
+        }
+    }
     @Published var resultText = ""
     @Published var isWorking = false
     @Published var errorMessage: String?
@@ -13,11 +21,19 @@ final class WriteStore: ObservableObject {
 
     private let service = TranslationService()
     private var task: Task<Void, Never>?
+    private var detectionTask: Task<Void, Never>?
 
     func updateDetectedLanguage() {
-        guard !languageWasChosen,
-              let detected = Language.detect(sourceText) else { return }
-        languageCode = detected.code
+        detectionTask?.cancel()
+        guard !languageWasChosen else { return }
+        let input = sourceText
+        detectionTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard let self, !Task.isCancelled, !languageWasChosen,
+                  let detected = Language.detect(input),
+                  detected.code != languageCode else { return }
+            languageCode = detected.code
+        }
     }
 
     init() {
@@ -26,16 +42,13 @@ final class WriteStore: ObservableObject {
 
     func improve(settings: AppSettings, interfaceLanguage: AppLanguage) {
         let text = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, let language = Language.with(code: languageCode) else {
+        let detected = languageWasChosen ? nil : Language.detect(text)
+        guard !text.isEmpty, let language = detected ?? Language.with(code: languageCode) else {
             return
         }
 
-        let cloud = [Provider.groq, .openRouter, .cerebras, .ollamaCloud]
-        if cloud.contains(settings.provider),
-           settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errorMessage = L10n.t("Add your API key in Settings.", interfaceLanguage)
-            return
-        }
+        let primary = settings.snapshot
+        let fallback = settings.fallbackConfig.flatMap { primary.usesSameEndpoint(as: $0) ? nil : $0 }
 
         task?.cancel()
         isWorking = true
@@ -43,7 +56,6 @@ final class WriteStore: ObservableObject {
         errorMessage = nil
         durationMs = nil
 
-        let config = settings.snapshot
         let languageName = language.englishName
         let prompt = """
         You are an editor. Rewrite the following text in \(languageName). Improve
@@ -53,36 +65,37 @@ final class WriteStore: ObservableObject {
 
         \(text)
         """
-        let started = Date()
+        let started = ContinuousClock.now
 
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                let stream = service.streamRaw(prompt: prompt, config: config)
-                var buffer = ""
-                for try await event in stream {
-                    if Task.isCancelled { return }
-                    if case .chunk(let piece) = event {
-                        buffer += piece
-                        self.resultText = buffer
-                    }
+                let result: String
+                do {
+                    result = try await service.rewrite(
+                        prompt: prompt, config: primary, retryRateLimit: fallback == nil
+                    )
+                } catch {
+                    try Task.checkCancellation()
+                    guard let fallback else { throw error }
+                    result = try await service.rewrite(prompt: prompt, config: fallback)
                 }
+                try Task.checkCancellation()
+                self.resultText = result
                 self.isWorking = false
-                self.durationMs = Int(Date().timeIntervalSince(started) * 1000)
-            } catch is CancellationError {
-                self.isWorking = false
-            } catch let translation as TranslationError {
-                self.isWorking = false
-                self.errorMessage = translation.message(interfaceLanguage)
+                let elapsed = started.duration(to: .now).components
+                self.durationMs = Int(elapsed.seconds * 1000 + elapsed.attoseconds / 1_000_000_000_000_000)
             } catch {
+                guard !Task.isCancelled, !(error is CancellationError) else { return }
                 self.isWorking = false
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = (error as? TranslationError)?.message(interfaceLanguage) ?? error.localizedDescription
             }
         }
     }
 
     func cancel() {
         task?.cancel()
-        isWorking = false
+        task = nil
+        if isWorking { isWorking = false }
     }
 }

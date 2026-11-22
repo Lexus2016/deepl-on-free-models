@@ -8,7 +8,7 @@
   <b>A native macOS translator for local and cloud models.</b><br>
   Keep paragraphs, lists and Markdown intact. Run Hy-MT2 7B offline through
   Ollama, or use OpenRouter, Groq and Cerebras with your own key. Free, private
-  and signed for macOS.
+  and signed for macOS on Apple silicon.
 </p>
 
 <p align="center">
@@ -35,14 +35,14 @@
 
 ## Why DeepL-oFM
 
-Most translators are a website first. DeepL-oFM is a native Mac app first:
-local models by default, formatting preserved, no account and no telemetry.
-The same window can use a cloud model when you need more speed or quality.
+Translate from a Mac window or use a shortcut from another app. Ollama can
+run on your Mac without an internet connection. You can also connect a cloud
+provider with your own key.
 
 ## Features
 
-- Two-pane translation with a progress indicator. The finished text appears
-  only when every line has been checked — no partial or repeated garbage.
+- Read the original and translation side by side. A progress indicator shows
+  how much is ready. You can stop the request while it runs.
 - Automatic translation while typing (configurable delay).
 - Two global hotkeys:
   - **⌥⌘T** — translate the clipboard;
@@ -69,8 +69,8 @@ The same window can use a cloud model when you need more speed or quality.
   **Check for Updates…** button, and an optional fully automatic install.
 - **Optional fallback provider and model.** If the primary provider fails, the
   same text is retried automatically with the fallback you choose.
-- **Preload at launch.** Connects to the provider, refreshes its model list and
-  warms up a local model; can be turned off in Settings.
+- **Load the translator at launch.** Enable this in Settings to warm a local
+  model at startup. New installations load the model on the first translation.
 - History with search, copy and delete.
 - System text-to-speech for the original and the translation.
 - Interface in **English, Ukrainian, Russian, German, French, Spanish, Polish,
@@ -106,11 +106,13 @@ progress bar follows the document, the translated file is created with the
 target code in its name (`report_uk.pdf`), and **Save** writes it wherever you
 need. The document text never appears in the translation panes.
 
-- **Text and Markdown** keep their content and line structure.
+- **Text and Markdown** keep the breaks between paragraphs. Markdown code
+  fences pass through unchanged.
 - **DOCX** keeps the original package: only `word/document.xml` is updated in
   place, so styles, images, tables, lists, headers and fonts remain untouched.
 - **PDF** keeps the original pages — layout, images, charts and typography —
-  and paints the translation into the same text blocks. Scanned PDFs need OCR.
+  and draws translated text over the original blocks. The source text layer
+  remains in the PDF. For a scanned PDF, run text recognition first.
 
 ## iPhone
 
@@ -341,8 +343,8 @@ Markdown headings, lists, block quotes, `**bold**`, `*italic*`, links and
 Links are rendered only for `http`, `https`, `mailto` and relative URLs; a
 `javascript:` target is dropped. Inline formatting that TextEditor did not
 retain on paste (for example bold text copied from a browser) cannot be
-reconstructed. Fenced code blocks are translated as ordinary lines, not as
-code. `⇧⌘C` also copies the translation.
+reconstructed. To keep fenced code unchanged, open the Markdown document in
+the Files tab. `⇧⌘C` also copies the translation.
 
 ## Prompts
 

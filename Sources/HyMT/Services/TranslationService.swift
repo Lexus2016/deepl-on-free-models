@@ -10,8 +10,10 @@ enum TranslationEvent: Sendable {
 enum TranslationError: LocalizedError {
     case invalidURL(String)
     case emptyModel
+    case missingAPIKey
     case connection(String)
-    case http(Int, String)
+    case http(Int)
+    case rateLimited(retryAfter: TimeInterval?)
     case backend(String)
     case modelNotFound(String)
     case emptyResponse
@@ -23,32 +25,35 @@ enum TranslationError: LocalizedError {
         case .invalidURL(let value):
             return L10n.format("Invalid server URL: %@", language, value)
         case .emptyModel:
-            return L10n.t("No model name in settings.", language)
+            return L10n.t("Choose a model in Settings.", language)
+        case .missingAPIKey:
+            return L10n.t("Add your API key in Settings.", language)
         case .connection(let host):
             return L10n.format("Could not connect to %@. Check that the server is running.", language, host)
-        case .http(let code, let body):
+        case .http(let code):
             if code == 429 {
-                return L10n.t(
-                    "The provider rate limit was reached. Please wait a moment and try again.",
-                    language
-                )
+                return TranslationError.rateLimited(retryAfter: nil).message(language)
             }
-            let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
-            let short = trimmed.count > 400 ? String(trimmed.prefix(400)) + "…" : trimmed
-            if short.isEmpty {
+            switch code {
+            case 400, 401, 403, 422:
+                return L10n.t("The provider rejected the request. Check the API key and model in Settings.", language)
+            case 500...599:
+                return L10n.t("The provider is temporarily unavailable. Try again.", language)
+            default:
                 return L10n.format("Server returned error %@.", language, String(code))
             }
-            return L10n.format("Server returned error %@: %@", language, String(code), short)
-        case .backend(let message):
-            return message
+        case .rateLimited:
+            return L10n.t("Too many requests. Wait a moment and try again.", language)
+        case .backend:
+            return L10n.t("The provider rejected the request. Check the API key and model in Settings.", language)
         case .modelNotFound(let model):
             return L10n.format("Model “%@” not found on the server.", language, model)
         case .emptyResponse:
             return L10n.t("The model returned an empty translation. Try again.", language)
         case .degenerateResponse:
-            return L10n.t("The model could not produce a stable translation. Try again or switch the style/model.", language)
+            return L10n.t("The model could not translate this text. Try again or choose another model.", language)
         case .unexpectedResponse:
-            return L10n.t("Server returned an unexpected response.", language)
+            return L10n.t("The server interrupted the response. Try again.", language)
         }
     }
 
@@ -153,22 +158,32 @@ enum TextChunker {
 }
 
 final class TranslationService {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
 
     func stream(
         text: String,
         style: TranslationStyle,
         tone: TranslationTone,
         target: Language,
-        config: BackendConfig
+        config: BackendConfig,
+        retryRateLimit: Bool = true,
+        sourceLanguage: Language? = nil
     ) -> AsyncThrowingStream<TranslationEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
                     guard !config.model.isEmpty else { throw TranslationError.emptyModel }
                     let chunks = TextChunker.chunks(from: text)
+                    continuation.yield(.progress(0, chunks.count))
                     var completed = 0
+                    var translatedCount = 0
+                    var warnings = 0
                     for chunk in chunks {
-                        if Task.isCancelled { break }
+                        try Task.checkCancellation()
                         if !chunk.separatorBefore.isEmpty {
                             if case .terminated = continuation.yield(.chunk(chunk.separatorBefore)) {
                                 return
@@ -240,6 +255,13 @@ final class TranslationService {
                             }
                         }
 
+                        if !body.unicodeScalars.contains(where: CharacterSet.letters.contains) {
+                            if case .terminated = continuation.yield(.chunk(prefix + body)) { return }
+                            completed += 1
+                            continuation.yield(.progress(completed, chunks.count))
+                            continue
+                        }
+
                         var warning = false
                         var translated: String
                         do {
@@ -247,7 +269,9 @@ final class TranslationService {
                                 prompts: prompts,
                                 source: body,
                                 target: target,
-                                config: config
+                                config: config,
+                                retryRateLimit: retryRateLimit,
+                                sourceLanguage: sourceLanguage
                             )
                             translated = result.text
                             warning = result.warning
@@ -257,7 +281,7 @@ final class TranslationService {
                                     translated: restored
                                 )
                             } else {
-                                debugLog("token count changed: \(body) -> \(translated)")
+                                debugLog("Protected tokens changed in model output.")
                                 translated = body
                                 warning = true
                             }
@@ -276,14 +300,17 @@ final class TranslationService {
                             return
                         }
                         if warning {
-                            debugLog("left in source: \(body)")
+                            warnings += 1
                             continuation.yield(.warning)
+                        } else {
+                            translatedCount += 1
                         }
                         completed += 1
                         continuation.yield(.progress(completed, chunks.count))
                     }
-                    continuation.finish()
-                } catch is CancellationError {
+                    if warnings > 0, translatedCount == 0 {
+                        throw TranslationError.degenerateResponse
+                    }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
@@ -293,81 +320,55 @@ final class TranslationService {
         }
     }
 
-    /// One request per paragraph: the file form uses this instead of the
-    /// line-by-line stream, so a document does not spend one request per line.
-    func streamBlock(
+    func translateBlock(
         text: String,
         style: TranslationStyle,
         tone: TranslationTone,
         target: Language,
-        config: BackendConfig
-    ) -> AsyncThrowingStream<TranslationEvent, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                do {
-                    let preserve = MarkdownDetector.contains(text)
-                    let prompts = [
-                        PromptBuilder.prompt(
-                            text: text,
-                            style: style,
-                            tone: tone,
-                            targetLanguage: target.englishName,
-                            preserveMarkdown: preserve
-                        ),
-                        PromptBuilder.plainPrompt(
-                            text: text,
-                            targetLanguage: target.englishName
-                        )
-                    ]
-                    let result = try await bufferedTranslation(
-                        prompts: prompts,
-                        source: text,
-                        target: target,
-                        config: config
-                    )
-                    continuation.yield(.chunk(result.text))
-                    if result.warning {
-                        continuation.yield(.warning)
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            continuation.onTermination = { _ in task.cancel() }
+        config: BackendConfig,
+        retryRateLimit: Bool = true
+    ) async throws -> (text: String, warning: Bool) {
+        let preserve = MarkdownDetector.contains(text)
+        let standardPrompt = PromptBuilder.prompt(
+            text: text, style: style, tone: tone, targetLanguage: target.englishName,
+            preserveMarkdown: preserve
+        )
+        let concisePrompt = "Translate into \(target.englishName)."
+            + (preserve ? " Preserve Markdown syntax and keep line breaks." : "")
+            + "\n\n" + text
+        let prompts = [
+            style == .auto && tone == .standard ? concisePrompt : standardPrompt,
+            style == .auto && tone == .standard ? standardPrompt : concisePrompt,
+            PromptBuilder.plainPrompt(text: text, targetLanguage: target.englishName)
+        ]
+        let result = try await bufferedTranslation(
+            prompts: prompts,
+            source: text,
+            target: target,
+            config: config,
+            retryRateLimit: retryRateLimit,
+            preserveLineBreaks: true,
+            requiresMarkdownStructure: preserve
+        )
+        if let restored = TokenRestorer.restore(source: text, translated: result.text) {
+            return (restored, result.warning)
         }
+        throw TranslationError.degenerateResponse
     }
 
     /// Raw completion for the writing mode: no translation prompts or target
     /// validation, just the provider's answer.
-    func streamRaw(
+    func rewrite(
         prompt: String,
-        config: BackendConfig
-    ) -> AsyncThrowingStream<TranslationEvent, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                do {
-                    switch config.kind {
-                    case .ollama:
-                        _ = try await runOllama(
-                            prompt: prompt,
-                            config: config,
-                            continuation: continuation
-                        )
-                    case .openAI:
-                        _ = try await runOpenAI(
-                            prompt: prompt,
-                            config: config,
-                            continuation: continuation
-                        )
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            continuation.onTermination = { _ in task.cancel() }
-        }
+        config: BackendConfig,
+        retryRateLimit: Bool = true
+    ) async throws -> String {
+        let result = try await collectWithRetry(
+            prompt: prompt, config: config, maxLength: 128_000, retryRateLimit: retryRateLimit
+        )
+        let cleaned = OutputSanitizer.clean(result)
+        guard !cleaned.isEmpty else { throw TranslationError.emptyResponse }
+        return cleaned
     }
 
     // MARK: - Short blocks
@@ -548,37 +549,66 @@ final class TranslationService {
         prompts: [String],
         source: String,
         target: Language,
-        config: BackendConfig
+        config: BackendConfig,
+        retryRateLimit: Bool,
+        preserveLineBreaks: Bool = false,
+        requiresMarkdownStructure: Bool = false,
+        sourceLanguage: Language? = nil
     ) async throws -> (text: String, warning: Bool) {
+        let sourceCount = source.count
+        let maxLength = max(200, sourceCount * 4 + 100)
         for (promptIndex, prompt) in prompts.enumerated() {
             let attempts = promptIndex == 0 ? 3 : 2
             for attempt in 0..<attempts {
                 if attempt > 0 {
-                    try? await Task.sleep(nanoseconds: 120_000_000)
+                    try await Task.sleep(for: .milliseconds(120))
                 }
                 var retryConfig = config
                 if attempt > 0 {
                     retryConfig.temperature = min(config.temperature, 0.3)
                 }
-                let maxLength = max(200, source.count * 4 + 100)
-                let raw = try await collectWithRetry(
-                    prompt: prompt,
-                    config: retryConfig,
-                    maxLength: maxLength,
-                    target: target
+                let raw = try await collectCandidate(
+                    prompt: Self.withSourceLanguage(prompt, sourceLanguage), config: retryConfig, maxLength: maxLength,
+                    retryRateLimit: retryRateLimit
                 )
                 let candidate = Self.stripPreamble(raw, source: source)
-                if let clean = validated(candidate, source: source, target: target) {
+                if let clean = validated(candidate, source: source, target: target, preserveLineBreaks: preserveLineBreaks),
+                   !requiresMarkdownStructure || Self.markdownStructure(clean) == Self.markdownStructure(source) {
                     return (clean, false)
                 }
-                debugLog("rejected output (prompt \(promptIndex), attempt \(attempt)): \(raw.prefix(240))")
+                debugLog("Rejected model output (prompt \(promptIndex), attempt \(attempt)).")
             }
         }
 
-        if let segmented = try await sentenceFallback(source: source, target: target, config: config) {
+        if !requiresMarkdownStructure, !(preserveLineBreaks && source.contains("\n")),
+           let segmented = try await sentenceFallback(
+               source: source, target: target, config: config, retryRateLimit: retryRateLimit,
+               sourceLanguage: sourceLanguage
+           ) {
             return segmented
         }
         throw TranslationError.degenerateResponse
+    }
+
+    static func markdownStructure(_ text: String) -> [String] {
+        text.split(whereSeparator: \.isNewline).compactMap { line in
+            let body = line.drop(while: { $0 == " " || $0 == "\t" })
+            guard let first = body.first else { return nil }
+            let prefix = body.prefix(while: { $0 == first })
+            let rest = body.dropFirst(prefix.count)
+            if first == "#" || first == ">" {
+                return rest.first?.isWhitespace == true ? String(prefix) : nil
+            }
+            if "-+*".contains(first), prefix.count == 1, rest.first?.isWhitespace == true {
+                return "bullet"
+            }
+            let digits = body.prefix(while: \.isNumber)
+            if !digits.isEmpty, let marker = body.dropFirst(digits.count).first, ".)".contains(marker),
+               body.dropFirst(digits.count + 1).first?.isWhitespace == true {
+                return "number"
+            }
+            return nil
+        }
     }
 
     /// Last resort for long paragraphs: Hy-MT2 occasionally returns an empty
@@ -587,7 +617,9 @@ final class TranslationService {
     private func sentenceFallback(
         source: String,
         target: Language,
-        config: BackendConfig
+        config: BackendConfig,
+        retryRateLimit: Bool,
+        sourceLanguage: Language?
     ) async throws -> (text: String, warning: Bool)? {
         guard !source.contains("http"), !source.contains("]("), !source.contains("`") else {
             return nil
@@ -619,11 +651,9 @@ final class TranslationService {
                 var retryConfig = config
                 retryConfig.temperature = min(config.temperature, 0.3)
                 let maxLength = max(200, piece.count * 4 + 100)
-                let raw = try await collectWithRetry(
-                    prompt: prompt,
-                    config: retryConfig,
-                    maxLength: maxLength,
-                    target: target
+                let raw = try await collectCandidate(
+                    prompt: Self.withSourceLanguage(prompt, sourceLanguage), config: retryConfig, maxLength: maxLength,
+                    retryRateLimit: retryRateLimit
                 )
                 let candidate = Self.stripPreamble(raw, source: piece)
                 if let clean = validated(candidate, source: piece, target: target) {
@@ -643,18 +673,26 @@ final class TranslationService {
         return (translated.joined(separator: " "), failures > 0)
     }
 
-    private func validated(_ raw: String, source: String, target: Language) -> String? {
+    private func validated(
+        _ raw: String, source: String, target: Language, preserveLineBreaks: Bool = false
+    ) -> String? {
         guard !raw.contains("\u{FFFD}") else { return nil }
         let sanitized = OutputSanitizer.clean(raw)
         guard !sanitized.isEmpty else { return nil }
 
-        let cleaned = sanitized.replacingOccurrences(
-            of: #"\s*\n\s*"#,
-            with: " ",
-            options: .regularExpression
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = preserveLineBreaks ? sanitized : sanitized.replacingOccurrences(
+            of: #"\s*\n\s*"#, with: " ", options: .regularExpression
+        )
         guard !cleaned.isEmpty else { return nil }
-        if source.count >= 60, cleaned.count < source.count / 4 {
+        let sourceCount = source.count
+        let cleanedCount = cleaned.count
+        if sourceCount >= 60, cleanedCount < sourceCount / 4 {
+            return nil
+        }
+        if sourceCount >= 60, cleanedCount < sourceCount / 2,
+           !Self.usesCJKScript(target.code),
+           TextChunker.sentences(from: source).count > 1,
+           TextChunker.sentences(from: cleaned).count == 1 {
             return nil
         }
         guard Self.hasTargetScript(cleaned, target: target.code) else { return nil }
@@ -696,11 +734,12 @@ final class TranslationService {
         // "I recommend..." / "Я можу допомогти..." is the model answering the
         // instruction, not translating it. Only reject it when the source has
         // no first person of its own.
+        let paddedSource = " " + sourceLower + " "
         let firstPersonSource = [
             " i ", "i'", " me ", " my ", " we ", "we'", " us ", " our ",
             " я ", " мене ", " мені ", " мій ", " моя ", " ми ", " нас ", " наш ",
             " меня ", " мне ", " мой ", " мы "
-        ].contains { sourceLower.contains($0) }
+        ].contains { paddedSource.contains($0) }
         if !firstPersonSource {
             let metaMarkers = [
                 "я рекомендую", "я реком", "я можу допомогти", "я не можу",
@@ -732,14 +771,14 @@ final class TranslationService {
             return nil
         }
 
-        if source.count >= 40, cleaned.count > source.count * 4 {
+        if sourceCount >= 40, cleanedCount > sourceCount * 4 {
             return nil
         }
-        if source.count < 40, cleaned.count > max(120, source.count * 8) {
+        if sourceCount < 40, cleanedCount > max(120, sourceCount * 8) {
             return nil
         }
 
-        if cleaned.count > 120 {
+        if cleanedCount > 120 {
             let characters = Array(cleaned)
             var shingles = Set<String>()
             var duplicates = 0
@@ -756,92 +795,39 @@ final class TranslationService {
         return cleaned
     }
 
-    private func collect(
-        prompt: String,
-        config: BackendConfig,
-        maxLength: Int,
-        target: Language
+    private func collectCandidate(
+        prompt: String, config: BackendConfig, maxLength: Int, retryRateLimit: Bool
     ) async throws -> String {
-        var text = ""
-        let stream = AsyncThrowingStream<TranslationEvent, Error> { continuation in
-            let task = Task {
-                do {
-                    switch config.kind {
-                    case .ollama:
-                        _ = try await runOllama(prompt: prompt, config: config, continuation: continuation)
-                    case .openAI:
-                        _ = try await runOpenAI(prompt: prompt, config: config, continuation: continuation)
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            continuation.onTermination = { _ in task.cancel() }
+        do {
+            return try await collectWithRetry(
+                prompt: prompt, config: config, maxLength: maxLength, retryRateLimit: retryRateLimit
+            )
+        } catch TranslationError.degenerateResponse {
+            return ""
         }
-
-        for try await event in stream {
-            if case .chunk(let piece) = event {
-                text += piece
-                if let cut = degenerateIndex(in: text, target: target) {
-                    text = String(text[..<cut])
-                    break
-                }
-                if text.count >= maxLength {
-                    text = String(text.prefix(maxLength))
-                    break
-                }
-            }
-        }
-        return text
     }
 
     private func collectWithRetry(
-        prompt: String,
-        config: BackendConfig,
-        maxLength: Int,
-        target: Language
+        prompt: String, config: BackendConfig, maxLength: Int, retryRateLimit: Bool
     ) async throws -> String {
-        var attempt = 0
+        var retries = 0
         while true {
+            try Task.checkCancellation()
+            var output = TranslationOutput(maxBytes: maxLength * 4)
             do {
-                return try await collect(
-                    prompt: prompt,
-                    config: config,
-                    maxLength: maxLength,
-                    target: target
-                )
-            } catch let error as TranslationError {
-                if case .http(let code, _) = error, code == 429, attempt < 5 {
-                    attempt += 1
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    continue
+                try await run(prompt: prompt, config: config) { piece in
+                    output.append(piece)
                 }
-                throw error
+                try Task.checkCancellation()
+                guard !output.exceededLimit else { throw TranslationError.degenerateResponse }
+                return output.text
+            } catch TranslationError.rateLimited(let retryAfter) where retryRateLimit && retries < 2 {
+                let delay = retryAfter ?? Double(3 << retries)
+                guard delay <= 30 else { throw TranslationError.rateLimited(retryAfter: retryAfter) }
+                retries += 1
+                try await Task.sleep(for: .seconds(delay))
             }
         }
-    }
-
-    private func degenerateIndex(in text: String, target: Language) -> String.Index? {
-        let markers = ["hy-Assistant", "hy-User", "hy_end", "<｜", "<|", "</|", "｜hy"]
-        var earliest: String.Index?
-        for marker in markers {
-            if let range = text.range(of: marker, options: .caseInsensitive),
-               earliest == nil || range.lowerBound < earliest! {
-                earliest = range.lowerBound
-            }
-        }
-
-        if !Self.usesCJKScript(target.code) {
-            if let cjk = text.firstIndex(where: { character in
-                character.unicodeScalars.contains { scalar in
-                    (0x4E00...0x9FFF).contains(scalar.value) || (0x3400...0x4DBF).contains(scalar.value)
-                }
-            }), earliest == nil || cjk < earliest! {
-                earliest = cjk
-            }
-        }
-        return earliest
     }
 
     /// Loads a local model into memory (Ollama, LM Studio, oMLX, llama.cpp).
@@ -857,11 +843,11 @@ final class TranslationService {
                 "model": config.model,
                 "messages": [["role": "user", "content": "Hello"]],
                 "stream": false,
-                "keep_alive": "30m",
+                "keep_alive": "5m",
                 "options": [
                     "temperature": 0.0,
                     "num_predict": 1,
-                    "num_ctx": 512
+                    "num_ctx": config.contextWindow
                 ] as [String: Any]
             ]
         case .openAI:
@@ -886,21 +872,38 @@ final class TranslationService {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         do {
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await session.data(for: request)
             return (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
             return false
         }
     }
 
+    private func run(
+        prompt: String, config: BackendConfig, onText: (String) -> Bool
+    ) async throws {
+        guard !config.model.isEmpty else { throw TranslationError.emptyModel }
+        guard !config.requiresAPIKey || !config.apiKey.isEmpty else { throw TranslationError.missingAPIKey }
+        switch config.kind {
+        case .ollama:
+            try await runOllama(prompt: prompt, config: config, onText: onText)
+        case .openAI:
+            try await runOpenAI(prompt: prompt, config: config, onText: onText)
+        }
+    }
+
+    static func withSourceLanguage(_ prompt: String, _ source: Language?) -> String {
+        guard let source, source != .auto else { return prompt }
+        return "The source language is \(source.englishName). " + prompt
+    }
+
     // MARK: - Ollama
 
-    @discardableResult
     private func runOllama(
         prompt: String,
         config: BackendConfig,
-        continuation: AsyncThrowingStream<TranslationEvent, Error>.Continuation
-    ) async throws -> Int {
+        onText: (String) -> Bool
+    ) async throws {
         guard let url = URL(string: config.baseURL + "/api/chat") else {
             throw TranslationError.invalidURL(config.baseURL)
         }
@@ -913,7 +916,7 @@ final class TranslationService {
             "model": config.model,
             "messages": [["role": "user", "content": prompt]],
             "stream": true,
-            "keep_alive": "30m",
+            "keep_alive": "5m",
             "options": [
                 "temperature": config.temperature,
                 "top_p": config.topP,
@@ -936,25 +939,17 @@ final class TranslationService {
         let bytes: URLSession.AsyncBytes
         let response: URLResponse
         do {
-            (bytes, response) = try await URLSession.shared.bytes(for: request)
+            (bytes, response) = try await session.bytes(for: request)
         } catch {
+            try Task.checkCancellation()
             throw TranslationError.connection(config.baseURL)
         }
 
-        guard let http = response as? HTTPURLResponse else {
-            throw TranslationError.connection(config.baseURL)
-        }
-        guard http.statusCode == 200 else {
-            let body = try await collect(bytes)
-            if http.statusCode == 404 {
-                throw TranslationError.modelNotFound(config.model)
-            }
-            throw TranslationError.http(http.statusCode, body)
-        }
+        defer { bytes.task.cancel() }
+        try checkResponse(response, config: config)
 
-        var produced = 0
         for try await line in bytes.lines {
-            if Task.isCancelled { return produced }
+            try Task.checkCancellation()
             guard !line.isEmpty, let data = line.data(using: .utf8) else { continue }
             guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
 
@@ -963,31 +958,25 @@ final class TranslationService {
             }
             if let message = object["message"] as? [String: Any],
                let content = message["content"] as? String,
-               !content.isEmpty {
-                produced += content.trimmingCharacters(in: .whitespacesAndNewlines).count
-                if case .terminated = continuation.yield(.chunk(content)) { return produced }
-            }
+               !content.isEmpty, !onText(content) { return }
             if object["done"] as? Bool == true {
-                var tps: Double?
-                if let count = object["eval_count"] as? Double,
-                   let nanos = object["eval_duration"] as? Double,
-                   nanos > 0 {
-                    tps = count / (nanos / 1_000_000_000)
+                if object["done_reason"] as? String == "length" {
+                    throw TranslationError.degenerateResponse
                 }
-                continuation.yield(.stats(tokensPerSecond: tps))
+                return
             }
         }
-        return produced
+        try Task.checkCancellation()
+        throw TranslationError.unexpectedResponse
     }
 
     // MARK: - OpenAI-compatible
 
-    @discardableResult
     private func runOpenAI(
         prompt: String,
         config: BackendConfig,
-        continuation: AsyncThrowingStream<TranslationEvent, Error>.Continuation
-    ) async throws -> Int {
+        onText: (String) -> Bool
+    ) async throws {
         guard let url = openAIEndpoint(base: config.baseURL, path: "chat/completions") else {
             throw TranslationError.invalidURL(config.baseURL)
         }
@@ -1017,29 +1006,21 @@ final class TranslationService {
         let bytes: URLSession.AsyncBytes
         let response: URLResponse
         do {
-            (bytes, response) = try await URLSession.shared.bytes(for: request)
+            (bytes, response) = try await session.bytes(for: request)
         } catch {
+            try Task.checkCancellation()
             throw TranslationError.connection(config.baseURL)
         }
 
-        guard let http = response as? HTTPURLResponse else {
-            throw TranslationError.connection(config.baseURL)
-        }
-        guard http.statusCode == 200 else {
-            let body = try await collect(bytes)
-            if http.statusCode == 404 {
-                throw TranslationError.modelNotFound(config.model)
-            }
-            throw TranslationError.http(http.statusCode, body)
-        }
+        defer { bytes.task.cancel() }
+        try checkResponse(response, config: config)
 
-        var produced = 0
         for try await line in bytes.lines {
-            if Task.isCancelled { return produced }
+            try Task.checkCancellation()
             guard line.hasPrefix("data:") else { continue }
             var payload = line.dropFirst(5)
             if payload.first == " " { payload = payload.dropFirst() }
-            if payload == "[DONE]" { break }
+            if payload == "[DONE]" { return }
             guard let data = payload.data(using: .utf8),
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
 
@@ -1049,21 +1030,20 @@ final class TranslationService {
             }
             if let choices = object["choices"] as? [[String: Any]],
                let first = choices.first {
-                if let delta = first["delta"] as? [String: Any],
-                   let content = delta["content"] as? String,
-                   !content.isEmpty {
-                    produced += content.trimmingCharacters(in: .whitespacesAndNewlines).count
-                    if case .terminated = continuation.yield(.chunk(content)) { return produced }
-                }
-                if let message = first["message"] as? [String: Any],
-                   let content = message["content"] as? String,
-                   !content.isEmpty {
-                    produced += content.trimmingCharacters(in: .whitespacesAndNewlines).count
-                    if case .terminated = continuation.yield(.chunk(content)) { return produced }
+                let message = (first["delta"] ?? first["message"]) as? [String: Any]
+                if let content = message?["content"] as? String,
+                   !content.isEmpty, !onText(content) { return }
+                if let reason = first["finish_reason"] as? String, !reason.isEmpty {
+                    if reason == "length" { throw TranslationError.degenerateResponse }
+                    guard reason == "stop" || reason == "end_turn" else {
+                        throw TranslationError.unexpectedResponse
+                    }
+                    return
                 }
             }
         }
-        return produced
+        try Task.checkCancellation()
+        throw TranslationError.unexpectedResponse
     }
 
     // MARK: - Helpers
@@ -1077,13 +1057,33 @@ final class TranslationService {
         return URL(string: value + "/v1/" + path)
     }
 
-    private func collect(_ bytes: URLSession.AsyncBytes) async throws -> String {
-        var data = Data()
-        for try await byte in bytes {
-            data.append(byte)
-            if data.count > 64_000 { break }
+    private func checkResponse(
+        _ response: URLResponse, config: BackendConfig
+    ) throws {
+        guard let http = response as? HTTPURLResponse else {
+            throw TranslationError.connection(config.baseURL)
         }
-        return String(data: data, encoding: .utf8) ?? ""
+        switch http.statusCode {
+        case 200:
+            return
+        case 404:
+            throw TranslationError.modelNotFound(config.model)
+        case 429:
+            let header = http.value(forHTTPHeaderField: "Retry-After")
+            throw TranslationError.rateLimited(retryAfter: Self.retryDelay(header))
+        default:
+            throw TranslationError.http(http.statusCode)
+        }
+    }
+
+    static func retryDelay(_ header: String?, now: Date = .now) -> TimeInterval? {
+        guard let value = header?.trimmingCharacters(in: .whitespaces) else { return nil }
+        if let seconds = Double(value), seconds.isFinite, seconds >= 0 { return seconds }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss z"
+        return formatter.date(from: value).map { max(0, $0.timeIntervalSince(now)) }
     }
 
     private func debugLog(_ message: String) {
@@ -1091,5 +1091,46 @@ final class TranslationService {
         guard environment["DEEPLOFM_DEBUG"] == "1" || environment["HYMT_DEBUG"] == "1" else { return }
         guard let data = ("[DeepL-oFM] " + message + "\n").data(using: .utf8) else { return }
         FileHandle.standardError.write(data)
+    }
+}
+
+/// Scans only new text and enough trailing characters to detect a split marker.
+/// Перевіряє новий фрагмент і короткий хвіст для маркерів на стику.
+struct TranslationOutput {
+    private static let markers = ["hy-assistant", "hy-user", "hy_end", "<｜", "<|", "</|", "｜hy"]
+        .map { Data($0.utf8) }
+    private static let overlap = (markers.map(\.count).max() ?? 1) - 1
+
+    let maxBytes: Int
+    private var bytes = Data()
+    private(set) var exceededLimit = false
+
+    var text: String { String(decoding: bytes, as: UTF8.self) }
+
+    mutating func append(_ piece: String) -> Bool {
+        let overlap = min(Self.overlap, bytes.count)
+        let remaining = maxBytes - bytes.count
+        // Leave room to detect a marker that straddles the output limit.
+        // Залишаємо запас для маркера на межі довжини відповіді.
+        let fragment = piece.utf8.prefix(remaining + Self.overlap + 1)
+        var window = Data(bytes.suffix(overlap))
+        window.append(contentsOf: fragment)
+        let folded = Data(window.lazy.map { (65...90).contains($0) ? $0 + 32 : $0 })
+        if let offset = Self.markers.compactMap({ folded.range(of: $0)?.lowerBound }).min() {
+            if offset < overlap {
+                bytes.removeLast(overlap - offset)
+            } else if offset - overlap <= remaining {
+                bytes.append(contentsOf: window[overlap..<offset])
+            } else {
+                exceededLimit = true
+            }
+            return false
+        }
+        guard fragment.count <= remaining else {
+            exceededLimit = true
+            return false
+        }
+        bytes.append(contentsOf: fragment)
+        return true
     }
 }

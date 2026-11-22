@@ -4,6 +4,19 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>2.0.1</title>
+            <pubDate>Sun, 22 Nov 2026 20:32:50 +0000</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>14</sparkle:version>
+            <sparkle:shortVersionString>2.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<p>Opening the app again brings back its window. Stop a translation while it runs. The app spends less time processing long responses and keeps the window responsive while it opens or writes a file.</p>
+<p>Text and Markdown retain paragraph breaks. Fenced code stays intact. If a save fails, you can try again with the same translation.</p>
+<p>Повторний запуск відкриває наявне вікно. Переклад можна зупинити. Файли відкриваються і зберігаються у фоновому режимі. Порожні рядки та блоки коду Markdown зберігаються.</p>]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v2.0.1/DeepL-oFM-2.0.1.dmg" length="3694035" type="application/octet-stream" sparkle:edSignature="gEOzDwHeh+66eunR8PpLBZ1zptuAxv1YYXl4MdFSTAz3KLIVClLgS+EQMpDcVGs8700YYV+XFpngnme8KYiFDg=="/>
+        </item>
+        <item>
             <title>1.1.2</title>
             <pubDate>Sun, 22 Nov 2026 19:25:00 +0100</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -148,6 +161,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: iNXPWZVNndy1hE2db0W08pcIWLoMjyu6qqSbNNLv2IxdexnjYnU3xxqFHB7scAE1xk4BBZKTkwPFDYq26RouDg==
-length: 10932
+edSignature: 1ByIBeLFs0Ph1+kykzRobGqxk+U9EY/cxrnoA4myiVc9sKcWBLWK2jiIA626pMfwyO6F1vmOuNz1uF5T/rr1CA==
+length: 12409
 -->

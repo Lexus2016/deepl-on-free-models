@@ -30,7 +30,7 @@ struct WriteView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("DeepL Write")
+            Text(L10n.t("Improve text", language))
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Theme.text)
             Text(L10n.t("Improve clarity, grammar and style while keeping the meaning.", language))
@@ -128,7 +128,7 @@ struct WriteView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .background(Capsule().fill(Theme.accentGradient))
+            .background(Capsule().fill(Theme.primary))
         }
         .buttonStyle(.plain)
         .disabled(
@@ -190,15 +190,11 @@ struct WriteView: View {
                         MarkdownPreview(markdown: store.resultText)
                     case .text:
                         ResultText(
-                            text: MarkdownRenderer.plainText(store.resultText),
-                            translating: false,
-                            caretVisible: false
+                            text: MarkdownRenderer.plainText(store.resultText)
                         )
                     case .markdown:
                         ResultText(
-                            text: store.resultText,
-                            translating: false,
-                            caretVisible: false
+                            text: store.resultText
                         )
                     }
                 }

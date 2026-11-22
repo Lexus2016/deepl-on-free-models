@@ -11,20 +11,11 @@ enum Theme {
     static let borderSoft = Color(hex: 0x21242A)
     static let text = Color(hex: 0xEDEFF3)
     static let secondary = Color(hex: 0x9BA1AC)
-    static let tertiary = Color(hex: 0x6C7280)
-    static let accent = Color(hex: 0x3B7BF6)
+    static let tertiary = Color(hex: 0x9099AA)
+    static let accent = Color(hex: 0x72A6FF)
     static let accentAlt = Color(hex: 0x11B8C7)
-    static let accentSoft = Color(hex: 0x3B7BF6).opacity(0.16)
-    static let accentGradient = LinearGradient(
-        colors: [Color(hex: 0x3B7BF6), Color(hex: 0x11B8C7)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-    static let cardGradient = LinearGradient(
-        colors: [Color(hex: 0x1B1F2A), Color(hex: 0x151922)],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    static let accentSoft = Color(hex: 0x72A6FF).opacity(0.16)
+    static let primary = Color(hex: 0x245ABD)
     static let success = Color(hex: 0x3ECF8E)
     static let warning = Color(hex: 0xE5B454)
     static let danger = Color(hex: 0xF26D6D)
@@ -53,26 +44,11 @@ extension NSColor {
 
 extension View {
     func cardBackground(_ color: Color = Theme.chrome, radius: CGFloat = Theme.radius) -> some View {
-        background(
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(Theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(color.opacity(0.18))
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [Theme.border.opacity(0.9), Theme.borderSoft.opacity(0.45)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        )
-        .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: 10)
+        background(RoundedRectangle(cornerRadius: radius).fill(color))
+            .overlay {
+                RoundedRectangle(cornerRadius: radius).strokeBorder(Theme.border, lineWidth: 1)
+            }
+
     }
 }
 

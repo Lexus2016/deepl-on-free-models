@@ -45,7 +45,7 @@ La plupart des traducteurs sont d'abord un site web. DeepL-oFM est d'abord une a
 - Bouton **Copier** visible : Markdown, HTML et RTF en une fois.
 - **Collage respectueux de la mise en forme** : HTML/RTF du navigateur ou du traitement de texte devient du Markdown — titres, listes, liens et emphases conservés.
 - **Vue Markdown** : rendu, texte seul ou source ; Copier suit la vue active.
-- **Fichiers** : `.txt`, `.md`, `.pdf` et `.docx` à ouvrir ou déposer ; enregistrement dans le format d'origine.
+- Ouvrez ou déposez vos fichiers TXT, Markdown, PDF et Word dans l’onglet Fichiers. Enregistrez la traduction au format d’origine. Pour un PDF scanné, lancez d’abord la reconnaissance de texte.
 - **DOCX** est mis à jour sur place (seulement `word/document.xml`) ; **PDF** conserve les pages, la mise en page, les images et la typographie.
 - **Neuf langues d'interface** : anglais, ukrainien, russe, allemand, français, espagnol, polonais, portugais, italien.
 - Mises à jour automatiques via **Sparkle 2** avec un flux signé.

@@ -3,21 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DeepL-oFM — native macOS translator for local and free models</title>
-<meta name="description" content="DeepL-oFM is a free, private, native macOS translator for local and cloud models. Hy-MT2 7B via Ollama, OpenRouter, Groq, Cerebras; preserves formatting and Markdown; automatic updates; signed and notarized.">
+<title>DeepL-oFM | Translate text and documents on Mac</title>
+<meta name="description" content="Translate text, Markdown and documents on your Mac. Run Hy-MT2 with Ollama or connect your own cloud provider.">
 <link rel="canonical" href="https://lexus2016.github.io/deepl-on-free-models/">
 <meta name="theme-color" content="#0b0d12">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DeepL-oFM">
 <meta property="og:title" content="DeepL-oFM — native macOS translator for local and free models">
-<meta property="og:description" content="Free and private translation on your Mac. Hy-MT2 7B via Ollama, plus OpenRouter, Groq and Cerebras. Keeps paragraphs, lists and Markdown. Automatic updates.">
+<meta property="og:description" content="Translate on your Mac with Ollama, OpenRouter, Groq or Cerebras. Work with text, Markdown, Word and PDF files.">
 <meta property="og:url" content="https://lexus2016.github.io/deepl-on-free-models/">
 <meta property="og:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-preview.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="DeepL-oFM — native macOS translator for local and free models">
-<meta name="twitter:description" content="Free and private translation on your Mac. Local Hy-MT2 7B or cloud models, formatting preserved, automatic updates.">
+<meta name="twitter:description" content="Translate on your Mac with local or cloud models.">
 <meta name="twitter:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-preview.png">
 <style>
 :root{--bg:#0b0d12;--panel:#121722;--panel2:#171d2a;--line:#252d3c;--text:#f2f4f8;--muted:#9aa5b8;--dim:#6f7b90;--accent:#2f6bff;--accent2:#11b8c7;--radius:16px}
@@ -75,7 +75,7 @@ footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);fon
 @media(max-width:600px){.grid,.shots{grid-template-columns:1fr}.nav .links{gap:12px}.wrap{padding:0 18px}.stats{gap:16px}}
 </style>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"Free, private, native macOS translator for local and cloud models.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"1.0.7","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"A Mac app for translating text and documents with local or cloud models.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.1","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
 </script>
 </head>
 <body>
@@ -93,63 +93,55 @@ footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);fon
 <main class="wrap">
 <div class="hero">
   <div>
-    <div class="eyebrow">Free · private · native macOS</div>
-    <h1><span>Translation that stays on your Mac.</span></h1>
-    <p class="lead">DeepL-oFM is a two-pane translator powered by local Hy-MT2 7B or a cloud provider. It keeps paragraphs, lists and Markdown, and checks every line before showing the result.</p>
+    <div class="eyebrow">For macOS</div>
+    <h1><span>Translate text and documents on your Mac</span></h1>
+    <p class="lead">Run Hy-MT2 7B locally with Ollama or choose a cloud provider. Edit the original and read the translation side by side.</p>
     <div class="cta">
-      <a class="btn primary" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg">⬇ Download for macOS</a>
+      <a class="btn primary" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg">Download for macOS</a>
       <a class="btn secondary" href="https://github.com/Lexus2016/deepl-on-free-models">View on GitHub</a>
     </div>
-    <div class="note">Free and open source · macOS 14+ · Signed and notarized · 3.1 MB</div>
+    <div class="note">Free and open source. Requires macOS 14 or later and an Apple silicon Mac.</div>
   </div>
   <div class="hero-shot">
     <img src="docs/screenshots/en/translation.png" alt="DeepL-oFM translating a Ukrainian paragraph into English">
   </div>
 </div>
 
-<div class="stats">
-  <div class="stat"><b>33</b><span>Hy-MT2 languages</span></div>
-  <div class="stat"><b>9</b><span>providers and local servers</span></div>
-  <div class="stat"><b>0</b><span>telemetry</span></div>
-  <div class="stat"><b>1</b><span>self-updating app</span></div>
-</div>
-
 <section id="demo">
-  <h2>See it in motion</h2>
-  <p class="sub">Three result views, file translation and nine interface languages — recorded in the real app.</p>
+  <h2>Watch the demo</h2>
+  <p class="sub">See how to translate a file and switch between the three views of a result.</p>
   <div class="demo-shot"><img src="docs/demo.gif" alt="DeepL-oFM demo: Markdown view, plain text, Markdown source, PDF translation and settings"></div>
 </section>
 
 <section id="features">
-  <h2>Built for real text</h2>
-  <p class="sub">Not a chat wrapper: a focused translator that respects the shape of the document and the privacy of the person using it.</p>
+  <h2>What you can do</h2>
   <div class="grid">
-    <div class="card"><div class="ico">⌂</div><h3>Local or cloud</h3><p>Hy-MT2 7B through Ollama runs offline. OpenRouter, Groq and Cerebras are one key away when you need more speed or quality.</p></div>
-    <div class="card"><div class="ico">¶</div><h3>Formatting preserved</h3><p>Paragraphs, lists, headings, block quotes, links and inline code survive the round trip. URLs and model IDs are restored exactly.</p></div>
-    <div class="card"><div class="ico">⌘</div><h3>Copy that works</h3><p>One button puts Markdown, HTML and RTF on the clipboard: chats get plain text, rich editors get formatting.</p></div>
-    <div class="card"><div class="ico">↻</div><h3>Updates itself</h3><p>Sparkle 2 checks a signed feed once a day. Install updates manually or let the app do it for you.</p></div>
-    <div class="card"><div class="ico">◐</div><h3>Privacy first</h3><p>No telemetry, no account. Local models never send your text over the network. Keys live in the macOS Keychain.</p></div>
-    <div class="card"><div class="ico">⌥</div><h3>Two global hotkeys</h3><p>Translate the clipboard or selected text from any app. Accessibility is used only to send ⌘C.</p></div>
+    <div class="card"><div class="ico">⌂</div><h3>Local or cloud</h3><p>Use Hy-MT2 7B through Ollama offline. To use OpenRouter, Groq or Cerebras, add your API key in Settings.</p></div>
+    <div class="card"><div class="ico">¶</div><h3>Text and file formats</h3><p>Translate plain text, Markdown, Word or PDF files. Scanned PDFs need text recognition first.</p></div>
+    <div class="card"><div class="ico">⌘</div><h3>Copy the result</h3><p>Choose a preview, plain text or Markdown. Copy uses the view you select.</p></div>
+    <div class="card"><div class="ico">↻</div><h3>App updates</h3><p>The app checks for signed updates. You can choose to install them automatically.</p></div>
+    <div class="card"><div class="ico">◐</div><h3>Privacy</h3><p>The app has no account or analytics. When you use a cloud provider, it receives the text you translate. macOS Keychain stores your keys.</p></div>
+    <div class="card"><div class="ico">⌥</div><h3>Keyboard shortcuts</h3><p>Translate clipboard contents or selected text from another app. The selection shortcut needs Accessibility permission to copy the text.</p></div>
   </div>
 </section>
 
 <section id="screens">
   <h2>Screenshots</h2>
-  <p class="sub">The real app, in English. The same screens are available in Ukrainian and Russian in the READMEs.</p>
+  <p class="sub">See the translator and provider settings. The guides below have screenshots in more languages.</p>
   <div class="shots">
-    <figure><a href="docs/screenshots/en/translation.png" target="_blank" rel="noopener"><img src="docs/screenshots/en/translation.png" alt="Translation pane"></a><figcaption>Two panes, progress, finished text, visible Copy button.</figcaption></figure>
-    <figure><a href="docs/screenshots/en/settings.png" target="_blank" rel="noopener"><img src="docs/screenshots/en/settings.png" alt="Provider settings"></a><figcaption>Connect to a provider, fetch the live model list, choose a fallback.</figcaption></figure>
+    <figure><a href="docs/screenshots/en/translation.png" target="_blank" rel="noopener"><img src="docs/screenshots/en/translation.png" alt="Translation pane"></a><figcaption>Original text and translation side by side.</figcaption></figure>
+    <figure><a href="docs/screenshots/en/settings.png" target="_blank" rel="noopener"><img src="docs/screenshots/en/settings.png" alt="Provider settings"></a><figcaption>Choose a provider, load its models and set a fallback.</figcaption></figure>
   </div>
 </section>
 
 <section id="install">
-  <h2>Install in one drag</h2>
-  <p class="sub">Download the notarized DMG, open it and drag DeepL-oFM onto Applications. The app is signed and notarized, so Gatekeeper opens it without a workaround.</p>
+  <h2>Install on Mac</h2>
+  <p class="sub">Open the downloaded disk image and drag DeepL-oFM into Applications.</p>
   <div class="install">
     <div class="steps">
-      <div class="step"><div><b>Download the DMG</b><p><a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg">DeepL-oFM.dmg</a> — about 3 MB.</p></div></div>
+      <div class="step"><div><b>Download the DMG</b><p><a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg">DeepL-oFM.dmg</a></p></div></div>
       <div class="step"><div><b>Drag to Applications</b><p>Open the disk image and drag DeepL-oFM onto the Applications folder in the same window.</p></div></div>
-      <div class="step"><div><b>Choose a model</b><p>Local Ollama works offline. Or pick OpenRouter, Groq, Cerebras or any OpenAI-compatible endpoint, press Connect and choose a model.</p></div></div>
+      <div class="step"><div><b>Choose a model</b><p>Choose Ollama or a cloud provider in Settings. Select Connect to see the available models.</p></div></div>
     </div>
     <div>
       <p class="sub" style="margin-bottom:8px">Base model:</p>
@@ -165,12 +157,19 @@ open build/DeepL-oFM.app</pre>
 </section>
 
 <section>
-  <h2>READMEs</h2>
-  <p class="sub">Full documentation, provider tables, model notes and screenshots in three languages.</p>
+  <h2>User guides</h2>
+  <p class="sub">Setup instructions, model notes and screenshots in nine languages.</p>
   <div class="langs">
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.md">English README</a>
+    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.md">English</a>
     <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.uk.md">Українська</a>
     <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.ru.md">Русский</a>
+    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.de.md">Deutsch</a>
+    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.fr.md">Français</a>
+    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.es.md">Español</a>
+    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pl.md">Polski</a>
+    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pt.md">Português</a>
+    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.it.md">Italiano</a>
+    <a href="privacy.html">Privacy policy</a>
     <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/CHANGELOG.md">Changelog</a>
     <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/CONTRIBUTING.md">Contributing</a>
     <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/SECURITY.md">Security</a>

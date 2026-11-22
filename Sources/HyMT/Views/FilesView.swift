@@ -10,18 +10,23 @@ struct FilesView: View {
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            header
-
-            if store.selectedURL == nil {
-                dropZone
-            } else {
-                fileContent
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                header
+                if store.selectedURL == nil {
+                    dropZone
+                    if case .failed(let message) = store.state {
+                        Label(message, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(Theme.warning)
+                    }
+                } else {
+                    fileContent
+                }
             }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: 740, alignment: .leading)
+            .padding(24)
+            .frame(maxWidth: .infinity)
         }
-        .padding(28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Theme.window)
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: $dropTargeted) { providers in
@@ -44,12 +49,10 @@ struct FilesView: View {
 
     private var dropZone: some View {
         VStack(spacing: 16) {
-            HStack(spacing: 8) {
-                fileBadge("PDF", color: Color(hex: 0xE5534B))
-                fileBadge("DOCX", color: Color(hex: 0x4A8CF7))
-                fileBadge("TXT", color: Color(hex: 0x8B93A1))
-                fileBadge("MD", color: Color(hex: 0x3ECF8E))
-            }
+            Image(systemName: "doc.badge.plus")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
 
             VStack(spacing: 6) {
                 Text(L10n.t("Drop a file here or choose one", language))
@@ -71,7 +74,7 @@ struct FilesView: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 9)
-                .background(Capsule().fill(Theme.accentGradient))
+                .background(Capsule().fill(Theme.primary))
             }
             .buttonStyle(.plain)
         }
@@ -100,7 +103,7 @@ struct FilesView: View {
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Theme.secondary)
 
-                Picker("", selection: $store.targetCode) {
+                Picker(L10n.t("Translate to", language), selection: $store.targetCode) {
                     ForEach(Language.all) { item in
                         Text(item.displayName(in: language)).tag(item.code)
                     }
@@ -108,7 +111,7 @@ struct FilesView: View {
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .frame(width: 230)
-                .disabled(store.isWorking)
+                .disabled(store.isWorking || store.isSaving || store.state == .finished)
 
                 Spacer()
 
@@ -118,7 +121,7 @@ struct FilesView: View {
                 .buttonStyle(.plain)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.tertiary)
-                .disabled(store.isWorking)
+                .disabled(store.isWorking || store.isSaving)
             }
 
             switch store.state {
@@ -134,7 +137,7 @@ struct FilesView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 18)
                     .padding(.vertical, 10)
-                    .background(Capsule().fill(Theme.accentGradient))
+                    .background(Capsule().fill(Theme.primary))
                 }
                 .buttonStyle(.plain)
 
@@ -198,14 +201,15 @@ struct FilesView: View {
                     .background(Circle().fill(Theme.chromeRaised))
             }
             .buttonStyle(.plain)
-            .disabled(store.isWorking)
+            .disabled(store.isWorking || store.isSaving)
+            .accessibilityLabel(L10n.t("Remove file", language))
         }
     }
 
     private var progressCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L10n.t("Translating…", language))
+                Text(L10n.t(store.isPreparingOutput ? "Preparing file…" : "Translating…", language))
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Theme.secondary)
                 Spacer()
@@ -222,6 +226,7 @@ struct FilesView: View {
                 )
                 .progressViewStyle(.linear)
                 .tint(Theme.accent)
+                .accessibilityLabel(L10n.t("Translation progress", language))
                 Text(L10n.format(
                     "Translating… %d of %d",
                     language,
@@ -274,12 +279,17 @@ struct FilesView: View {
 
             if store.warningCount > 0 {
                 Text(L10n.format(
-                    "Some lines could not be translated (%d); they are left in the source language.",
+                    "Some paragraphs are still in the original language (%d).",
                     language,
                     store.warningCount
                 ))
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.warning)
+            }
+
+            if let error = store.saveError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(Theme.warning)
             }
 
             HStack(spacing: 10) {
@@ -288,15 +298,16 @@ struct FilesView: View {
                 } label: {
                     HStack(spacing: 7) {
                         Image(systemName: "square.and.arrow.down")
-                        Text(L10n.t("Save translation…", language))
+                        Text(L10n.t(store.isSaving ? "Saving…" : "Save translation…", language))
                     }
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 9)
-                    .background(Capsule().fill(Theme.accentGradient))
+                    .background(Capsule().fill(Theme.primary))
                 }
                 .buttonStyle(.plain)
+                .disabled(store.isSaving)
 
                 Button(L10n.t("Translate another file", language)) {
                     store.reset()
@@ -304,6 +315,7 @@ struct FilesView: View {
                 .buttonStyle(.plain)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.secondary)
+                .disabled(store.isSaving)
             }
         }
     }
@@ -353,20 +365,8 @@ struct FilesView: View {
         }
     }
 
-    private func fileBadge(_ title: String, color: Color) -> some View {
-        Text(title)
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(color.opacity(0.9))
-            )
-    }
-
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
-        guard let provider = providers.first else { return false }
+        guard !store.isSaving, let provider = providers.first else { return false }
         provider.loadItem(
             forTypeIdentifier: UTType.fileURL.identifier,
             options: nil

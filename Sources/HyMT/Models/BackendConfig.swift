@@ -14,7 +14,7 @@ enum BackendKind: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-struct BackendConfig: Sendable {
+struct BackendConfig: Sendable, Equatable {
     var kind: BackendKind
     var baseURL: String
     var model: String
@@ -24,4 +24,9 @@ struct BackendConfig: Sendable {
     var topK: Int
     var repetitionPenalty: Double
     var contextWindow: Int
+    var requiresAPIKey = false
+
+    func usesSameEndpoint(as other: Self) -> Bool {
+        kind == other.kind && baseURL == other.baseURL && model == other.model && apiKey == other.apiKey
+    }
 }

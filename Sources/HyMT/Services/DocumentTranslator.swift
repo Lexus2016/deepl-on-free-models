@@ -42,7 +42,7 @@ enum DocumentKind: String, Sendable {
 
 /// One paragraph-like run of text on a PDF page. The original page is kept as
 /// the background; this rectangle is the only part that gets replaced.
-struct PDFTextBlock {
+struct PDFTextBlock: Sendable {
     let pageIndex: Int
     let bounds: CGRect
     let text: String
@@ -54,20 +54,22 @@ struct PDFTextBlock {
     let lineSpacing: CGFloat
 }
 
-struct PDFLayout {
+struct PDFLayout: Sendable {
     let url: URL
     let pageCount: Int
     let blocks: [PDFTextBlock]
 }
 
-struct OpenedDocument {
+struct OpenedDocument: Sendable {
     let url: URL
     let kind: DocumentKind
-    let text: String
+    let sourceText: String?
     /// One entry per DOCX paragraph or PDF text block, used to align the
     /// translated lines back to the original document.
     let paragraphs: [String]
     let pdf: PDFLayout?
+
+    var text: String { sourceText ?? paragraphs.joined(separator: "\n") }
 }
 
 enum DocumentError: Error {
@@ -83,7 +85,7 @@ enum DocumentError: Error {
         case .unreadable:
             return L10n.t("The file could not be read.", language)
         case .noText:
-            return L10n.t("The document contains no text. Scanned PDFs need OCR first.", language)
+            return L10n.t("No selectable text found. For a scanned PDF, run text recognition first.", language)
         case .docxFailed:
             return L10n.t("The Word document could not be processed.", language)
         }
@@ -106,6 +108,7 @@ enum DocumentTranslator {
     // MARK: - Read
 
     static func read(url: URL) throws -> OpenedDocument {
+        try Task.checkCancellation()
         guard let kind = DocumentKind.from(url: url) else {
             throw DocumentError.unsupported
         }
@@ -116,7 +119,7 @@ enum DocumentTranslator {
                 throw DocumentError.noText
             }
             return OpenedDocument(
-                url: url, kind: kind, text: text, paragraphs: [], pdf: nil
+                url: url, kind: kind, sourceText: text, paragraphs: [], pdf: nil
             )
 
         case .pdf:
@@ -124,7 +127,7 @@ enum DocumentTranslator {
             return OpenedDocument(
                 url: url,
                 kind: kind,
-                text: layout.blocks.map(\.text).joined(separator: "\n"),
+                sourceText: nil,
                 paragraphs: layout.blocks.map(\.text),
                 pdf: layout
             )
@@ -132,12 +135,11 @@ enum DocumentTranslator {
         case .docx:
             let data = try unzipEntry("word/document.xml", from: url)
             let paragraphs = try paragraphs(fromDocumentXML: data)
-            let text = paragraphs.joined(separator: "\n")
-            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            guard paragraphs.contains(where: { $0.contains(where: { !$0.isWhitespace }) }) else {
                 throw DocumentError.noText
             }
             return OpenedDocument(
-                url: url, kind: kind, text: text, paragraphs: paragraphs, pdf: nil
+                url: url, kind: kind, sourceText: nil, paragraphs: paragraphs, pdf: nil
             )
         }
     }
@@ -149,6 +151,52 @@ enum DocumentTranslator {
         throw DocumentError.unreadable
     }
 
+    static func textUnits(in text: String, markdown: Bool) -> [(text: String, translate: Bool)] {
+        var units: [(String, Bool)] = []
+        var cursor = text.startIndex
+        var paragraphStart: String.Index?
+        var paragraphEnd = text.startIndex
+        var codeFence: (marker: Character, count: Int)?
+
+        func flushParagraph() {
+            guard let start = paragraphStart else { return }
+            if cursor < start { units.append((String(text[cursor..<start]), false)) }
+            units.append((String(text[start..<paragraphEnd]), true))
+            cursor = paragraphEnd
+            paragraphStart = nil
+        }
+
+        for line in text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) {
+            let indentation = line.prefix(while: { $0 == " " }).count
+            let content = line.dropFirst(indentation)
+            if markdown, indentation <= 3, let mark = content.first, mark == "`" || mark == "~" {
+                let count = content.prefix(while: { $0 == mark }).count
+                let suffix = content.dropFirst(count)
+                if let fence = codeFence {
+                    if mark == fence.marker, count >= fence.count, suffix.allSatisfy(\.isWhitespace) {
+                        codeFence = nil
+                    }
+                    continue
+                } else if count >= 3, mark != "`" || !suffix.contains("`") {
+                    flushParagraph()
+                    codeFence = (mark, count)
+                    continue
+                }
+            }
+            guard codeFence == nil else { continue }
+            if content.allSatisfy(\.isWhitespace) {
+                flushParagraph()
+            } else {
+                if paragraphStart == nil { paragraphStart = line.startIndex }
+                paragraphEnd = line.endIndex
+            }
+        }
+
+        flushParagraph()
+        if cursor < text.endIndex { units.append((String(text[cursor...]), false)) }
+        return units
+    }
+
     // MARK: - PDF reading
 
     static func readPDFLayout(url: URL) throws -> PDFLayout {
@@ -158,6 +206,7 @@ enum DocumentTranslator {
 
         var blocks: [PDFTextBlock] = []
         for pageIndex in 0..<document.pageCount {
+            try Task.checkCancellation()
             guard let page = document.page(at: pageIndex) else { continue }
             let pageBox = page.bounds(for: .mediaBox)
             guard let selection = page.selection(for: pageBox) else { continue }
@@ -321,16 +370,32 @@ enum DocumentTranslator {
         }
     }
 
+    static func write(document: OpenedDocument, translatedUnits: [String], to url: URL) throws {
+        try Task.checkCancellation()
+        switch document.kind {
+        case .text, .markdown:
+            try translatedUnits.joined().write(to: url, atomically: true, encoding: .utf8)
+        case .pdf:
+            guard let layout = document.pdf else { throw DocumentError.unreadable }
+            try writePDF(layout: layout, lines: translatedUnits, to: url)
+        case .docx:
+            try writeDocx(original: document.url, lines: translatedUnits, to: url)
+        }
+    }
+
     /// Keeps the original page as the visual layer and paints the translation
     /// into the same rectangles. Images, charts, borders, fonts and page size
     /// stay untouched; only the text areas are covered and redrawn.
     static func writePDF(layout: PDFLayout, translated: String, to url: URL) throws {
+        try writePDF(layout: layout, lines: align(translated, with: layout.blocks.map(\.text)), to: url)
+    }
+
+    private static func writePDF(layout: PDFLayout, lines: [String], to url: URL) throws {
         guard let document = PDFDocument(url: layout.url) else {
             throw DocumentError.unreadable
         }
         guard let firstPage = document.page(at: 0) else { throw DocumentError.unreadable }
 
-        let lines = align(translated, with: layout.blocks.map(\.text))
         var mediaBox = firstPage.bounds(for: .mediaBox)
         try? FileManager.default.removeItem(at: url)
         guard let consumer = CGDataConsumer(url: url as CFURL),
@@ -345,12 +410,16 @@ enum DocumentTranslator {
             throw DocumentError.unreadable
         }
 
+        let changedBlocks = layout.blocks.indices.filter {
+            lines.indices.contains($0) && !lines[$0].isEmpty && lines[$0] != layout.blocks[$0].text
+        }
         let blocksByPage = Dictionary(
-            grouping: layout.blocks.indices,
+            grouping: changedBlocks,
             by: { layout.blocks[$0].pageIndex }
         )
 
         for pageIndex in 0..<document.pageCount {
+            try Task.checkCancellation()
             guard let page = document.page(at: pageIndex) else { continue }
             let box = page.bounds(for: .mediaBox)
             let boxData = withUnsafeBytes(of: box) { Data($0) }
@@ -359,8 +428,9 @@ enum DocumentTranslator {
             )
             page.draw(with: .mediaBox, to: context)
 
-            let bitmap = pageBitmap(page, scale: 2)
-            for index in blocksByPage[pageIndex] ?? [] {
+            let changed = blocksByPage[pageIndex] ?? []
+            let bitmap = changed.isEmpty ? nil : pageBitmap(page)
+            for index in changed {
                 let block = layout.blocks[index]
                 guard index < lines.count else { continue }
                 let translation = lines[index]
@@ -406,8 +476,11 @@ enum DocumentTranslator {
         }
     }
 
-    private static func pageBitmap(_ page: PDFPage, scale: CGFloat) -> CGContext? {
+    private static func pageBitmap(_ page: PDFPage) -> CGContext? {
         let box = page.bounds(for: .mediaBox)
+        guard box.width.isFinite, box.height.isFinite, box.width > 0, box.height > 0 else { return nil }
+        let scale = min(2, 4096 / max(box.width, box.height),
+                        (4_194_304 / box.width / box.height).squareRoot())
         let width = max(1, Int(box.width * scale))
         let height = max(1, Int(box.height * scale))
         guard let context = CGContext(
@@ -423,6 +496,7 @@ enum DocumentTranslator {
         context.setFillColor(NSColor.white.cgColor)
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -box.minX, y: -box.minY)
         page.draw(with: .mediaBox, to: context)
         return context
     }
@@ -440,13 +514,14 @@ enum DocumentTranslator {
         ].filter { pageBox.contains($0) }
 
         guard !points.isEmpty, let data = context.data else { return nil }
-        let scale = CGFloat(context.width) / max(pageBox.width, 1)
+        let scaleX = CGFloat(context.width) / pageBox.width
+        let scaleY = CGFloat(context.height) / pageBox.height
         let bytes = data.assumingMemoryBound(to: UInt8.self)
         var samples: [(Int, Int, Int)] = []
 
         for point in points {
-            let x = Int(point.x * scale)
-            let y = Int(point.y * scale)
+            let x = Int((point.x - pageBox.minX) * scaleX)
+            let y = Int((point.y - pageBox.minY) * scaleY)
             guard x >= 0, x < context.width, y >= 0, y < context.height else { continue }
             let offset = y * context.bytesPerRow + x * 4
             samples.append((
@@ -577,8 +652,12 @@ enum DocumentTranslator {
         translated: String,
         to url: URL
     ) throws {
+        try writeDocx(original: original, lines: align(translated, with: paragraphs), to: url)
+    }
+
+    private static func writeDocx(original: URL, lines: [String], to url: URL) throws {
         let xml = try unzipEntry("word/document.xml", from: original)
-        let lines = align(translated, with: paragraphs)
+        try Task.checkCancellation()
         let updated = try replacingParagraphs(in: xml, with: lines)
 
         let directory = FileManager.default.temporaryDirectory
@@ -622,23 +701,44 @@ enum DocumentTranslator {
         "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
     static func paragraphs(fromDocumentXML data: Data) throws -> [String] {
-        let xml = try XMLDocument(data: data, options: [.nodePreserveAll])
+        let xml = try XMLDocument(data: data, options: [.nodePreserveAll, .nodeLoadExternalEntitiesNever])
         guard let root = xml.rootElement() else { throw DocumentError.docxFailed }
         return elements(named: "p", in: root).map { paragraphText($0) }
     }
 
     static func replacingParagraphs(in data: Data, with lines: [String]) throws -> Data {
-        let xml = try XMLDocument(data: data, options: [.nodePreserveAll])
+        let xml = try XMLDocument(data: data, options: [.nodePreserveAll, .nodeLoadExternalEntitiesNever])
         guard let root = xml.rootElement() else { throw DocumentError.docxFailed }
         let paragraphs = elements(named: "p", in: root)
 
         for (index, paragraph) in paragraphs.enumerated() {
+            try Task.checkCancellation()
             guard index < lines.count else { break }
             let texts = elements(named: "t", in: paragraph)
-            guard let first = texts.first else { continue }
-            first.stringValue = lines[index]
-            for extra in texts.dropFirst() {
-                extra.stringValue = ""
+            guard !texts.isEmpty, lines[index] != paragraphText(paragraph) else { continue }
+            let weights = texts.map { $0.stringValue?.count ?? 0 }
+            let weight = weights.reduce(0, +)
+            let line = lines[index]
+            let length = line.count
+            var position = line.startIndex
+            var offset = 0
+            var consumedWeight = 0
+
+            for (run, count) in zip(texts, weights) {
+                consumedWeight += count
+                let endOffset = weight > 0 ? length * consumedWeight / weight : length
+                let end = line.index(position, offsetBy: endOffset - offset)
+                let fragment = String(line[position..<end])
+                run.stringValue = fragment
+                if fragment.first?.isWhitespace == true || fragment.last?.isWhitespace == true {
+                    if let attribute = run.attribute(forName: "xml:space") {
+                        attribute.stringValue = "preserve"
+                    } else if let attribute = XMLNode.attribute(withName: "xml:space", stringValue: "preserve") as? XMLNode {
+                        run.addAttribute(attribute)
+                    }
+                }
+                position = end
+                offset = endOffset
             }
         }
         return xml.xmlData(options: [])
@@ -682,11 +782,23 @@ enum DocumentTranslator {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
         process.arguments = ["-p", url.path, entry]
         let output = Pipe()
-        let error = Pipe()
         process.standardOutput = output
-        process.standardError = error
+        process.standardError = FileHandle.nullDevice
         try process.run()
-        let data = output.fileHandleForReading.readDataToEndOfFile()
+        let handle = output.fileHandleForReading
+        defer { try? handle.close() }
+        var data = Data()
+        do {
+            while let chunk = try handle.read(upToCount: 64 * 1024), !chunk.isEmpty {
+                try Task.checkCancellation()
+                guard data.count + chunk.count <= 32 * 1024 * 1024 else { throw DocumentError.docxFailed }
+                data.append(chunk)
+            }
+        } catch {
+            if process.isRunning { process.terminate() }
+            process.waitUntilExit()
+            throw error
+        }
         process.waitUntilExit()
         guard process.terminationStatus == 0, !data.isEmpty else {
             throw DocumentError.docxFailed
@@ -705,9 +817,8 @@ enum DocumentTranslator {
         if let directory {
             process.currentDirectoryURL = directory
         }
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
         try process.run()
         process.waitUntilExit()
         guard process.terminationStatus == 0 else {

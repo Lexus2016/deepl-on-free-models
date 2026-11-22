@@ -1,4 +1,5 @@
 import Foundation
+import NaturalLanguage
 
 /// A language supported by Hy-MT2. `englishName` is what goes into the model
 /// instruction; `localName` is what the interface shows.
@@ -138,7 +139,16 @@ struct Language: Identifiable, Hashable, Codable {
         }
         if has([0x0530...0x058F]) { return nil }
         if has([0x10A0...0x10FF]) { return nil }
-        if has([0x0041...0x024F]) { return with(code: "en") }
+        if has([0x0041...0x024F]), sample.unicodeScalars.contains(where: CharacterSet.letters.contains) {
+            let recognizer = NLLanguageRecognizer()
+            recognizer.processString(String(sample))
+            if let hypothesis = recognizer.languageHypotheses(withMaximum: 1).first,
+               hypothesis.value >= 0.55,
+               let language = with(code: hypothesis.key.rawValue) {
+                return language
+            }
+            return with(code: "en")
+        }
         return nil
     }
 }

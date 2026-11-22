@@ -15,10 +15,14 @@ struct IOSSettingsView: View {
                             Text(provider.title).tag(provider)
                         }
                     }
-                    TextField(L10n.t("Server address", language), text: $settings.baseURL)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                    if settings.provider == .custom {
+                        TextField(L10n.t("Server address", language), text: $settings.baseURL)
+                            .keyboardType(.URL)
+                            .textContentType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("provider-address")
+                    }
                     SecureField(L10n.t("API key", language), text: $settings.apiKey)
                     TextField(L10n.t("Model", language), text: $settings.model)
                         .textInputAutocapitalization(.never)
@@ -27,7 +31,7 @@ struct IOSSettingsView: View {
                     Text(L10n.t("Provider", language))
                 } footer: {
                     Text(L10n.t(
-                        "Cloud providers need a key. A Mac on the same network can be used as a custom server.",
+                        "Cloud providers need an API key. For a server on your Wi-Fi network, choose Custom.",
                         language
                     ))
                 }
@@ -63,6 +67,10 @@ struct IOSSettingsView: View {
                         )
                         .foregroundStyle(.secondary)
                     }
+                    Link(destination: URL(string: "https://lexus2016.github.io/deepl-on-free-models/privacy.html")!) {
+                        Text(L10n.t("Privacy policy", language))
+                    }
+                    .accessibilityIdentifier("privacy-policy")
                     Link(destination: URL(string: "https://github.com/Lexus2016/deepl-on-free-models")!) {
                         Label("GitHub", systemImage: "arrow.up.right.square")
                     }

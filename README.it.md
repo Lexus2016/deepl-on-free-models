@@ -45,7 +45,7 @@ La maggior parte dei traduttori è prima un sito web. DeepL-oFM è prima un'app 
 - Pulsante **Copia** visibile: Markdown, HTML e RTF insieme.
 - **Incolla con formattazione**: HTML/RTF dal browser o dall'elaboratore di testi diventa Markdown — titoli, elenchi, link ed enfasi conservati.
 - **Vista Markdown**: renderizzata, solo testo o sorgente; Copia segue la vista attiva.
-- **File**: `.txt`, `.md`, `.pdf` e `.docx` da aprire o trascinare; salvataggio nel formato originale.
+- Apri o trascina file TXT, Markdown, PDF o Word nella scheda File. Salva la traduzione nello stesso formato. Se il PDF è una scansione, esegui prima il riconoscimento del testo.
 - **DOCX** viene aggiornato sul posto (solo `word/document.xml`); **PDF** conserva pagine, layout, immagini e tipografia.
 - **Nove lingue dell'interfaccia**: inglese, ucraino, russo, tedesco, francese, spagnolo, polacco, portoghese, italiano.
 - Aggiornamenti automatici con **Sparkle 2** e canale firmato.

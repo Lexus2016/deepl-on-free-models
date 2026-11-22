@@ -22,3 +22,7 @@ jobs:
         run: swift test
       - name: Build app
         run: ./build.sh
+      - name: Build for iPhone Simulator
+        run: >-
+          xcodebuild -project ios/DeepL-oFM.xcodeproj -scheme DeepL-oFM
+          -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build

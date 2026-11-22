@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Darwin
 
 @MainActor
 final class FileTranslationStore: ObservableObject {
@@ -20,15 +21,16 @@ final class FileTranslationStore: ObservableObject {
     @Published var outputURL: URL?
     @Published var usingFallback = false
     @Published var fallbackLabel: String?
+    @Published private(set) var saveError: String?
+    @Published private(set) var isSaving = false
+    @Published private(set) var isPreparingOutput = false
+    private(set) var formattedSize: String?
 
-    private let service = TranslationService()
+    private let service: TranslationService
     private var task: Task<Void, Never>?
 
-    private static let cloudProviders: Set<Provider> = [
-        .groq, .openRouter, .cerebras, .ollamaCloud
-    ]
-
-    init() {
+    init(service: TranslationService = TranslationService()) {
+        self.service = service
         targetCode = UserDefaults.standard.string(forKey: "hymt.lastTarget") ?? "en"
     }
 
@@ -43,13 +45,6 @@ final class FileTranslationStore: ObservableObject {
 
     var outputName: String? { outputURL?.lastPathComponent }
 
-    var formattedSize: String? {
-        guard let selectedURL,
-              let values = try? selectedURL.resourceValues(forKeys: [.fileSizeKey]),
-              let size = values.fileSize else { return nil }
-        return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
-    }
-
     func chooseFile(language: AppLanguage) {
         let panel = NSOpenPanel()
         panel.title = L10n.t("Translate file…", language)
@@ -61,12 +56,15 @@ final class FileTranslationStore: ObservableObject {
     }
 
     func select(url: URL, language: AppLanguage) {
-        guard let kind = DocumentKind.from(url: url) else {
+        guard !isSaving else { return }
+        guard let kind = DocumentKind.from(url: url), !url.hasDirectoryPath else {
             state = .failed(L10n.t("This file type is not supported.", language))
             return
         }
         task?.cancel()
         removeTemporaryOutput()
+        formattedSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize)
+            .map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) }
         selectedURL = url
         self.kind = kind
         outputURL = nil
@@ -79,7 +77,7 @@ final class FileTranslationStore: ObservableObject {
     }
 
     func translate(settings: AppSettings, language: AppLanguage) {
-        guard let url = selectedURL,
+        guard !isSaving, let url = selectedURL,
               let target = Language.with(code: targetCode) else { return }
 
         task?.cancel()
@@ -93,7 +91,8 @@ final class FileTranslationStore: ObservableObject {
         fallbackLabel = nil
 
         let primary = settings.snapshot
-        let fallback = settings.fallbackConfig
+        let fallback = settings.fallbackConfig.flatMap { primary.usesSameEndpoint(as: $0) ? nil : $0 }
+        let primaryProvider = settings.provider
         let fallbackProvider = settings.fallbackProvider
         let fallbackModel = settings.fallbackModel
         let style = settings.lastStyle
@@ -102,179 +101,148 @@ final class FileTranslationStore: ObservableObject {
         task = Task { [weak self] in
             guard let self else { return }
             do {
-                let document = try DocumentTranslator.read(url: url)
-                let units = Self.translationUnits(for: document)
-                self.total = units.filter {
-                    !$0.trimmingCharacters(in: .whitespaces).isEmpty
-                }.count
+                let (document, units) = try await Self.performFileWork {
+                    let document = try DocumentTranslator.read(url: url)
+                    return (document, Self.translationUnits(for: document))
+                }
+                try Task.checkCancellation()
+                self.total = units.lazy.filter(\.needsTranslation).count
 
                 var config = primary
-                var provider = settings.provider
+                var provider = primaryProvider
                 var switched = false
+                var nextGroqRequest: ContinuousClock.Instant?
+                let clock = ContinuousClock()
                 var translatedUnits: [String] = []
+                translatedUnits.reserveCapacity(units.count)
 
                 for unit in units {
-                    if Task.isCancelled { return }
-                    let trimmed = unit.trimmingCharacters(in: .whitespaces)
-                    if trimmed.isEmpty {
-                        translatedUnits.append("")
+                    try Task.checkCancellation()
+                    guard unit.needsTranslation else {
+                        translatedUnits.append(unit.text)
                         continue
                     }
 
-                    let translated: String
+                    if provider == .groq {
+                        if let nextGroqRequest { try await clock.sleep(until: nextGroqRequest) }
+                        nextGroqRequest = clock.now.advanced(by: .milliseconds(2_200))
+                    }
+
+                    let translation: (text: String, warning: Bool)
                     do {
-                        translated = try await self.translateBlock(
-                            trimmed,
-                            target: target,
-                            style: style,
-                            tone: tone,
-                            config: config,
-                            retryRateLimit: fallback == nil
+                        translation = try await service.translateBlock(
+                            text: unit.text, style: style, tone: tone, target: target, config: config,
+                            retryRateLimit: fallback == nil || switched
                         )
                     } catch {
-                        guard let fallback, !switched else { throw error }
+                        try Task.checkCancellation()
+                        guard let fallback, !switched else {
+                            if case TranslationError.degenerateResponse = error {
+                                translatedUnits.append(unit.text)
+                                self.warningCount += 1
+                                self.completed += 1
+                                continue
+                            }
+                            throw error
+                        }
                         switched = true
                         self.usingFallback = true
                         self.fallbackLabel = "\(fallbackProvider.title) · \(fallbackModel)"
-                        NSLog(
-                            "DeepL-oFM file translation switched to fallback: %@",
-                            fallbackProvider.rawValue
-                        )
                         config = fallback
                         provider = fallbackProvider
-                        translated = try await self.translateBlock(
-                            trimmed,
-                            target: target,
-                            style: style,
-                            tone: tone,
-                            config: fallback,
-                            retryRateLimit: true
-                        )
+                        if provider == .groq {
+                            nextGroqRequest = clock.now.advanced(by: .milliseconds(2_200))
+                        }
+                        do {
+                            translation = try await service.translateBlock(
+                                text: unit.text, style: style, tone: tone, target: target, config: fallback
+                            )
+                        } catch TranslationError.degenerateResponse {
+                            translation = (unit.text, true)
+                        }
                     }
-
-                    translatedUnits.append(
-                        translated.replacingOccurrences(of: "\n", with: " ")
-                    )
+                    try Task.checkCancellation()
+                    translatedUnits.append(translation.text)
                     self.completed += 1
-
-                    // Groq's free tier allows 30 requests per minute. The
-                    // paragraph-level request means far fewer calls than lines.
-                    if Self.cloudProviders.contains(provider) {
-                        try? await Task.sleep(nanoseconds: 2_200_000_000)
-                    }
+                    if translation.warning { self.warningCount += 1 }
                 }
 
-                let translatedText: String
-                switch document.kind {
-                case .pdf, .docx:
-                    translatedText = translatedUnits.joined(separator: "\n")
-                case .text, .markdown:
-                    translatedText = translatedUnits.joined(separator: "\n\n")
+                if self.total > 0, self.warningCount == self.total {
+                    throw TranslationError.degenerateResponse
                 }
-
-                let directory = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("DeepL-oFM-Files", isDirectory: true)
-                try FileManager.default.createDirectory(
-                    at: directory,
-                    withIntermediateDirectories: true
-                )
-                let base = url.deletingPathExtension().lastPathComponent
-                let name = "\(base)_\(target.code).\(document.kind.fileExtension)"
-                let output = directory.appendingPathComponent(name)
-                try? FileManager.default.removeItem(at: output)
-                try DocumentTranslator.write(
-                    document: document,
-                    translated: translatedText,
-                    to: output
-                )
-
+                self.isPreparingOutput = true
+                let prepared = translatedUnits
+                let output = try await Self.performFileWork {
+                    try Self.createOutput(document: document, translatedUnits: prepared, target: target)
+                }
+                if Task.isCancelled {
+                    try? FileManager.default.removeItem(at: output.deletingLastPathComponent())
+                    return
+                }
                 self.outputURL = output
-                self.completed = self.total
+                self.isPreparingOutput = false
                 self.state = .finished
-            } catch is CancellationError {
-                self.state = .idle
-            } catch let error as DocumentError {
-                NSLog("DeepL-oFM file read/write failed: %@", String(describing: error))
-                self.state = .failed(error.message(language))
-            } catch let error as TranslationError {
-                NSLog("DeepL-oFM file translation error: %@", String(describing: error))
-                self.state = .failed(error.message(language))
             } catch {
-                NSLog("DeepL-oFM file translation failed: %@", String(describing: error))
-                let detail = error.localizedDescription
-                self.state = .failed(
-                    detail.isEmpty
-                        ? L10n.t("The file could not be translated.", language)
-                        : detail
-                )
+                guard !Task.isCancelled, !(error is CancellationError) else { return }
+                self.isPreparingOutput = false
+                if let error = error as? DocumentError {
+                    self.state = .failed(error.message(language))
+                } else if let error = error as? TranslationError {
+                    self.state = .failed(error.message(language))
+                } else {
+                    self.state = .failed(L10n.t("The file could not be translated.", language))
+                }
             }
         }
     }
 
-    private static func translationUnits(for document: OpenedDocument) -> [String] {
+    private struct TranslationUnit: Sendable {
+        let text: String
+        let needsTranslation: Bool
+    }
+
+    private nonisolated static func translationUnits(for document: OpenedDocument) -> [TranslationUnit] {
         switch document.kind {
         case .pdf, .docx:
-            if !document.paragraphs.isEmpty {
-                return document.paragraphs
+            return document.paragraphs.map {
+                TranslationUnit(text: $0, needsTranslation: !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            return document.text.components(separatedBy: "\n")
         case .text, .markdown:
-            return document.text.components(separatedBy: "\n\n")
+            return DocumentTranslator.textUnits(in: document.text, markdown: document.kind == .markdown)
+                .map { TranslationUnit(text: $0.text, needsTranslation: $0.translate) }
         }
     }
 
-    private func translateBlock(
-        _ text: String,
-        target: Language,
-        style: TranslationStyle,
-        tone: TranslationTone,
-        config: BackendConfig,
-        retryRateLimit: Bool
-    ) async throws -> String {
-        var lastError: Error?
-        let attempts = retryRateLimit ? 2 : 1
-
-        for attempt in 0..<attempts {
-            do {
-                let stream = service.streamBlock(
-                    text: text,
-                    style: style,
-                    tone: tone,
-                    target: target,
-                    config: config
-                )
-                var buffer = ""
-                for try await event in stream {
-                    if Task.isCancelled { throw CancellationError() }
-                    switch event {
-                    case .chunk(let piece):
-                        buffer += piece
-                    case .warning:
-                        self.warningCount += 1
-                    default:
-                        break
-                    }
-                }
-                let cleaned = buffer.trimmingCharacters(in: .whitespacesAndNewlines)
-                if cleaned.isEmpty {
-                    throw TranslationError.emptyResponse
-                }
-                return cleaned
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch let error as TranslationError {
-                if retryRateLimit,
-                   case .http(let code, _) = error,
-                   code == 429,
-                   attempt == 0 {
-                    lastError = error
-                    try? await Task.sleep(nanoseconds: 3_000_000_000)
-                    continue
-                }
-                throw error
-            }
+    private nonisolated static func performFileWork<T: Sendable>(
+        _ work: @escaping @Sendable () throws -> T
+    ) async throws -> T {
+        let operation = Task.detached(priority: .userInitiated, operation: work)
+        return try await withTaskCancellationHandler {
+            try await operation.value
+        } onCancel: {
+            operation.cancel()
         }
-        throw lastError ?? TranslationError.emptyResponse
+    }
+
+    private nonisolated static func createOutput(
+        document: OpenedDocument, translatedUnits: [String], target: Language
+    ) throws -> URL {
+        try Task.checkCancellation()
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DeepL-oFM-Files", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let base = document.url.deletingPathExtension().lastPathComponent
+        let output = directory.appendingPathComponent("\(base)_\(target.code).\(document.kind.fileExtension)")
+        do {
+            try DocumentTranslator.write(document: document, translatedUnits: translatedUnits, to: output)
+            try Task.checkCancellation()
+            return output
+        } catch {
+            try? FileManager.default.removeItem(at: directory)
+            throw error
+        }
     }
 
     func cancel() {
@@ -283,34 +251,59 @@ final class FileTranslationStore: ObservableObject {
         state = .idle
         completed = 0
         total = 0
+        warningCount = 0
+        usingFallback = false
+        fallbackLabel = nil
+        isPreparingOutput = false
         removeTemporaryOutput()
     }
 
     func saveOutput(language: AppLanguage) {
-        guard let outputURL else { return }
+        guard !isSaving, let outputURL else { return }
         let panel = NSSavePanel()
         panel.title = L10n.t("Save translation…", language)
         panel.nameFieldStringValue = outputURL.lastPathComponent
-        if let kind, let type = kind.contentType {
-            panel.allowedContentTypes = [type]
-        }
+        if let kind, let type = kind.contentType { panel.allowedContentTypes = [type] }
         guard panel.runModal() == .OK, let destination = panel.url else { return }
-        do {
-            if FileManager.default.fileExists(atPath: destination.path) {
-                try FileManager.default.removeItem(at: destination)
+        saveError = nil
+        isSaving = true
+        Task {
+            defer { isSaving = false }
+            do {
+                try await Self.performFileWork {
+                    try Self.saveCopy(from: outputURL, to: destination)
+                }
+            } catch {
+                saveError = L10n.t("The file could not be saved.", language)
             }
-            try FileManager.default.copyItem(at: outputURL, to: destination)
-        } catch {
-            state = .failed(L10n.t("The file could not be saved.", language))
+        }
+    }
+
+    nonisolated static func saveCopy(from source: URL, to destination: URL) throws {
+        let staging = destination.deletingLastPathComponent()
+            .appendingPathComponent(".hymt-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: staging) }
+        try FileManager.default.copyItem(at: source, to: staging)
+        let result = staging.withUnsafeFileSystemRepresentation { from in
+            destination.withUnsafeFileSystemRepresentation { to in
+                rename(from, to)
+            }
+        }
+        guard result == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
     }
 
     func reset() {
+        guard !isSaving else { return }
         task?.cancel()
         task = nil
         removeTemporaryOutput()
         selectedURL = nil
+        formattedSize = nil
         kind = nil
+        warningCount = 0
+        isPreparingOutput = false
         outputURL = nil
         usingFallback = false
         fallbackLabel = nil
@@ -321,8 +314,10 @@ final class FileTranslationStore: ObservableObject {
 
     private func removeTemporaryOutput() {
         if let outputURL {
-            try? FileManager.default.removeItem(at: outputURL)
+            try? FileManager.default.removeItem(at: outputURL.deletingLastPathComponent())
         }
         outputURL = nil
+        saveError = nil
+        isPreparingOutput = false
     }
 }

@@ -30,7 +30,7 @@ enum Probe {
             throw TranslationError.connection(config.baseURL)
         }
         guard http.statusCode == 200 else {
-            throw TranslationError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw TranslationError.http(http.statusCode)
         }
 
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {

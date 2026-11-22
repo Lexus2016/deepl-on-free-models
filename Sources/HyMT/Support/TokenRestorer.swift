@@ -72,7 +72,7 @@ enum TokenRestorer {
     }
 
     private static func matches(in text: String) -> [Match] {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        guard let regex else { return [] }
         let normalized = normalizeHyphens(text)
         let nsRange = NSRange(normalized.startIndex..., in: normalized)
         return regex.matches(in: normalized, range: nsRange).compactMap { match in
@@ -100,4 +100,6 @@ enum TokenRestorer {
             return Match(range: range, token: token)
         }
     }
+
+    private static let regex = try? NSRegularExpression(pattern: pattern)
 }

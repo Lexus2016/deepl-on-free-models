@@ -45,7 +45,7 @@ Die meisten Übersetzer sind zuerst eine Website. DeepL-oFM ist zuerst eine nati
 - Sichtbare **Kopieren**-Schaltfläche: Markdown, HTML und RTF auf einmal.
 - **Formatbewusstes Einfügen**: HTML/RTF aus Browser oder Textverarbeitung wird zu Markdown — Überschriften, Listen, Links und Hervorhebungen bleiben.
 - **Markdown-Ansicht**: gerendert, nur Text oder Quelltext; Kopieren folgt der aktiven Ansicht.
-- **Dateien**: `.txt`, `.md`, `.pdf` und `.docx` öffnen oder ablegen; Speichern im Originalformat.
+- Öffne oder ziehe TXT-, Markdown-, PDF- und Word-Dateien in den Bereich „Dateien“. Speichere die Übersetzung im selben Format. Gescannte PDFs brauchen zuerst eine Texterkennung.
 - **DOCX** wird direkt aktualisiert (nur `word/document.xml`), **PDF** behält Seiten, Layout, Bilder und Typografie.
 - **Neun Oberflächensprachen**: Englisch, Ukrainisch, Russisch, Deutsch, Französisch, Spanisch, Polnisch, Portugiesisch, Italienisch.
 - Automatische Updates über **Sparkle 2** mit signiertem Feed.

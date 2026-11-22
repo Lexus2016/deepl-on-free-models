@@ -218,3 +218,50 @@ final class DocumentTranslatorTests: XCTestCase {
         XCTAssertEqual(process.terminationStatus, 0)
     }
 }
+
+extension DocumentTranslatorTests {
+    func testParagraphUnitsPreserveLineEndingsAndCodeFences() {
+        let source = "\r\nTitle\r\nline 2\r\n \r\n\r\n````swift\r\n\r\n```\r\nlet n = 10\r\n````\r\nNext\r\n"
+        let units = DocumentTranslator.textUnits(in: source, markdown: true)
+        XCTAssertEqual(units.filter(\.translate).map(\.text), ["Title\r\nline 2", "Next"])
+        XCTAssertEqual(units.map(\.text).joined(), source)
+    }
+
+    func testUnclosedMarkdownFenceStaysIntact() {
+        let source = "Start\n~~~sh\n\nprintf 'hello'\n"
+        let units = DocumentTranslator.textUnits(in: source, markdown: true)
+        XCTAssertEqual(units.filter(\.translate).map(\.text), ["Start"])
+        XCTAssertEqual(units.map(\.text).joined(), source)
+    }
+
+    func testFailedSaveDoesNotDeleteThePreviousFile() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let source = folder.appendingPathComponent("translation.txt")
+        let destination = folder.appendingPathComponent("destination.txt")
+        try "existing".write(to: destination, atomically: true, encoding: .utf8)
+        XCTAssertThrowsError(try FileTranslationStore.saveCopy(from: source, to: destination))
+        XCTAssertEqual(try String(contentsOf: destination, encoding: .utf8), "existing")
+        try "translated".write(to: source, atomically: true, encoding: .utf8)
+        try FileTranslationStore.saveCopy(from: source, to: destination)
+        XCTAssertEqual(try String(contentsOf: destination, encoding: .utf8), "translated")
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.path).count, 2)
+    }
+}
+
+extension DocumentTranslatorTests {
+    func testDocxKeepsSeparateRunsForInlineFormatting() throws {
+        let source = """
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Hello</w:t></w:r><w:r><w:t xml:space="preserve"> world</w:t></w:r></w:p></w:body>
+        </w:document>
+        """
+        let data = try DocumentTranslator.replacingParagraphs(in: Data(source.utf8), with: ["Salut monde"])
+        XCTAssertEqual(try DocumentTranslator.paragraphs(fromDocumentXML: data), ["Salut monde"])
+        let xml = String(decoding: data, as: UTF8.self)
+        XCTAssertTrue(xml.contains("<w:b"))
+        XCTAssertTrue(xml.contains("<w:t>Salut</w:t>"))
+        XCTAssertTrue(xml.contains(" monde</w:t>"))
+    }
+}

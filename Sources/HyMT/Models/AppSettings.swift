@@ -10,9 +10,10 @@ final class AppSettings: ObservableObject {
         didSet {
             store(provider.rawValue, Keys.provider)
             guard oldValue != provider else { return }
-            if baseURL.isEmpty || baseURL == oldValue.baseURL {
-                baseURL = provider.baseURL
-            }
+            store(baseURL, "\(Keys.baseURL).\(oldValue.rawValue)")
+            store(model, "\(Keys.model).\(oldValue.rawValue)")
+            baseURL = defaults.string(forKey: "\(Keys.baseURL).\(provider.rawValue)") ?? provider.baseURL
+            model = defaults.string(forKey: "\(Keys.model).\(provider.rawValue)") ?? ""
             apiKey = Keychain.read(provider.keyAccount)
         }
     }
@@ -39,11 +40,12 @@ final class AppSettings: ObservableObject {
         didSet {
             store(fallbackProvider.rawValue, Keys.fallbackProvider)
             guard oldValue != fallbackProvider else { return }
-            if fallbackBaseURL.isEmpty || fallbackBaseURL == oldValue.baseURL {
-                fallbackBaseURL = fallbackProvider.baseURL
-            }
+            store(fallbackBaseURL, "\(Keys.fallbackBaseURL).\(oldValue.rawValue)")
+            store(fallbackModel, "\(Keys.fallbackModel).\(oldValue.rawValue)")
+            fallbackBaseURL = defaults.string(forKey: "\(Keys.fallbackBaseURL).\(fallbackProvider.rawValue)")
+                ?? fallbackProvider.baseURL
+            fallbackModel = defaults.string(forKey: "\(Keys.fallbackModel).\(fallbackProvider.rawValue)") ?? ""
             fallbackAPIKey = Keychain.read(fallbackProvider.keyAccount)
-            fallbackModel = ""
         }
     }
     @Published var fallbackAPIKey: String {
@@ -140,7 +142,7 @@ final class AppSettings: ObservableObject {
         didSet { store(lastSourceCode, Keys.lastSource) }
     }
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private enum Keys {
         static let provider = "hymt.provider"
         static let backend = "hymt.backend"
@@ -172,7 +174,8 @@ final class AppSettings: ObservableObject {
         static let lastSource = "hymt.lastSource"
     }
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         let legacyBackend = BackendKind(rawValue: defaults.string(forKey: Keys.backend) ?? "") ?? .ollama
         let storedBaseURL = defaults.string(forKey: Keys.baseURL) ?? legacyBackend.defaultBaseURL
         let storedProvider = defaults.string(forKey: Keys.provider).flatMap(Provider.init(rawValue:))
@@ -216,7 +219,7 @@ final class AppSettings: ObservableObject {
         self.showInDock = (storedMenuBar || storedDock) ? storedDock : true
         self.speechVoiceID = defaults.string(forKey: Keys.speechVoiceID) ?? ""
         self.keepHistory = defaults.object(forKey: Keys.keepHistory) as? Bool ?? true
-        self.warmUpOnLaunch = defaults.object(forKey: Keys.warmUpOnLaunch) as? Bool ?? true
+        self.warmUpOnLaunch = defaults.object(forKey: Keys.warmUpOnLaunch) as? Bool ?? false
         self.interfaceLanguage = AppLanguage(rawValue: defaults.string(forKey: Keys.interfaceLanguage) ?? "") ?? .system
         self.resultView = ResultViewMode(rawValue: defaults.string(forKey: Keys.resultView) ?? "") ?? .preview
         if let data = defaults.data(forKey: Keys.selectionHotKey),
@@ -256,7 +259,8 @@ final class AppSettings: ObservableObject {
             topP: topP,
             topK: topK,
             repetitionPenalty: repetitionPenalty,
-            contextWindow: contextWindow
+            contextWindow: contextWindow,
+            requiresAPIKey: provider.requiresKey
         )
     }
 
@@ -279,7 +283,8 @@ final class AppSettings: ObservableObject {
             topP: topP,
             topK: topK,
             repetitionPenalty: repetitionPenalty,
-            contextWindow: contextWindow
+            contextWindow: contextWindow,
+            requiresAPIKey: fallbackProvider.requiresKey
         )
     }
 
@@ -294,7 +299,8 @@ final class AppSettings: ObservableObject {
             topP: topP,
             topK: topK,
             repetitionPenalty: repetitionPenalty,
-            contextWindow: contextWindow
+            contextWindow: contextWindow,
+            requiresAPIKey: fallbackProvider.requiresKey
         )
     }
 

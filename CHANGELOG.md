@@ -4,6 +4,43 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] (2026-11-22)
+
+### macOS
+
+- Opening the app again brings back the running window. Only one process can
+  run in a macOS user session.
+- Stop a translation while it runs. The app keeps the target language you choose
+  and uses the selected source language when asking the model to translate.
+- Read long results without the app rechecking the whole response for each
+  incoming fragment. Local Ollama models can leave memory after five idle
+  minutes. New installations warm them up only if you enable that option.
+- Open and save files while the window stays responsive. Text and Markdown keep
+  paragraph breaks, and fenced code passes through unchanged. If saving fails,
+  you can try again without retranslating the document.
+- Open a simpler Files screen and read clearer connection and error messages.
+  Keyboard focus and labels make the main controls easier to find.
+
+### iPhone
+
+- Stop a request, paste from the clipboard, and copy or share the final result.
+- The app has an App Store privacy manifest. iPhone distribution is separate
+  from the macOS download.
+
+### Українською
+
+- Повторний запуск відкриває вікно програми, яка вже працює.
+- Переклад можна зупинити. Застосунок використовує вибрану мову перекладу й
+  передає моделі явно вибрану мову оригіналу.
+- Великі відповіді потребують менше процесорного часу. Локальна модель Ollama
+  може звільнити пам’ять після п’яти хвилин без запитів. Попереднє завантаження
+  можна увімкнути в налаштуваннях.
+- Файли відкриваються і зберігаються у фоновому режимі. Порожні рядки між
+  абзацами та блоки коду Markdown зберігаються. Якщо запис не вдався, можна
+  спробувати ще раз без повторного перекладу.
+- На iPhone можна вставити текст, зупинити запит і поділитися результатом.
+  Збірка для iPhone поширюється окремо.
+
 ## [1.1.2] — 2026-11-22
 
 ### Fixed

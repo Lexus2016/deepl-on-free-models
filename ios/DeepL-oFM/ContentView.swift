@@ -5,7 +5,9 @@ struct ContentView: View {
     @StateObject private var settings = IOSSettings()
     @StateObject private var model = TranslationModel()
 
-    @State private var sourceCode = "auto"
+    @AppStorage("ios.source") private var sourceCode = "auto"
+    @FocusState private var sourceFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var mode: ResultViewMode = .preview
     @State private var showSettings = false
     @State private var copied = false
@@ -13,59 +15,50 @@ struct ContentView: View {
     private var language: AppLanguage { settings.interfaceLanguage }
 
     private var resultForCopy: String {
-        switch mode {
-        case .preview, .markdown:
-            return model.translatedText
-        case .text:
-            return IOSMarkdown.plain(model.translatedText)
-        }
+        mode == .text ? model.plainText : model.translatedText
+    }
+
+    private var needsSetup: Bool {
+        settings.needsAPIKey && settings.snapshot.apiKey.isEmpty
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 14) {
-                    languageCard
-                    sourceCard
-                    translateButton
-                    if settings.needsAPIKey,
-                       settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Button {
-                            showSettings = true
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "key.fill")
-                                Text(L10n.t("Add your API key in Settings.", language))
-                                    .font(.system(size: 13, weight: .medium))
+            ScrollViewReader { reader in
+                ScrollView {
+                    VStack(spacing: 12) {
+                        languageCard
+                        sourceCard
+                        translateButton
+                        if needsSetup {
+                            Button {
+                                sourceFocused = false
+                                showSettings = true
+                            } label: {
+                                Label(L10n.t("Add your API key in Settings.", language), systemImage: "key")
+                                    .font(.subheadline)
+                                    .foregroundStyle(IOSTheme.accent)
+                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                    .padding(.horizontal, 12)
+                                    .background(IOSTheme.chrome, in: RoundedRectangle(cornerRadius: 12))
                             }
-                            .foregroundStyle(IOSTheme.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(IOSTheme.chrome)
-                            )
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                        resultCard.id("translation-result")
                     }
-                    resultCard
+                    .frame(maxWidth: 620)
+                    .padding(16)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .scrollDismissesKeyboard(.interactively)
+                .onChange(of: model.translatedText) { _, text in
+                    guard !text.isEmpty else { return }
+                    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+                        reader.scrollTo("translation-result", anchor: .top)
+                    }
+                }
             }
-            .scrollDismissesKeyboard(.interactively)
-            .background(
-                ZStack {
-                    IOSTheme.window
-                    RadialGradient(
-                        colors: [IOSTheme.accent.opacity(0.14), .clear],
-                        center: .topLeading,
-                        startRadius: 10,
-                        endRadius: 420
-                    )
-                }
-                .ignoresSafeArea()
-            )
+            .background(IOSTheme.window.ignoresSafeArea())
             .navigationTitle("DeepL-oFM")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(IOSTheme.chrome, for: .navigationBar)
@@ -73,20 +66,27 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        sourceFocused = false
                         showSettings = true
                     } label: {
                         Image(systemName: "gearshape")
-                            .foregroundStyle(IOSTheme.secondary)
+                            .foregroundStyle(IOSTheme.text)
                     }
                     .accessibilityLabel(L10n.t("Settings", language))
+                    .accessibilityIdentifier("translation-settings")
                 }
             }
             .sheet(isPresented: $showSettings) {
                 IOSSettingsView(settings: settings)
-                    .preferredColorScheme(.dark)
             }
         }
         .tint(IOSTheme.accent)
+        .onChange(of: model.sourceText) { _, _ in model.sourceDidChange(language: language) }
+        .onChange(of: settings.targetCode) { _, _ in model.invalidateResult() }
+        .onChange(of: sourceCode) { _, _ in model.invalidateResult() }
+        .onChange(of: settings.snapshot) { _, _ in model.invalidateResult() }
+        .onChange(of: settings.style) { _, _ in model.invalidateResult() }
+        .onChange(of: settings.tone) { _, _ in model.invalidateResult() }
     }
 
     // MARK: - Language bar
@@ -101,12 +101,13 @@ struct ContentView: View {
                 Image(systemName: "arrow.left.arrow.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(IOSTheme.secondary)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 44, height: 44)
                     .background(Circle().fill(IOSTheme.raised))
                     .overlay(Circle().strokeBorder(IOSTheme.border, lineWidth: 1))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.t("Swap languages", language))
+            .disabled(sourceCode == "auto" && model.detected == nil)
 
             languageMenu(
                 selection: $settings.targetCode,
@@ -148,7 +149,7 @@ struct ContentView: View {
         } label: {
             HStack(spacing: 6) {
                 Text(label(for: selection.wrappedValue, detected: detected))
-                    .font(.system(size: 13.5, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .bold))
@@ -157,10 +158,12 @@ struct ContentView: View {
             .foregroundStyle(IOSTheme.text)
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .background(Capsule().fill(IOSTheme.raised))
             .overlay(Capsule().strokeBorder(IOSTheme.border, lineWidth: 1))
         }
+        .accessibilityLabel(L10n.t(includeAuto ? "Source language" : "Target language", language))
+        .accessibilityValue(label(for: selection.wrappedValue, detected: detected))
     }
 
     private func label(for code: String, detected: Language?) -> String {
@@ -175,15 +178,12 @@ struct ContentView: View {
     private func swapLanguages() {
         let source = sourceCode
         let target = settings.targetCode
-        if source == "auto" {
-            sourceCode = target
-            if let detected = model.detected, detected.code != target {
-                settings.targetCode = detected.code
-            }
-        } else {
-            sourceCode = target
-            settings.targetCode = source
-        }
+        guard let original = source == "auto" ? model.detected : Language.with(code: source),
+              original.code != target else { return }
+        let previousResult = model.translatedText
+        sourceCode = target
+        settings.targetCode = original.code
+        if !previousResult.isEmpty { model.sourceText = previousResult }
     }
 
     // MARK: - Source
@@ -195,12 +195,32 @@ struct ContentView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(IOSTheme.secondary)
                 Spacer()
-                if !model.sourceText.isEmpty {
+                if sourceFocused {
+                    Button {
+                        sourceFocused = false
+                    } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .foregroundStyle(IOSTheme.secondary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.t("Done", language))
+                }
+                if model.sourceText.isEmpty {
+                    PasteButton(payloadType: String.self) { items in
+                        if let text = items.first { model.sourceText = text }
+                    }
+                    .labelStyle(.iconOnly)
+                    .accessibilityLabel(L10n.t("Paste from clipboard", language))
+                } else {
                     Button {
                         model.sourceText = ""
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(IOSTheme.tertiary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(L10n.t("Clear", language))
@@ -210,18 +230,21 @@ struct ContentView: View {
             ZStack(alignment: .topLeading) {
                 if model.sourceText.isEmpty {
                     Text(L10n.t("Enter or paste text…", language))
-                        .font(.system(size: 17))
+                        .font(.body)
                         .foregroundStyle(IOSTheme.tertiary)
                         .padding(.top, 8)
                         .padding(.leading, 4)
                         .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
                 TextEditor(text: $model.sourceText)
-                    .font(.system(size: 17))
+                    .font(.body)
                     .foregroundStyle(IOSTheme.text)
                     .scrollContentBackground(.hidden)
-                    .autocorrectionDisabled()
-                    .frame(minHeight: 150)
+                    .focused($sourceFocused)
+                    .accessibilityLabel(L10n.t("Source", language))
+                    .accessibilityIdentifier("source-editor")
+                    .frame(minHeight: 146)
             }
         }
         .padding(12)
@@ -240,45 +263,40 @@ struct ContentView: View {
     private var translateButton: some View {
         VStack(spacing: 8) {
             Button {
-                model.translate(settings: settings)
-            } label: {
-                HStack(spacing: 8) {
-                    if model.isTranslating {
-                        ProgressView()
-                            .tint(.white)
-                    } else {
-                        Image(systemName: "arrow.right.circle.fill")
-                    }
-                    Text(
-                        model.isTranslating
-                            ? L10n.t("Translating…", language)
-                            : L10n.t("Translate now", language)
-                    )
-                    .font(.system(size: 16, weight: .semibold))
+                if model.isTranslating {
+                    model.cancel()
+                } else {
+                    sourceFocused = false
+                    model.translate(settings: settings, sourceCode: sourceCode)
                 }
+            } label: {
+                Label(
+                    L10n.t(model.isTranslating ? "Stop" : "Translate now", language),
+                    systemImage: model.isTranslating ? "stop.fill" : "arrow.right"
+                )
+                .font(.headline)
                 .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Capsule().fill(IOSTheme.gradient))
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(model.isTranslating ? IOSTheme.raised : IOSTheme.primary, in: Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(
-                model.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                || model.isTranslating
-                || (settings.needsAPIKey && settings.apiKey.isEmpty)
-            )
-            .opacity(
-                model.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                || (settings.needsAPIKey && settings.apiKey.isEmpty)
-                    ? 0.55 : 1
-            )
+            .disabled(!model.isTranslating && (!model.hasInput || needsSetup))
+            .opacity(model.isTranslating || (model.hasInput && !needsSetup) ? 1 : 0.55)
+            .accessibilityIdentifier("start-or-stop-translation")
 
-            if model.isTranslating, model.total > 0 {
-                ProgressView(
-                    value: Double(model.completed),
-                    total: Double(max(model.total, 1))
-                )
-                .tint(IOSTheme.accent)
+            if model.isTranslating {
+                if model.total > 0 {
+                    ProgressView(value: Double(model.completed), total: Double(model.total)) {
+                        Text(L10n.t("Translating…", language)).font(.footnote)
+                    } currentValueLabel: {
+                        Text((Double(model.completed) / Double(model.total)).formatted(.percent.precision(.fractionLength(0))))
+                            .font(.footnote.monospacedDigit())
+                    }
+                    .tint(IOSTheme.accent)
+                } else {
+                    ProgressView(L10n.t("Translating…", language))
+                        .controlSize(.small)
+                }
             }
         }
     }
@@ -300,7 +318,8 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: copied ? "checkmark" : "doc.on.doc")
                             .foregroundStyle(copied ? IOSTheme.accentAlt : IOSTheme.secondary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(L10n.t("Copy", language))
@@ -308,19 +327,20 @@ struct ContentView: View {
                     ShareLink(item: resultForCopy) {
                         Image(systemName: "square.and.arrow.up")
                             .foregroundStyle(IOSTheme.secondary)
-                            .frame(width: 30, height: 30)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .accessibilityLabel(L10n.t("Share", language))
                 }
             }
 
-            Picker("", selection: $mode) {
-                ForEach(ResultViewMode.allCases) { item in
-                    Text(L10n.t(item.titleKey, language)).tag(item)
+            if !model.translatedText.isEmpty {
+                ViewThatFits {
+                    resultModePicker.pickerStyle(.segmented)
+                    resultModePicker.pickerStyle(.menu)
                 }
+                .tint(IOSTheme.accent)
             }
-            .pickerStyle(.segmented)
-            .tint(IOSTheme.accent)
 
             resultBody
                 .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
@@ -372,36 +392,35 @@ struct ContentView: View {
         )
     }
 
+    private var resultModePicker: some View {
+        Picker(L10n.t("Result", language), selection: $mode) {
+            ForEach(ResultViewMode.allCases) { item in
+                Text(L10n.t(item.titleKey, language)).tag(item)
+            }
+        }
+        .accessibilityIdentifier("result-mode")
+    }
+
     @ViewBuilder
     private var resultBody: some View {
         if model.translatedText.isEmpty {
-            if model.isTranslating {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text(L10n.t("Translating…", language))
-                        .font(.system(size: 13))
-                        .foregroundStyle(IOSTheme.tertiary)
-                }
-            } else {
+            if !model.isTranslating && model.errorMessage == nil {
                 Text(L10n.t("Translation will appear here", language))
-                    .font(.system(size: 13))
+                    .font(.subheadline)
                     .foregroundStyle(IOSTheme.tertiary)
             }
         } else {
             switch mode {
             case .preview:
-                Text(IOSMarkdown.rendered(model.translatedText))
-                    .font(.system(size: 16))
+                Text(model.renderedText).font(.body)
                     .foregroundStyle(IOSTheme.text)
                     .textSelection(.enabled)
             case .text:
-                Text(IOSMarkdown.plain(model.translatedText))
-                    .font(.system(size: 16))
+                Text(model.plainText).font(.body)
                     .foregroundStyle(IOSTheme.text)
                     .textSelection(.enabled)
             case .markdown:
-                Text(model.translatedText)
-                    .font(.system(size: 13, design: .monospaced))
+                Text(model.translatedText).font(.system(.subheadline, design: .monospaced))
                     .foregroundStyle(IOSTheme.text)
                     .textSelection(.enabled)
             }

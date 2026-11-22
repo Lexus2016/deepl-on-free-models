@@ -3,32 +3,43 @@ import SwiftUI
 
 struct HistoryView: View {
     @EnvironmentObject private var app: AppState
+    @ObservedObject var history: HistoryStore
     @State private var query = ""
     @State private var confirmClear = false
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
     private var filtered: [HistoryEntry] {
-        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !needle.isEmpty else { return app.history.entries }
-        return app.history.entries.filter { entry in
-            entry.sourceText.lowercased().contains(needle)
-                || entry.translatedText.lowercased().contains(needle)
-                || (Language.with(code: entry.targetCode)?.displayName(in: language).lowercased().contains(needle) ?? false)
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else { return history.entries }
+        return history.entries.filter { entry in
+            entry.sourceText.localizedStandardContains(needle)
+                || entry.translatedText.localizedStandardContains(needle)
+                || (Language.with(code: entry.targetCode)?.displayName(in: language).localizedStandardContains(needle) ?? false)
         }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        let matches = filtered
+        return VStack(spacing: 0) {
             header
             Rectangle().fill(Theme.border).frame(height: 1)
 
-            if filtered.isEmpty {
+            if history.hasStorageError {
+                Label(L10n.t("Could not read or save translation history.", language), systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(Theme.warning)
+                    .padding()
+            }
+
+            if history.isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if matches.isEmpty {
                 emptyState
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(filtered) { entry in
+                        ForEach(matches) { entry in
                             HistoryRow(entry: entry)
                             Rectangle().fill(Theme.borderSoft).frame(height: 1)
                         }
@@ -40,7 +51,7 @@ struct HistoryView: View {
         .background(Theme.window)
         .alert(L10n.t("Clear history?", language), isPresented: $confirmClear) {
             Button(L10n.t("Cancel", language), role: .cancel) {}
-            Button(L10n.t("Clear", language), role: .destructive) { app.history.clear() }
+            Button(L10n.t("Clear", language), role: .destructive) { history.clear() }
         } message: {
             Text(L10n.t("All saved translations will be deleted permanently.", language))
         }
@@ -52,7 +63,7 @@ struct HistoryView: View {
                 Text(L10n.t("History", language))
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Theme.text)
-                Text("\(app.history.entries.count)")
+                Text("\(history.entries.count)")
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.tertiary)
                     .monospacedDigit()
@@ -86,7 +97,7 @@ struct HistoryView: View {
             } label: {
                 Text(L10n.t("Clear", language))
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(app.history.entries.isEmpty ? Theme.tertiary : Theme.secondary)
+                    .foregroundStyle(history.entries.isEmpty ? Theme.tertiary : Theme.secondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(
@@ -99,7 +110,7 @@ struct HistoryView: View {
                     )
             }
             .buttonStyle(.plain)
-            .disabled(app.history.entries.isEmpty)
+            .disabled(history.entries.isEmpty)
         }
         .padding(.horizontal, 22)
         .frame(height: 62)

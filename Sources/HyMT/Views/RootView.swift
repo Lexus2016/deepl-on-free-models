@@ -20,7 +20,7 @@ struct RootView: View {
                 case .files:
                     FilesView(store: app.files)
                 case .history:
-                    HistoryView()
+                    HistoryView(history: app.history)
                 case .settings:
                     SettingsView(settings: app.settings)
                 }
@@ -28,25 +28,8 @@ struct RootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             StatusBar()
         }
-        .frame(minWidth: 1000, minHeight: 640)
-        .background(
-            ZStack {
-                Theme.window
-                RadialGradient(
-                    colors: [Theme.accent.opacity(0.10), .clear],
-                    center: .topLeading,
-                    startRadius: 20,
-                    endRadius: 900
-                )
-                RadialGradient(
-                    colors: [Theme.accentAlt.opacity(0.06), .clear],
-                    center: .bottomTrailing,
-                    startRadius: 20,
-                    endRadius: 800
-                )
-            }
-            .ignoresSafeArea()
-        )
+        .frame(minWidth: 880, minHeight: 580)
+        .background(Theme.window.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .background(
             WindowAccessor { window in
@@ -145,6 +128,9 @@ struct TopBar: View {
             .buttonStyle(.plain)
             .focusEffectDisabled()
             .help(L10n.t("Connection status", language))
+            .accessibilityLabel(L10n.t("Connection status", language))
+            .accessibilityValue(app.settings.model)
+            .accessibilityIdentifier("connection-settings")
 
             Menu {
                 Button(L10n.format("Translate clipboard (%@)", language, app.settings.hotKey.displayString(language))) {
@@ -182,6 +168,7 @@ struct TopBar: View {
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            .accessibilityLabel(L10n.t("More actions", language))
             .fixedSize()
         }
         .padding(.leading, 84)
@@ -196,13 +183,7 @@ struct TopBar: View {
     private var logo: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(hex: 0x2F6BFF), Color(hex: 0x11B8C7)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(Theme.primary)
                 .frame(width: 24, height: 24)
             Image(systemName: "character.bubble.fill")
                 .font(.system(size: 11, weight: .bold))
@@ -270,9 +251,10 @@ struct StatusBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 7, height: 7)
+            Image(systemName: app.usingFallback ? "arrow.triangle.swap" : "circle.fill")
+                .font(.system(size: app.usingFallback ? 10 : 6))
+                .foregroundStyle(app.usingFallback ? Theme.warning : statusColor)
+                .accessibilityHidden(true)
             Text(statusText)
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.secondary)
