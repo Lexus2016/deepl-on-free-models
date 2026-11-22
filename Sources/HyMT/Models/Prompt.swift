@@ -89,6 +89,24 @@ enum PromptBuilder {
         instruction(style: style, tone: tone, targetLanguage: targetLanguage) + "\n\n" + text
     }
 
+    /// Headings and list items are translated on their own, so they need a
+    /// stricter instruction: the regular prompt sometimes treats a lone word
+    /// as part of the instruction and leaks chat-template tokens.
+    static func headingInstruction(style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
+        if style == .auto && tone == .standard {
+            return "Translate this heading into \(targetLanguage). Output only the translated heading, without any additional explanation:"
+        }
+        var descriptor = styleDescriptor(style)
+        if tone != .standard, let suffix = toneSuffix(tone) {
+            descriptor += "; \(suffix)"
+        }
+        return "Please translate this heading into \(targetLanguage). Note that the translation style must strictly conform to [\(descriptor)] and output only the translated heading:"
+    }
+
+    static func headingPrompt(text: String, style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
+        headingInstruction(style: style, tone: tone, targetLanguage: targetLanguage) + "\n\n" + text
+    }
+
     static func preview(style: TranslationStyle, tone: TranslationTone, targetLanguage: String) -> String {
         instruction(style: style, tone: tone, targetLanguage: targetLanguage) + "\n\n{текст для перекладу}"
     }

@@ -223,7 +223,29 @@ final class AppState: NSObject, ObservableObject {
             return
         }
 
-        let target = targetLanguage
+        var target = targetLanguage
+        if sourceLanguage == .auto,
+           let detected = Language.detect(trimmed),
+           detected == target {
+            let interface = settings.interfaceLanguage.resolved
+            let preferredCode: String
+            switch interface {
+            case .uk: preferredCode = "uk"
+            case .ru: preferredCode = "ru"
+            default: preferredCode = "en"
+            }
+            var fallback = Language.with(code: preferredCode)
+            if fallback == nil || fallback == detected {
+                fallback = Language.with(code: detected.code == "en" ? "uk" : "en")
+            }
+            if let fallback, fallback != detected {
+                suppressRetranslation = true
+                targetLanguage = fallback
+                suppressRetranslation = false
+                target = fallback
+            }
+        }
+
         let style = self.style
         let tone = self.tone
         let config = settings.snapshot

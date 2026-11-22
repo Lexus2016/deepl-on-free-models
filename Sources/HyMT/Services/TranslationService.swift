@@ -49,55 +49,115 @@ struct TextChunk {
 enum TextChunker {
     static let limit = 3200
 
+    private struct Block {
+        let text: String
+        let separator: String
+    }
+
+    /// Always split at structural boundaries, not only for very long texts:
+    /// paragraphs (blank lines) and list items keep their original separators.
+    /// The model is unreliable when a prompt contains blank lines, so each
+    /// block is translated on its own and the app rejoins the result.
     static func chunks(from text: String) -> [TextChunk] {
-        guard text.count > limit else {
+        let blocks = splitBlocks(text)
+        var result: [TextChunk] = []
+
+        for (index, block) in blocks.enumerated() {
+            let blockSeparator = index == 0 ? "" : block.separator
+            let lines = block.text
+                .components(separatedBy: "\n")
+                .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+            if lines.count > 1, lines.allSatisfy(isListItem) {
+                for (lineIndex, line) in lines.enumerated() {
+                    append(line, separator: lineIndex == 0 ? blockSeparator : "\n", to: &result)
+                }
+            } else {
+                append(normalizeParagraph(block.text), separator: blockSeparator, to: &result)
+            }
+        }
+
+        if result.isEmpty {
             return [TextChunk(text: text, separatorBefore: "")]
         }
-
-        struct Piece {
-            let text: String
-            let separator: String
-        }
-
-        var pieces: [Piece] = []
-        let paragraphs = text.components(separatedBy: "\n\n")
-        for (index, paragraph) in paragraphs.enumerated() {
-            let paragraphSeparator = index == 0 ? "" : "\n\n"
-            guard paragraph.count > limit else {
-                pieces.append(Piece(text: paragraph, separator: paragraphSeparator))
-                continue
-            }
-            let sentences = splitSentences(paragraph, limit: limit)
-            for (sentenceIndex, sentence) in sentences.enumerated() {
-                pieces.append(Piece(
-                    text: sentence,
-                    separator: sentenceIndex == 0 ? paragraphSeparator : " "
-                ))
-            }
-        }
-
-        var result: [TextChunk] = []
-        var buffer = ""
-        var bufferSeparator = ""
-
-        for piece in pieces {
-            if buffer.isEmpty {
-                buffer = piece.text
-                bufferSeparator = piece.separator
-                continue
-            }
-            if buffer.count + piece.separator.count + piece.text.count <= limit {
-                buffer += piece.separator + piece.text
-            } else {
-                result.append(TextChunk(text: buffer, separatorBefore: result.isEmpty ? "" : bufferSeparator))
-                buffer = piece.text
-                bufferSeparator = piece.separator
-            }
-        }
-        if !buffer.isEmpty {
-            result.append(TextChunk(text: buffer, separatorBefore: result.isEmpty ? "" : bufferSeparator))
-        }
         return result
+    }
+
+    private static func append(_ text: String, separator: String, to result: inout [TextChunk]) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let prefix = result.isEmpty ? "" : separator
+
+        if trimmed.count <= limit {
+            result.append(TextChunk(text: trimmed, separatorBefore: prefix))
+            return
+        }
+
+        let pieces = splitSentences(trimmed, limit: limit)
+        for (index, piece) in pieces.enumerated() {
+            let pieceText = piece.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !pieceText.isEmpty else { continue }
+            let pieceSeparator = index == 0 ? prefix : " "
+            result.append(TextChunk(
+                text: pieceText,
+                separatorBefore: result.isEmpty ? "" : pieceSeparator
+            ))
+        }
+    }
+
+    private static func splitBlocks(_ text: String) -> [Block] {
+        let lines = text.components(separatedBy: "\n")
+        var blocks: [Block] = []
+        var current: [String] = []
+        var pendingBlankLines = 0
+
+        for line in lines {
+            let isBlank = line.trimmingCharacters(in: .whitespaces).isEmpty
+            if isBlank {
+                if !current.isEmpty {
+                    let separator = blocks.isEmpty
+                        ? ""
+                        : String(repeating: "\n", count: pendingBlankLines + 1)
+                    blocks.append(Block(text: current.joined(separator: "\n"), separator: separator))
+                    current = []
+                    pendingBlankLines = 1
+                } else if !blocks.isEmpty {
+                    pendingBlankLines += 1
+                }
+            } else {
+                current.append(line)
+            }
+        }
+
+        if !current.isEmpty {
+            let separator = blocks.isEmpty
+                ? ""
+                : String(repeating: "\n", count: pendingBlankLines + 1)
+            blocks.append(Block(text: current.joined(separator: "\n"), separator: separator))
+        }
+        return blocks
+    }
+
+    private static func isListItem(_ line: String) -> Bool {
+        let value = line.trimmingCharacters(in: .whitespaces)
+        return value.range(
+            of: #"^([-*•–—]|\d+[.)]|[A-Za-z][.)])\s+"#,
+            options: .regularExpression
+        ) != nil
+    }
+
+    private static func normalizeParagraph(_ text: String) -> String {
+        var value = text.replacingOccurrences(
+            of: #"[ \t]*\n[ \t]*"#,
+            with: " ",
+            options: .regularExpression
+        )
+        value = value.replacingOccurrences(
+            of: #"[ \t]{2,}"#,
+            with: " ",
+            options: .regularExpression
+        )
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func splitSentences(_ text: String, limit: Int) -> [String] {
@@ -147,6 +207,32 @@ final class TranslationService {
                                 return
                             }
                         }
+                        if let segment = parseSegment(chunk.text),
+                           segment.prefix.isEmpty ? segment.body.count <= 80 : true {
+                            let prompt: String
+                            if segment.body.count <= 80 {
+                                prompt = PromptBuilder.headingPrompt(
+                                    text: segment.body,
+                                    style: style,
+                                    tone: tone,
+                                    targetLanguage: target.englishName
+                                )
+                            } else {
+                                prompt = PromptBuilder.prompt(
+                                    text: segment.body,
+                                    style: style,
+                                    tone: tone,
+                                    targetLanguage: target.englishName
+                                )
+                            }
+                            let translated = try await bufferedTranslation(prompt: prompt, config: config)
+                            let output = segment.prefix + translated
+                            if case .terminated = continuation.yield(.chunk(output)) {
+                                return
+                            }
+                            continue
+                        }
+
                         let prompt = PromptBuilder.prompt(
                             text: chunk.text,
                             style: style,
@@ -179,6 +265,90 @@ final class TranslationService {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    // MARK: - Short blocks
+
+    private struct Segment {
+        let prefix: String
+        let body: String
+    }
+
+    private func parseSegment(_ text: String) -> Segment? {
+        guard !text.contains("\n") else { return nil }
+        var prefix = ""
+        var body = text
+
+        let patterns = [
+            #"^(\s*#{1,6}\s+)(.+)$"#,
+            #"^(\s*(?:[-*•–—]|\d+[.)])\s+)(.+)$"#
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  match.numberOfRanges == 3,
+                  let prefixRange = Range(match.range(at: 1), in: text),
+                  let bodyRange = Range(match.range(at: 2), in: text) else {
+                continue
+            }
+            prefix = String(text[prefixRange])
+            body = String(text[bodyRange])
+            break
+        }
+
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return Segment(prefix: prefix, body: trimmed)
+    }
+
+    private func bufferedTranslation(prompt: String, config: BackendConfig) async throws -> String {
+        var last = ""
+        for attempt in 0..<3 {
+            if attempt > 0 {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+            }
+            let raw = try await collect(prompt: prompt, config: config)
+            let cleaned = OutputSanitizer.clean(raw)
+            last = cleaned
+            let lower = cleaned.lowercased()
+            let suspicious = cleaned.isEmpty
+                || lower.contains("hy-assistant")
+                || lower.contains("hy-user")
+                || lower.contains("hy_end")
+                || cleaned.contains("<|")
+                || cleaned.contains("</|")
+            if !suspicious { return cleaned }
+        }
+        if last.isEmpty {
+            throw TranslationError.emptyResponse
+        }
+        return last
+    }
+
+    private func collect(prompt: String, config: BackendConfig) async throws -> String {
+        var text = ""
+        let stream = AsyncThrowingStream<TranslationEvent, Error> { continuation in
+            let task = Task {
+                do {
+                    switch config.kind {
+                    case .ollama:
+                        _ = try await runOllama(prompt: prompt, config: config, continuation: continuation)
+                    case .openAI:
+                        _ = try await runOpenAI(prompt: prompt, config: config, continuation: continuation)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+        for try await event in stream {
+            if case .chunk(let piece) = event {
+                text += piece
+            }
+        }
+        return text
     }
 
     // MARK: - Ollama
