@@ -30,7 +30,7 @@
 <p align="center"><sub>Не связан с DeepL SE. «DeepL-oFM» описывает стиль интерфейса («on Free Models»).</sub></p>
 
 <p align="center">
-  <img src="docs/demo.gif" width="900" alt="DeepL-oFM demo: three result views, PDF and DOCX translation, nine interface languages">
+  <img src="docs/demo-framed.gif" width="900" alt="DeepL-oFM demo: three result views, PDF and DOCX translation, nine interface languages">
 </p>
 
 ## Почему DeepL-oFM

@@ -27,7 +27,7 @@
 <p align="center"><sub>Nicht mit DeepL SE verbunden. „DeepL-oFM“ beschreibt den Oberflächenstil („on Free Models“).</sub></p>
 
 <p align="center">
-  <img src="docs/demo.gif" width="900" alt="DeepL-oFM demo: Markdown view, plain text, Markdown source, PDF translation and settings">
+  <img src="docs/demo-framed.gif" width="900" alt="DeepL-oFM demo: Markdown view, plain text, Markdown source, PDF translation and settings">
 </p>
 
 ## Warum DeepL-oFM
