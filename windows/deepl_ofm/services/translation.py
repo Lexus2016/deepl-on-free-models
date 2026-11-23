@@ -177,6 +177,11 @@ class _JobResult:
     degenerate: bool = False
 
 
+def _is_char_boundary(data: bytes, index: int) -> bool:
+    """True when `index` starts a character in `data`."""
+    return index == 0 or index >= len(data) or (data[index] & 0xC0) != 0x80
+
+
 class _OutputBudget:
     """Byte-capped UTF-8 accumulator with streaming marker detection.
 
@@ -220,9 +225,16 @@ class _OutputBudget:
                 del self._bytes[len(self._bytes) - (overlap - offset):]
             elif offset - overlap <= remaining:
                 self._bytes.extend(window[overlap:offset])
-            # A marker at/after the byte cap proves the model finished; the
-            # remaining tail is dropped without flagging an overflow, which is
-            # what the Swift unit tests expect from the limiter.
+            else:
+                # The marker starts behind the byte cap, so the cap — not the
+                # model — ended the generation. That is an overflow: the Swift
+                # limiter sets the flag here too, and without it a truncated
+                # answer would be validated and shown as a complete translation.
+                self.exceeded_limit = True
+                keep = min(remaining, len(fragment))
+                while keep > 0 and not _is_char_boundary(fragment, keep):
+                    keep -= 1
+                self._bytes.extend(fragment[:keep])
             return False
         if len(fragment) > remaining:
             self.exceeded_limit = True

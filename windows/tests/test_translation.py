@@ -667,3 +667,22 @@ def test_output_budget_rejects_instead_of_cutting_an_emoji():
     assert exact.append("ééHY_END") is False
     assert exact.exceeded_limit is False
     assert exact.text == "éé"
+
+
+def test_output_budget_flags_a_marker_past_the_cap():
+    """A marker behind the cap means the cap cut the answer, not the model."""
+    output = _OutputBudget(10)
+    assert output.append("abcdefghij") is True
+    assert output.append("KL<") is False
+    assert output.exceeded_limit is True, "a marker past the cap must flag an overflow"
+    assert output.text == "abcdefghij"
+
+    past = _OutputBudget(10)
+    assert past.append("abcdefghijk<") is False
+    assert past.exceeded_limit is True
+
+    # A marker exactly at the cap is the model finishing on its own.
+    exact = _OutputBudget(4)
+    assert exact.append("ééHY_END") is False
+    assert exact.exceeded_limit is False
+    assert exact.text == "éé"
