@@ -503,8 +503,10 @@ def test_default_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         tmp_path / "roaming" / "DeepL-oFM" / "settings.json"
     )
 
+    # `Path.home()` ignores $HOME on Windows, so patch the function itself:
+    # the fallback then behaves the same on every platform.
     monkeypatch.delenv("APPDATA")
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "home"))
     assert AppSettings.default_path() == (
         tmp_path / "home" / ".config" / "DeepL-oFM" / "settings.json"
     )

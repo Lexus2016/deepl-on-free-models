@@ -240,7 +240,7 @@ class Theme:
 
     @staticmethod
     def mono_family() -> str:
-        return _resolve_family(
+        family = _resolve_family(
             (
                 "Cascadia Mono",
                 "Cascadia Code",
@@ -251,8 +251,12 @@ class Theme:
                 "DejaVu Sans Mono",
                 "Liberation Mono",
                 "Courier New",
-            )
+            ),
+            QFontDatabase.SystemFont.FixedFont,
         )
+        # On a system with no usable font database (headless CI) every family
+        # resolves to the same generic; a monospace generic is the honest answer.
+        return "Monospace" if family == Theme.font_family() else family
 
     # ---------------------------------------------------------------- colours
     @staticmethod
@@ -675,7 +679,10 @@ def _installed_families() -> dict[str, str]:
 _FAMILY_CACHE: dict[tuple[str, ...], str] = {}
 
 
-def _resolve_family(preferred: tuple[str, ...]) -> str:
+def _resolve_family(
+    preferred: tuple[str, ...],
+    system: "QFontDatabase.SystemFont | None" = None,
+) -> str:
     app = QGuiApplication.instance()
     if app is not None:
         cached = _FAMILY_CACHE.get(preferred)
@@ -689,7 +696,8 @@ def _resolve_family(preferred: tuple[str, ...]) -> str:
                 _FAMILY_CACHE[preferred] = match
             return match
     if app is not None:
-        fallback = QFontDatabase.systemFont(QFontDatabase.SystemFont.GeneralFont)
+        queried = system or QFontDatabase.SystemFont.GeneralFont
+        fallback = QFontDatabase.systemFont(queried)
         if fallback.family():
             _FAMILY_CACHE[preferred] = fallback.family()
             return fallback.family()
