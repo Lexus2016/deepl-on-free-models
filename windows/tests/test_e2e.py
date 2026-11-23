@@ -135,7 +135,7 @@ def test_controller_translates_against_local_server(qapp, provider, tmp_path):
 
 def test_file_translation_end_to_end(qapp, provider, tmp_path):
     source = tmp_path / "brief.txt"
-    source.write_text("Erste Zeile.\n\nZweite Zeile.\n", encoding="utf-8")
+    source.write_text("Erste Zeile.\n\nZweite Zeile.\n", encoding="utf-8", newline="")
 
     settings = AppSettings(path=tmp_path / "settings.json")
     settings.base_url = provider.base_url

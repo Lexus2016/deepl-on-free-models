@@ -35,7 +35,7 @@ def test_text_decoding(tmp_path: Path, name: str, payload: bytes, expected: str)
 
 def test_written_text_is_utf8(tmp_path: Path) -> None:
     source = tmp_path / "note.txt"
-    source.write_text("Привіт!\n\nДругий абзац.", encoding="utf-8")
+    source.write_text("Привіт!\n\nДругий абзац.", encoding="utf-8", newline="")
     document = DocumentTranslator.read(source)
     output = DocumentTranslator.suggested_path(source, _ukrainian())
     DocumentTranslator.write(document, output, lambda line: line.upper())

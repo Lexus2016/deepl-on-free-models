@@ -42,7 +42,7 @@ def settings_path(tmp_path: Path) -> Path:
 
 def _write(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload), encoding="utf-8")
+    path.write_text(json.dumps(payload), encoding="utf-8", newline="")
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -99,7 +99,7 @@ def test_missing_file_loads_defaults(settings_path: Path) -> None:
 
 def test_corrupt_file_is_tolerated(settings_path: Path) -> None:
     settings_path.parent.mkdir(parents=True, exist_ok=True)
-    settings_path.write_text("{ this is not json", encoding="utf-8")
+    settings_path.write_text("{ this is not json", encoding="utf-8", newline="")
     settings = AppSettings(settings_path, FakeSecrets())
     assert settings.model == "hy-mt2:7b"
     assert settings.temperature == 0.7

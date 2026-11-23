@@ -107,7 +107,7 @@ def test_file_document_shape(tmp_path: Path) -> None:
 
 def test_corrupt_file_degrades_and_recovers(tmp_path: Path) -> None:
     path = tmp_path / "secrets.json"
-    path.write_text("{not json", encoding="utf-8")
+    path.write_text("{not json", encoding="utf-8", newline="")
     store = make_store(tmp_path)
 
     assert store.read("account") == ""
@@ -137,7 +137,7 @@ def test_nested_directory_is_created(tmp_path: Path) -> None:
 
 def test_read_never_raises_on_bad_types(tmp_path: Path) -> None:
     path = tmp_path / "secrets.json"
-    path.write_text(json.dumps({"values": {"ok": "yes", "bad": 12}}), encoding="utf-8")
+    path.write_text(json.dumps({"values": {"ok": "yes", "bad": 12}}), encoding="utf-8", newline="")
     store = make_store(tmp_path)
     if store.backend_name() == "plain":
         assert store.read("ok") == "yes"

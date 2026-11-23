@@ -127,7 +127,7 @@ def test_from_path_is_case_insensitive_and_unknown_extensions_are_none() -> None
 
 def test_txt_roundtrip_preserves_blank_lines_and_reports_progress(tmp_path: Path) -> None:
     source = tmp_path / "Note.TXT"
-    source.write_text("Hello\n\nWorld\n", encoding="utf-8")
+    source.write_text("Hello\n\nWorld\n", encoding="utf-8", newline="")
 
     document = DocumentTranslator.read(source)
     assert document.kind is DocumentKind.TEXT
@@ -407,7 +407,7 @@ def test_encrypted_pdf_raises_encrypted(tmp_path: Path) -> None:
 
 def test_unsupported_extension_raises_unsupported(tmp_path: Path) -> None:
     source = tmp_path / "data.xyz"
-    source.write_text("hello", encoding="utf-8")
+    source.write_text("hello", encoding="utf-8", newline="")
 
     with pytest.raises(DocumentError) as info:
         DocumentTranslator.read(source)
@@ -418,7 +418,7 @@ def test_unsupported_extension_raises_unsupported(tmp_path: Path) -> None:
 
 def test_blank_text_file_raises_no_text(tmp_path: Path) -> None:
     source = tmp_path / "blank.txt"
-    source.write_text(" \n\n\t", encoding="utf-8")
+    source.write_text(" \n\n\t", encoding="utf-8", newline="")
 
     with pytest.raises(DocumentError) as info:
         DocumentTranslator.read(source)
@@ -427,7 +427,7 @@ def test_blank_text_file_raises_no_text(tmp_path: Path) -> None:
 
 def test_cancellation_aborts_between_paragraphs(tmp_path: Path) -> None:
     source = tmp_path / "cancel.txt"
-    source.write_text("One\n\nTwo\n\nThree\n", encoding="utf-8")
+    source.write_text("One\n\nTwo\n\nThree\n", encoding="utf-8", newline="")
     document = DocumentTranslator.read(source)
     output = tmp_path / "cancel_uk.txt"
 
@@ -460,7 +460,7 @@ def test_cancellation_aborts_between_paragraphs(tmp_path: Path) -> None:
 
 def test_translation_errors_propagate_without_output(tmp_path: Path) -> None:
     source = tmp_path / "error.txt"
-    source.write_text("One\n\nTwo\n", encoding="utf-8")
+    source.write_text("One\n\nTwo\n", encoding="utf-8", newline="")
     document = DocumentTranslator.read(source)
     output = tmp_path / "error_uk.txt"
 

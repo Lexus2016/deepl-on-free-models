@@ -112,7 +112,7 @@ def test_search_is_case_insensitive_on_both_sides(tmp_path: Path) -> None:
 
 def test_corrupt_file_is_tolerated_and_recovered(tmp_path: Path) -> None:
     path = tmp_path / "history.json"
-    path.write_text("{definitely not json", encoding="utf-8")
+    path.write_text("{definitely not json", encoding="utf-8", newline="")
 
     store = HistoryStore(path)
     assert store.entries == []

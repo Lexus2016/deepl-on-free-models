@@ -135,7 +135,7 @@ def test_interface_language_switch(qapp, tmp_path):
 def test_file_job_reports_failure(qapp, tmp_path, monkeypatch):
     controller = _controller(tmp_path)
     source = tmp_path / "note.txt"
-    source.write_text("Hello there.", encoding="utf-8")
+    source.write_text("Hello there.", encoding="utf-8", newline="")
 
     from deepl_ofm.services.documents import DocumentError
 

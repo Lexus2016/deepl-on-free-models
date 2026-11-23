@@ -171,7 +171,7 @@ def test_failed_and_cancelled_show_message_and_retry(qapp, view, tmp_path):
 
 def test_pick_file_filters_and_starts_translation(qapp, view, controller, monkeypatch, tmp_path):
     source = tmp_path / "brief.docx"
-    source.write_text("source", encoding="utf-8")
+    source.write_text("source", encoding="utf-8", newline="")
     calls: list[Path] = []
     filters: list[str] = []
 
@@ -267,7 +267,7 @@ def test_drop_accepts_only_supported_extensions(qapp, view, tmp_path):
 
 def test_drop_event_starts_supported_file(qapp, view, controller, monkeypatch, tmp_path):
     source = tmp_path / "report.md"
-    source.write_text("# Source", encoding="utf-8")
+    source.write_text("# Source", encoding="utf-8", newline="")
     calls: list[Path] = []
     monkeypatch.setattr(
         controller,
