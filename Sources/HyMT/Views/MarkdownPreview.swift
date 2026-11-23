@@ -348,6 +348,7 @@ enum MarkdownRenderer {
 struct MarkdownPreview: NSViewRepresentable {
     let markdown: String
     var fontSize: CGFloat = 17
+    var textInset = NSSize(width: 10, height: 12)
     /// When set, ⌘V in the preview hands the clipboard to the pane instead of
     /// being swallowed by the read-only text view.
     var onPaste: ((String) -> Void)?
@@ -369,7 +370,7 @@ struct MarkdownPreview: NSViewRepresentable {
         textView.isEditable = false
         textView.isSelectable = true
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 10, height: 12)
+        textView.textContainerInset = textInset
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true
         textView.isVerticallyResizable = true

@@ -96,6 +96,8 @@ struct WriteView: View {
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 180)
             }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
         }
         .padding(12)
         .background(

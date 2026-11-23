@@ -4,6 +4,20 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.3] (2026-11-23)
+
+### macOS
+
+- The source and target language pickers sit above their respective panes, with
+  the swap button centered over the divider.
+- The text fields for translation and writing have more room around the text.
+
+### Українською
+
+- Вибір мови оригіналу й перекладу розташовано над відповідними панелями, а
+  кнопку обміну мов — над розділювачем.
+- Збільшено внутрішні відступи в полях для перекладу й покращення тексту.
+
 ## [2.0.2] (2026-11-23)
 
 ### macOS

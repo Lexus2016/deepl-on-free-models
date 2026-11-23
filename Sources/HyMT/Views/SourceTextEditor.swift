@@ -5,6 +5,8 @@ import SwiftUI
 /// pasting from a browser or a word processor converts the HTML/RTF flavour of
 /// the clipboard into Markdown instead of collapsing it into plain text.
 struct SourceTextEditor: NSViewRepresentable {
+    static let textInset = NSSize(width: 20, height: 16)
+
     @Binding var text: String
 
     var fontSize: CGFloat = 17
@@ -35,7 +37,7 @@ struct SourceTextEditor: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.smartInsertDeleteEnabled = false
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 10, height: 12)
+        textView.textContainerInset = Self.textInset
         textView.textContainer?.lineFragmentPadding = 0
         textView.font = .systemFont(ofSize: fontSize)
         textView.textColor = .init(hex: 0xEDEFF3)

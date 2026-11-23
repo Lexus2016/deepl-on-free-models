@@ -10,10 +10,10 @@ struct TranslateView: View {
             Rectangle().fill(Theme.border).frame(height: 1)
             HStack(spacing: 0) {
                 SourcePane()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
                 Rectangle().fill(Theme.border).frame(width: 1)
                 TargetPane(copied: $copied)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .background(Theme.editor)
@@ -25,6 +25,10 @@ struct LanguageBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            Color.clear
+                .frame(minWidth: 0, maxWidth: .infinity)
+                .accessibilityHidden(true)
+
             HStack(spacing: 10) {
                 LanguagePicker(
                     selection: app.sourceLanguage,
@@ -52,9 +56,13 @@ struct LanguageBar: View {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .strokeBorder(Theme.borderSoft, lineWidth: 1)
             )
+            .fixedSize(horizontal: true, vertical: false)
 
-            Spacer(minLength: 12)
-            StyleToneControls()
+            ViewThatFits(in: .horizontal) {
+                StyleToneControls()
+                StyleToneControls(compact: true)
+            }
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity)
@@ -126,14 +134,16 @@ struct LanguagePicker: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Theme.text)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.82)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(Theme.tertiary)
             }
-            .frame(minWidth: 118)
+            .frame(width: 164)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .help(displayName)
         .popover(isPresented: $open, arrowEdge: .bottom) {
             popover
         }
@@ -202,6 +212,7 @@ struct LanguagePicker: View {
 
 struct StyleToneControls: View {
     @EnvironmentObject private var app: AppState
+    var compact = false
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
 
@@ -211,7 +222,8 @@ struct StyleToneControls: View {
                 icon: "textformat",
                 title: L10n.t("Style", language),
                 value: L10n.t(app.style.title, language),
-                tint: Theme.accent
+                tint: Theme.accent,
+                compact: compact
             ) {
                 ForEach(TranslationStyle.allCases) { style in
                     Button {
@@ -238,7 +250,8 @@ struct StyleToneControls: View {
                 icon: "waveform",
                 title: L10n.t("Tone", language),
                 value: L10n.t(app.tone.title, language),
-                tint: Theme.accentAlt
+                tint: Theme.accentAlt,
+                compact: compact
             ) {
                 ForEach(TranslationTone.allCases) { tone in
                     Button {
@@ -274,6 +287,7 @@ private struct StyleToneSegment<Content: View>: View {
     let title: String
     let value: String
     let tint: Color
+    let compact: Bool
     @ViewBuilder let content: Content
 
     @State private var hovering = false
@@ -292,17 +306,19 @@ private struct StyleToneSegment<Content: View>: View {
                 }
                 .frame(width: 19, height: 19)
 
-                (
-                    Text(title)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundColor(Theme.tertiary)
-                    + Text("  ")
-                    + Text(value)
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundColor(Theme.text)
-                )
-                .lineLimit(1)
-                .fixedSize()
+                if !compact {
+                    (
+                        Text(title)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundColor(Theme.tertiary)
+                        + Text("  ")
+                        + Text(value)
+                            .font(.system(size: 11.5, weight: .semibold))
+                            .foregroundColor(Theme.text)
+                    )
+                    .lineLimit(1)
+                    .fixedSize()
+                }
 
                 Image(systemName: "chevron.down")
                     .font(.system(size: 7, weight: .bold))
@@ -318,6 +334,9 @@ private struct StyleToneSegment<Content: View>: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
+        .help("\(title) · \(value)")
         .fixedSize()
         .onHover { hovering = $0 }
     }
@@ -344,12 +363,12 @@ struct SourcePane: View {
                     Text(L10n.t("Enter or paste text…", language))
                         .font(.system(size: 17))
                         .foregroundStyle(Theme.tertiary)
-                        .padding(.top, 16)
-                        .padding(.leading, 16)
+                        .padding(.top, SourceTextEditor.textInset.height + 4)
+                        .padding(.leading, SourceTextEditor.textInset.width)
                         .allowsHitTesting(false)
                 }
                 if preview {
-                    MarkdownPreview(markdown: app.sourceText) { text in
+                    MarkdownPreview(markdown: app.sourceText, textInset: SourceTextEditor.textInset) { text in
                         // Pasting while the pane is rendered replaces the text
                         // and returns to the editor, so the clipboard is never
                         // swallowed by the read-only view.
