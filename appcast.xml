@@ -4,6 +4,18 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>2.0.2</title>
+            <pubDate>Mon, 23 Nov 2026 07:41:14 +0000</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>15</sparkle:version>
+            <sparkle:shortVersionString>2.0.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<p>Turn on <strong>Open at login</strong> in <strong>Settings → Behavior</strong> to start DeepL-oFM when you sign in to macOS. The logo and tabs now align with the language picker.</p>
+<p>Увімкніть <strong>Налаштування → Поведінка → Запускати під час входу в macOS</strong>, щоб DeepL-oFM відкривався автоматично. Логотип і вкладки вирівняні за лівим краєм перемикача мов.</p>]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v2.0.2/DeepL-oFM-2.0.2.dmg" length="3705659" type="application/octet-stream" sparkle:edSignature="G4IFNpkV87Uup60pUIxZe2qdTLb6PiTYTj/rztMjmLm2a9uH4fTD/vLk5rDUSF3LETmHu+lv2+ljcaM1wA8dDw=="/>
+        </item>
+        <item>
             <title>2.0.1</title>
             <pubDate>Sun, 22 Nov 2026 20:32:50 +0000</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -161,6 +173,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: 1ByIBeLFs0Ph1+kykzRobGqxk+U9EY/cxrnoA4myiVc9sKcWBLWK2jiIA626pMfwyO6F1vmOuNz1uF5T/rr1CA==
-length: 12409
+edSignature: S5CG2O6c/H8YsOGW/gspPp9UBZy5CG2Z5rC/ScowUHDLCMlvyXY7DbXbYtb5/A742FtKjCbUysSSa/4VGPPnAA==
+length: 13739
 -->
