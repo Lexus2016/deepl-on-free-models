@@ -171,8 +171,7 @@ struct TopBar: View {
             .accessibilityLabel(L10n.t("More actions", language))
             .fixedSize()
         }
-        .padding(.leading, 84)
-        .padding(.trailing, 16)
+        .padding(.horizontal, 16)
         .frame(height: 56)
         .background(Theme.chrome)
         .overlay(alignment: .bottom) {

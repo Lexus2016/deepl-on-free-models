@@ -227,7 +227,8 @@ cp -R build/DeepL-oFM.app /Applications/
 ```
 
 The app lives in the menu bar; closing the window keeps the hotkeys alive.
-Add it to **Login Items** if it should start after a reboot.
+To open DeepL-oFM automatically when you sign in to macOS, turn on
+**Settings → Behavior → Open at login**.
 
 ## First connection
 

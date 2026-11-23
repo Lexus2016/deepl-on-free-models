@@ -1,12 +1,15 @@
 import AppKit
 import Carbon.HIToolbox
 import AVFoundation
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var app: AppState
     @ObservedObject var settings: AppSettings
     @State private var modelFilter = ""
+    @State private var loginItemStatus = SMAppService.mainApp.status
+    @State private var loginItemError: String?
     @AppStorage("SUEnableAutomaticChecks") private var automaticChecks = true
     @AppStorage("SUAutomaticallyUpdate") private var automaticDownloads = false
 
@@ -582,6 +585,8 @@ struct SettingsView: View {
                     .foregroundStyle(Theme.text)
                     .font(.system(size: 12.5))
 
+                loginItemControls
+
                 Toggle(L10n.t("Load the translator at launch", language), isOn: $settings.warmUpOnLaunch)
                     .toggleStyle(.switch)
                     .foregroundStyle(Theme.text)
@@ -636,6 +641,71 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 240)
                 }
+            }
+        }
+    }
+
+    private var loginItemControls: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Toggle(L10n.t("Open at login", language), isOn: Binding(
+                get: { loginItemStatus == .enabled },
+                set: setLoginItemEnabled
+            ))
+            .toggleStyle(.switch)
+            .foregroundStyle(Theme.text)
+            .font(.system(size: 12.5))
+
+            if let loginItemError {
+                Text(loginItemError)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Theme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if loginItemStatus == .requiresApproval {
+                Text(L10n.t("Allow DeepL-oFM to open at login in System Settings.", language))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(L10n.t("Open System Settings", language)) {
+                    SMAppService.openSystemSettingsLoginItems()
+                }
+                .controlSize(.small)
+            }
+        }
+        .onAppear { refreshLoginItemStatus() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshLoginItemStatus()
+        }
+    }
+
+    private func refreshLoginItemStatus() {
+        let status = SMAppService.mainApp.status
+        if status != loginItemStatus { loginItemError = nil }
+        loginItemStatus = status
+    }
+
+    private func setLoginItemEnabled(_ enabled: Bool) {
+        refreshLoginItemStatus()
+        loginItemError = nil
+        guard enabled != (loginItemStatus == .enabled) else { return }
+
+        if loginItemStatus == .requiresApproval {
+            SMAppService.openSystemSettingsLoginItems()
+            return
+        }
+
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            refreshLoginItemStatus()
+        } catch {
+            refreshLoginItemStatus()
+            if loginItemStatus != .requiresApproval, enabled != (loginItemStatus == .enabled) {
+                loginItemError = L10n.format("Could not change Open at login. %@", language, error.localizedDescription)
             }
         }
     }

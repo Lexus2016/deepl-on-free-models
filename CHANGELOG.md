@@ -4,6 +4,20 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.2] (2026-11-23)
+
+### macOS
+
+- Turn on **Open at login** in **Settings → Behavior** to start DeepL-oFM when
+  you sign in to macOS.
+- The logo and tabs now start at the same left margin as the language picker.
+
+### Українською
+
+- Увімкніть **Налаштування → Поведінка → Запускати під час входу в macOS**,
+  щоб DeepL-oFM відкривався автоматично.
+- Логотип і вкладки вирівняні за лівим краєм перемикача мов.
+
 ## [2.0.1] (2026-11-22)
 
 ### macOS
