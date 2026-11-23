@@ -4,6 +4,18 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>2.0.3</title>
+            <pubDate>Mon, 23 Nov 2026 07:55:54 +0000</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>16</sparkle:version>
+            <sparkle:shortVersionString>2.0.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<p>The source and target languages sit above their respective panes, with the swap button centered over the divider. The text fields for translation and writing have more room around the text.</p>
+<p>Мови оригіналу й перекладу розміщено над відповідними панелями. Кнопка обміну мов тепер над розділювачем. У полях перекладу й покращення тексту збільшено внутрішні відступи.</p>]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v2.0.3/DeepL-oFM-2.0.3.dmg" length="3710224" type="application/octet-stream" sparkle:edSignature="X2VFabEpRpZxsAb0OM2BYVZhmqVi3oMjjUZju49+gpBDXL4+kHpuia72/V9bNTOXCSeBiVtvj48T6GZCpCylDg=="/>
+        </item>
+        <item>
             <title>2.0.2</title>
             <pubDate>Mon, 23 Nov 2026 07:41:14 +0000</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -173,6 +185,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: S5CG2O6c/H8YsOGW/gspPp9UBZy5CG2Z5rC/ScowUHDLCMlvyXY7DbXbYtb5/A742FtKjCbUysSSa/4VGPPnAA==
-length: 13739
+edSignature: otZO9ilL88W4dInY3k/4V19cs1Hhe6wNGuIcKVyhe6DnLuNCTgYuGZdr+qFB0qNBQUOCcDSz1HXegofMmzTxBg==
+length: 15086
 -->
