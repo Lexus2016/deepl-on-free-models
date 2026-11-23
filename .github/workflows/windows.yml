@@ -1,7 +1,9 @@
 name: windows
 
 on:
+  # On a branch only the pull request runs, so a push is not reported twice.
   push:
+    branches: [main]
     paths:
       - "windows/**"
       - ".github/workflows/windows.yml"
@@ -9,6 +11,7 @@ on:
     paths:
       - "windows/**"
       - ".github/workflows/windows.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
