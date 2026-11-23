@@ -1,0 +1,1274 @@
+"""Network translation engine ported from ``Sources/HyMT/Services/TranslationService.swift``.
+
+The module owns the two provider protocols (Ollama ``/api/chat`` NDJSON and the
+OpenAI-compatible SSE ``/chat/completions`` endpoint), the streaming byte
+limiter, the per-line translation pipeline with its retry ladder and the
+writing-mode ``rewrite`` used by the Write tab.  It has no UI dependencies and
+is designed to run inside a worker thread; cancellation goes through a
+``threading.Event``.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+import threading
+import time
+from dataclasses import dataclass, replace
+from typing import Callable, Iterator
+from urllib.parse import urlsplit
+
+import requests
+
+from deepl_ofm.core.chunker import TextChunker
+from deepl_ofm.core.languages import AppLanguage, Language
+from deepl_ofm.core.prompts import PromptBuilder, TranslationStyle, TranslationTone
+from deepl_ofm.core.providers import BackendConfig, BackendKind
+from deepl_ofm.core.sanitizer import OutputSanitizer
+from deepl_ofm.core.tokens import TokenRestorer
+from deepl_ofm.i18n import t, tf
+
+logger = logging.getLogger(__name__)
+
+_CONNECT_TIMEOUT = 10.0
+_DEFAULT_TIMEOUT = 180.0
+_WARM_UP_TIMEOUT = 180.0
+_REWRITE_MAX_BYTES = 128_000 * 4
+_STOP_SEQUENCES = [
+    "hy_end",
+    "<｜hy_place▁holder▁no▁8｜>",
+    "<｜hy_place▁holder▁no▁2｜>",
+]
+_SHORT_BLOCK_LIMIT = 80
+
+_REWRITE_INSTRUCTION = (
+    "You are an editor. Rewrite the following text in {language}. Improve clarity, "
+    "grammar, tone and style. Preserve the meaning, Markdown syntax, lists and line "
+    "breaks. Return only the rewritten text, without explanations or quotes."
+)
+
+_MARKDOWN_PATTERNS = tuple(
+    re.compile(pattern, re.MULTILINE)
+    for pattern in (
+        r"^\s{0,3}#{1,6}\s+\S",           # heading
+        r"^\s{0,3}[-*+]\s+\S",            # unordered list
+        r"^\s{0,3}\d+[.)]\s+\S",          # ordered list
+        r"^\s{0,3}>\s+\S",                # block quote
+        r"\*\*[^*\n]+\*\*",               # bold
+        r"__[^_\n]+__",                   # bold
+        r"(?<![\w*])\*[^*\n]+\*(?![\w*])",  # italic
+        r"(?<![\w_])_[^_\n]+_(?![\w_])",  # italic
+        r"`[^`\n]+`",                     # inline code
+        r"\[[^\]]+\]\([^)\s]+\)",         # link
+    )
+)
+
+
+class TranslationError(Exception):
+    """Provider/transport failure with a stable ``kind`` for the UI.
+
+    ``kind`` is one of ``connection``, ``invalid_url``, ``http``, ``unauthorized``,
+    ``rate_limit``, ``server``, ``model``, ``interrupted``, ``unexpected``,
+    ``empty`` or ``cancelled``.
+    """
+
+    def __init__(self, kind: str, status: int | None = None, detail: str = "") -> None:
+        self.kind = kind
+        self.status = status
+        self.detail = detail
+        text = f"{kind}: {detail}" if detail else kind
+        super().__init__(text)
+
+    def message(self, language: AppLanguage | str | None = None) -> str:
+        """Localised, user-facing text (English keys come from the Swift app)."""
+        kind = self.kind
+        if kind == "invalid_url":
+            return tf("Invalid server URL: %@", self.detail, language=language)
+        if kind == "model":
+            if not self.detail:
+                return t("Choose a model in Settings.", language)
+            return tf("Model “%@” not found on the server.", self.detail, language=language)
+        if kind == "connection":
+            return tf(
+                "Could not connect to %@. Check that the server is running.",
+                self.detail,
+                language=language,
+            )
+        if kind == "unauthorized":
+            if self.detail == "api_key":
+                return t("Add your API key in Settings.", language)
+            return t(
+                "The provider rejected the request. Check the API key and model in Settings.",
+                language,
+            )
+        if kind == "rate_limit":
+            return t("Too many requests. Wait a moment and try again.", language)
+        if kind == "server":
+            return t("The provider is temporarily unavailable. Try again.", language)
+        if kind == "empty":
+            return t("The model returned an empty translation. Try again.", language)
+        if kind == "interrupted":
+            return t("The server interrupted the response. Try again.", language)
+        if kind == "unexpected":
+            return t(
+                "The model could not translate this text. Try again or choose another model.",
+                language,
+            )
+        if kind == "cancelled":
+            return "Translation cancelled."
+        if kind == "http":
+            if self.status is None:
+                return t(
+                    "The provider rejected the request. "
+                    "Check the API key and model in Settings.",
+                    language,
+                )
+            if self.status in (400, 401, 403, 422):
+                return t(
+                    "The provider rejected the request. "
+                    "Check the API key and model in Settings.",
+                    language,
+                )
+            if 500 <= self.status <= 599:
+                return t("The provider is temporarily unavailable. Try again.", language)
+            return tf("Server returned error %@.", self.status, language=language)
+        return t("Translation failed", language)
+
+
+class TranslationCancelled(Exception):
+    """Raised when the caller set the cancellation event."""
+
+
+@dataclass
+class TranslationOutput:
+    """Result of one translation or rewrite job."""
+
+    text: str
+    warnings: int = 0
+    tokens_per_second: float | None = None
+    duration_ms: int | None = None
+    used_fallback: bool = False
+
+
+@dataclass(frozen=True)
+class _ChatResult:
+    text: str
+    tokens_per_second: float | None
+    tokens: int
+    seconds: float
+    exceeded_limit: bool = False
+
+
+@dataclass(frozen=True)
+class _BlockResult:
+    text: str
+    warning: bool
+    tokens: int = 0
+    seconds: float = 0.0
+
+
+@dataclass(frozen=True)
+class _JobResult:
+    text: str
+    warnings: int
+    tokens: int
+    seconds: float
+    degenerate: bool = False
+
+
+class _OutputBudget:
+    """Byte-capped UTF-8 accumulator with streaming marker detection.
+
+    A straight port of ``TranslationOutput`` at the end of
+    ``TranslationService.swift``.  ``append`` returns ``False`` as soon as a
+    chat-template marker (``hy-assistant``, ``hy_end``, ``<|`` …) is found, so
+    the caller can stop reading the response; ``exceeded_limit`` is set when
+    the byte cap truncated live text.
+    """
+
+    _MARKERS = tuple(
+        marker.encode("utf-8")
+        for marker in ("hy-assistant", "hy-user", "hy_end", "<｜", "<|", "</|", "｜hy")
+    )
+    _OVERLAP = max(len(marker) for marker in _MARKERS) - 1
+
+    def __init__(self, max_bytes: int) -> None:
+        self.max_bytes = max(0, int(max_bytes))
+        self._bytes = bytearray()
+        self.exceeded_limit = False
+
+    @property
+    def text(self) -> str:
+        return self._bytes.decode("utf-8", errors="replace")
+
+    def append(self, piece: str) -> bool:
+        """Append streamed text; return False when generation must stop."""
+        if not piece:
+            return True
+        overlap = min(self._OVERLAP, len(self._bytes))
+        remaining = self.max_bytes - len(self._bytes)
+        data = piece.encode("utf-8", errors="replace")
+        fragment = data[: max(0, remaining + self._OVERLAP + 1)]
+        window = bytes(self._bytes[-overlap:]) + fragment
+        folded = bytes(byte + 32 if 65 <= byte <= 90 else byte for byte in window)
+        offsets = [folded.find(marker) for marker in self._MARKERS]
+        offsets = [offset for offset in offsets if offset >= 0]
+        if offsets:
+            offset = min(offsets)
+            if offset < overlap:
+                del self._bytes[len(self._bytes) - (overlap - offset):]
+            elif offset - overlap <= remaining:
+                self._bytes.extend(window[overlap:offset])
+            # A marker at/after the byte cap proves the model finished; the
+            # remaining tail is dropped without flagging an overflow, which is
+            # what the Swift unit tests expect from the limiter.
+            return False
+        if len(fragment) > remaining:
+            self.exceeded_limit = True
+            return False
+        self._bytes.extend(fragment)
+        return True
+
+
+def _http_error(status: int, detail: str = "") -> TranslationError:
+    """Map an HTTP status to the documented ``TranslationError`` kind."""
+    if status in (401, 403):
+        return TranslationError("unauthorized", status=status, detail=detail)
+    if status == 429:
+        return TranslationError("rate_limit", status=status, detail=detail)
+    if 500 <= status <= 599:
+        return TranslationError("server", status=status, detail=detail)
+    return TranslationError("http", status=status, detail=detail)
+
+
+def _ollama_endpoint(base: str) -> str:
+    return base.rstrip("/") + "/api/chat"
+
+
+def _openai_endpoint(base: str, path: str) -> str:
+    """Append ``/v1`` exactly like ``TranslationService.openAIEndpoint``."""
+    value = base.rstrip("/")
+    if value.endswith("/v1"):
+        return value + "/" + path
+    return value + "/v1/" + path
+
+
+def _contains_markdown(text: str) -> bool:
+    """Port of ``Sources/HyMT/Support/MarkdownDetector.swift``."""
+    return any(pattern.search(text) for pattern in _MARKDOWN_PATTERNS)
+
+
+def _split_mixed_line(text: str) -> tuple[str, str] | None:
+    """Split ``"id, id — description"`` so ids stay byte-for-byte."""
+    marker = " — "
+    index = text.find(marker)
+    if index < 0:
+        return None
+    left = text[:index]
+    right = text[index + len(marker):].strip()
+    if not right:
+        return None
+
+    latin = sum(
+        1 for char in left if 0x41 <= ord(char) <= 0x7A or 0x30 <= ord(char) <= 0x39
+    )
+    cyrillic = sum(1 for char in left if 0x400 <= ord(char) <= 0x4FF)
+    if latin < 8 or latin <= cyrillic * 2:
+        return None
+
+    pieces = [piece.strip() for piece in left.split(",")]
+    if not pieces:
+        return None
+    looks_like_ids = all(
+        piece
+        and not any(char.isspace() for char in piece)
+        and any(char in piece for char in "/:.-")
+        and any(char.isdigit() for char in piece)
+        for piece in pieces
+    )
+    if not looks_like_ids:
+        return None
+    return left + marker, right
+
+
+def _markdown_structure(text: str) -> list[str]:
+    """Port of ``TranslationService.markdownStructure`` (headings/lists)."""
+    structure: list[str] = []
+    for line in text.splitlines():
+        body = line.lstrip(" \t")
+        if not body:
+            continue
+        first = body[0]
+        prefix_length = 0
+        while prefix_length < len(body) and body[prefix_length] == first:
+            prefix_length += 1
+        rest = body[prefix_length:]
+        if first in "#>":
+            if rest and rest[0].isspace():
+                structure.append(body[:prefix_length])
+            continue
+        if first in "-+*" and prefix_length == 1 and rest and rest[0].isspace():
+            structure.append("bullet")
+            continue
+        digits = 0
+        while digits < len(body) and body[digits].isdigit():
+            digits += 1
+        if digits and digits < len(body) and body[digits] in ".)":
+            if digits + 1 < len(body) and body[digits + 1].isspace():
+                structure.append("number")
+    return structure
+
+
+def _with_source_language(prompt: str, source: Language | None) -> str:
+    """Port of ``TranslationService.withSourceLanguage``."""
+    if source is None or getattr(source, "is_auto", False):
+        return prompt
+    return f"The source language is {source.english_name}. " + prompt
+
+
+def _watch_cancel(cancel: threading.Event, response: object, done: threading.Event) -> None:
+    """Close a blocked response promptly when the caller cancels."""
+    while not done.wait(0.05):
+        if cancel.is_set():
+            try:
+                response.close()  # type: ignore[attr-defined]
+            except Exception:  # pragma: no cover - defensive
+                pass
+            return
+
+
+class Translator:
+    """Streaming translation engine for Ollama and OpenAI-compatible backends."""
+
+    def __init__(
+        self,
+        session: requests.Session | None = None,
+        timeout: float = _DEFAULT_TIMEOUT,
+    ):
+        self._session = session if session is not None else requests.Session()
+        self._timeout = float(timeout)
+
+    # ------------------------------------------------------------------ public
+
+    def translate(
+        self,
+        text: str,
+        *,
+        source: Language,
+        target: Language,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        config: BackendConfig,
+        fallback: BackendConfig | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
+        on_partial: Callable[[str], None] | None = None,
+        cancel: threading.Event | None = None,
+    ) -> TranslationOutput:
+        """Translate ``text`` line by line, switching to ``fallback`` on failure."""
+        started = time.monotonic()
+        self._raise_if_cancelled(cancel)
+        if not text.strip():
+            return TranslationOutput(text=text, duration_ms=0)
+
+        try:
+            job = self._run_job(
+                text,
+                source=source,
+                target=target,
+                style=style,
+                tone=tone,
+                config=config,
+                on_progress=on_progress,
+                on_partial=on_partial,
+                cancel=cancel,
+            )
+            if job.degenerate and fallback is not None and fallback is not config:
+                # Swift retries the whole job when no block was translated.
+                raise TranslationError("empty", detail="no block could be translated")
+            used_fallback = False
+        except TranslationCancelled:
+            raise
+        except Exception as exc:
+            if cancel is not None and cancel.is_set():
+                raise TranslationCancelled() from None
+            if fallback is None or fallback is config:
+                raise
+            logger.info("primary translation failed (%s); retrying with fallback", exc)
+            self._emit_partial(on_partial, "")
+            job = self._run_job(
+                text,
+                source=source,
+                target=target,
+                style=style,
+                tone=tone,
+                config=fallback,
+                on_progress=on_progress,
+                on_partial=on_partial,
+                cancel=cancel,
+            )
+            used_fallback = True
+
+        duration_ms = int((time.monotonic() - started) * 1000)
+        return TranslationOutput(
+            text=job.text,
+            warnings=job.warnings,
+            tokens_per_second=self._rate(job.tokens, job.seconds),
+            duration_ms=duration_ms,
+            used_fallback=used_fallback,
+        )
+
+    def rewrite(
+        self,
+        text: str,
+        *,
+        target: Language,
+        config: BackendConfig,
+        fallback: BackendConfig | None = None,
+        on_progress: Callable[[int, int], None] | None = None,
+        on_partial: Callable[[str], None] | None = None,
+        cancel: threading.Event | None = None,
+    ) -> TranslationOutput:
+        """Improve ``text`` (DeepL Write) using the editor instruction."""
+        started = time.monotonic()
+        self._raise_if_cancelled(cancel)
+        prompt = _REWRITE_INSTRUCTION.format(language=target.english_name) + "\n\n" + text
+
+        def run(backend: BackendConfig) -> _ChatResult:
+            self._report(on_progress, 0, 1)
+            result = self._stream_chat(
+                [{"role": "user", "content": prompt}],
+                backend,
+                cancel=cancel,
+                on_token=None,
+                max_bytes=_REWRITE_MAX_BYTES,
+            )
+            if result.exceeded_limit:
+                raise TranslationError("empty", detail="rewrite output too long")
+            cleaned = self._clean_output(result.text)
+            if not cleaned:
+                raise TranslationError("empty", detail="rewrite returned nothing")
+            self._report(on_progress, 1, 1)
+            return _ChatResult(
+                cleaned, result.tokens_per_second, result.tokens, result.seconds
+            )
+
+        try:
+            result = run(config)
+            used_fallback = False
+        except TranslationCancelled:
+            raise
+        except Exception as exc:
+            if cancel is not None and cancel.is_set():
+                raise TranslationCancelled() from None
+            if fallback is None or fallback is config:
+                raise
+            logger.info("primary rewrite failed (%s); retrying with fallback", exc)
+            self._emit_partial(on_partial, "")
+            result = run(fallback)
+            used_fallback = True
+
+        self._emit_partial(on_partial, result.text)
+        return TranslationOutput(
+            text=result.text,
+            tokens_per_second=self._rate(result.tokens, result.seconds),
+            duration_ms=int((time.monotonic() - started) * 1000),
+            used_fallback=used_fallback,
+        )
+
+    def stream_chat(
+        self,
+        messages: list[dict],
+        config: BackendConfig,
+        *,
+        cancel: threading.Event | None = None,
+        on_token: Callable[[str], None] | None = None,
+        max_bytes: int = 1_000_000,
+    ) -> tuple[str, float | None]:
+        """Stream one chat completion; return ``(text, tokens_per_second)``."""
+        result = self._stream_chat(
+            messages,
+            config,
+            cancel=cancel,
+            on_token=on_token,
+            max_bytes=max_bytes,
+        )
+        return result.text, result.tokens_per_second
+
+    def translate_block(
+        self,
+        text: str,
+        *,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        target: Language,
+        config: BackendConfig,
+        cancel: threading.Event | None = None,
+    ) -> tuple[str, bool]:
+        """Buffered single-block translation (port of ``translateBlock``)."""
+        preserve = _contains_markdown(text)
+        standard_prompt = PromptBuilder.prompt(
+            text,
+            style,
+            tone,
+            target.english_name,
+            preserve_markdown=preserve,
+        )
+        concise_prompt = (
+            f"Translate into {target.english_name}."
+            + (" Preserve Markdown syntax and keep line breaks." if preserve else "")
+            + "\n\n"
+            + text
+        )
+        auto = style == TranslationStyle.AUTO and tone == TranslationTone.STANDARD
+        prompts = [
+            concise_prompt if auto else standard_prompt,
+            standard_prompt if auto else concise_prompt,
+            PromptBuilder.plain_prompt(text, target.english_name),
+        ]
+        result = self._buffered_translation(
+            prompts,
+            text,
+            target,
+            config,
+            cancel,
+            preserve_line_breaks=True,
+            requires_markdown_structure=preserve,
+        )
+        restored = TokenRestorer.restore(text, result.text)
+        if restored is None:
+            raise TranslationError("empty", detail="protected tokens changed")
+        return restored, result.warning
+
+    def list_models(self, config: BackendConfig) -> list[str]:
+        """Return the model ids advertised by the configured backend."""
+        from deepl_ofm.services.probe import probe_models
+
+        return probe_models(config, timeout=8.0, session=self._session)
+
+    def warm_up(self, config: BackendConfig) -> bool:
+        """Load a local model into memory; a 200 response means it is warm."""
+        if not config.model:
+            return False
+        base = config.compatible_base()
+        if config.kind == BackendKind.OLLAMA:
+            url = _ollama_endpoint(base)
+            body: dict = {
+                "model": config.model,
+                "messages": [{"role": "user", "content": "Hello"}],
+                "stream": False,
+                "keep_alive": "5m",
+                "options": {
+                    "temperature": 0.0,
+                    "num_predict": 1,
+                    "num_ctx": config.context_window,
+                },
+            }
+        else:
+            url = _openai_endpoint(base, "chat/completions")
+            body = {
+                "model": config.model,
+                "messages": [{"role": "user", "content": "Hello"}],
+                "stream": False,
+                "temperature": 0.0,
+                "max_tokens": 1,
+            }
+        try:
+            self._validate_url(url, base)
+            response = self._session.post(
+                url,
+                json=body,
+                headers=self._headers(config),
+                timeout=(_CONNECT_TIMEOUT, _WARM_UP_TIMEOUT),
+            )
+        except requests.exceptions.RequestException:
+            return False
+        except TranslationError:
+            return False
+        try:
+            return int(getattr(response, "status_code", 0)) == 200
+        finally:
+            self._close(response)
+
+    # --------------------------------------------------------------- pipeline
+
+    def _run_job(
+        self,
+        text: str,
+        *,
+        source: Language,
+        target: Language,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        config: BackendConfig,
+        on_progress: Callable[[int, int], None] | None,
+        on_partial: Callable[[str], None] | None,
+        cancel: threading.Event | None,
+    ) -> _JobResult:
+        chunks = TextChunker.split(TextChunker.normalize(text))
+        if not chunks:
+            return _JobResult(text=text, warnings=0, tokens=0, seconds=0.0)
+
+        total = len(chunks)
+        self._report(on_progress, 0, total)
+        translated: list[str] = []
+        warnings = 0
+        translated_count = 0
+        tokens = 0
+        seconds = 0.0
+
+        for index, chunk in enumerate(chunks):
+            self._raise_if_cancelled(cancel)
+            body = chunk.text
+            line = chunk.prefix + body
+            if getattr(chunk, "is_code", False) or not any(
+                char.isalpha() for char in body
+            ):
+                # Fenced code and punctuation-only lines pass through untouched.
+                translated.append(body)
+                self._emit_partial(on_partial, TextChunker.compose(chunks[: index + 1], translated))
+                self._report(on_progress, index + 1, total)
+                continue
+
+            keep = ""
+            translatable = body
+            mixed = _split_mixed_line(body)
+            if mixed is not None:
+                keep, translatable = mixed
+
+            try:
+                block = self._translate_chunk(
+                    translatable,
+                    target=target,
+                    style=style,
+                    tone=tone,
+                    config=config,
+                    source=source,
+                    cancel=cancel,
+                    preserve_markdown=_contains_markdown(line),
+                )
+            except TranslationError as exc:
+                if exc.kind != "empty":
+                    raise
+                # Swift keeps the source line for this block and counts a warning.
+                logger.debug("block left untranslated: %s", exc.detail)
+                translated.append(keep + translatable)
+                warnings += 1
+                self._emit_partial(
+                    on_partial, TextChunker.compose(chunks[: index + 1], translated)
+                )
+                self._report(on_progress, index + 1, total)
+                continue
+
+            restored = TokenRestorer.restore(translatable, block.text)
+            if restored is None:
+                logger.debug("protected tokens changed in model output")
+                translated_text = translatable
+                warning = True
+            else:
+                translated_text = TokenRestorer.preserve_trailing_punctuation(
+                    translatable, restored
+                )
+                warning = block.warning
+            translated.append(keep + translated_text)
+            tokens += block.tokens
+            seconds += block.seconds
+            if warning:
+                warnings += 1
+            else:
+                translated_count += 1
+            self._emit_partial(on_partial, TextChunker.compose(chunks[: index + 1], translated))
+            self._report(on_progress, index + 1, total)
+
+        return _JobResult(
+            text=TextChunker.compose(chunks, translated),
+            warnings=warnings,
+            tokens=tokens,
+            seconds=seconds,
+            degenerate=warnings > 0 and translated_count == 0,
+        )
+
+    def _translate_chunk(
+        self,
+        text: str,
+        *,
+        target: Language,
+        style: TranslationStyle,
+        tone: TranslationTone,
+        config: BackendConfig,
+        source: Language | None,
+        cancel: threading.Event | None,
+        preserve_markdown: bool,
+    ) -> _BlockResult:
+        """Choose the prompt ladder for one line and translate it."""
+        body = text.strip()
+        neutral_heading = PromptBuilder.heading_prompt(
+            body,
+            TranslationStyle.AUTO,
+            TranslationTone.STANDARD,
+            target.english_name,
+            preserve_markdown=False,
+        )
+        plain_fallback = PromptBuilder.plain_prompt(body, target.english_name)
+        if len(body) <= _SHORT_BLOCK_LIMIT:
+            prompts = [neutral_heading, plain_fallback]
+        else:
+            styled = PromptBuilder.prompt(
+                body, style, tone, target.english_name, preserve_markdown
+            )
+            natural = PromptBuilder.prompt(
+                body,
+                TranslationStyle.NATURAL,
+                tone,
+                target.english_name,
+                preserve_markdown,
+            )
+            literal = PromptBuilder.prompt(
+                body,
+                TranslationStyle.LITERAL,
+                TranslationTone.STANDARD,
+                target.english_name,
+                preserve_markdown,
+            )
+            if style == TranslationStyle.AUTO:
+                prompts = [styled, natural, plain_fallback]
+            elif style == TranslationStyle.NATURAL:
+                prompts = [styled, plain_fallback, literal]
+            else:
+                prompts = [styled, natural, plain_fallback]
+        return self._buffered_translation(
+            prompts,
+            body,
+            target,
+            config,
+            cancel,
+            source_language=source,
+            preserve_line_breaks=False,
+            requires_markdown_structure=False,
+        )
+
+    def _buffered_translation(
+        self,
+        prompts: list[str],
+        source: str,
+        target: Language,
+        config: BackendConfig,
+        cancel: threading.Event | None,
+        *,
+        source_language: Language | None = None,
+        preserve_line_breaks: bool = False,
+        requires_markdown_structure: bool = False,
+    ) -> _BlockResult:
+        """Try every prompt (and lowered-temperature retries) until one validates."""
+        source_count = len(source)
+        max_bytes = max(200, source_count * 4 + 100) * 4
+        for prompt_index, prompt in enumerate(prompts):
+            attempts = 3 if prompt_index == 0 else 2
+            for attempt in range(attempts):
+                if attempt > 0:
+                    self._sleep(0.120, cancel)
+                retry_config = config
+                if attempt > 0:
+                    retry_config = replace(
+                        config, temperature=min(config.temperature, 0.3)
+                    )
+                raw = self._collect_candidate(
+                    _with_source_language(prompt, source_language),
+                    retry_config,
+                    max_bytes,
+                    cancel,
+                )
+                clean = self._validated(
+                    raw.text,
+                    source,
+                    target,
+                    preserve_line_breaks=preserve_line_breaks,
+                )
+                if clean is None:
+                    logger.debug(
+                        "rejected model output (prompt %s, attempt %s)",
+                        prompt_index,
+                        attempt,
+                    )
+                    continue
+                if requires_markdown_structure and (
+                    _markdown_structure(clean) != _markdown_structure(source)
+                ):
+                    logger.debug(
+                        "markdown structure changed (prompt %s, attempt %s)",
+                        prompt_index,
+                        attempt,
+                    )
+                    continue
+                return _BlockResult(clean, False, raw.tokens, raw.seconds)
+
+        if not requires_markdown_structure and not (
+            preserve_line_breaks and "\n" in source
+        ):
+            segmented = self._sentence_fallback(
+                source,
+                target,
+                config,
+                cancel,
+                source_language=source_language,
+            )
+            if segmented is not None:
+                return segmented
+        raise TranslationError("empty", detail="model output rejected")
+
+    def _sentence_fallback(
+        self,
+        source: str,
+        target: Language,
+        config: BackendConfig,
+        cancel: threading.Event | None,
+        *,
+        source_language: Language | None,
+    ) -> _BlockResult | None:
+        """Translate sentence by sentence when the whole block keeps failing."""
+        if "http" in source or "](" in source or "`" in source:
+            return None
+        pieces = TextChunker.split_sentences(source)
+        if len(pieces) <= 1:
+            return None
+
+        translated: list[str] = []
+        failures = 0
+        tokens = 0
+        seconds = 0.0
+        for piece in pieces:
+            self._raise_if_cancelled(cancel)
+            prompts = [
+                PromptBuilder.plain_prompt(piece, target.english_name),
+                PromptBuilder.prompt(
+                    piece,
+                    TranslationStyle.NATURAL,
+                    TranslationTone.STANDARD,
+                    target.english_name,
+                ),
+                PromptBuilder.prompt(
+                    piece,
+                    TranslationStyle.LITERAL,
+                    TranslationTone.STANDARD,
+                    target.english_name,
+                ),
+            ]
+            success: str | None = None
+            for prompt in prompts:
+                retry_config = replace(
+                    config, temperature=min(config.temperature, 0.3)
+                )
+                max_bytes = max(200, len(piece) * 4 + 100) * 4
+                raw = self._collect_candidate(
+                    _with_source_language(prompt, source_language),
+                    retry_config,
+                    max_bytes,
+                    cancel,
+                )
+                clean = self._validated(raw.text, piece, target)
+                if clean is not None:
+                    success = clean
+                    tokens += raw.tokens
+                    seconds += raw.seconds
+                    break
+            if success is None:
+                translated.append(piece)
+                failures += 1
+            else:
+                translated.append(success)
+
+        if failures >= len(pieces):
+            return None
+        return _BlockResult(" ".join(translated), failures > 0, tokens, seconds)
+
+    # -------------------------------------------------------------- streaming
+
+    def _collect_candidate(
+        self,
+        prompt: str,
+        config: BackendConfig,
+        max_bytes: int,
+        cancel: threading.Event | None,
+    ) -> _ChatResult:
+        """One streamed candidate; a length-cut response becomes empty text."""
+        try:
+            return self._collect_with_retry(prompt, config, max_bytes, cancel)
+        except TranslationError as exc:
+            if exc.kind == "empty":
+                logger.debug("candidate rejected by the provider: %s", exc.detail)
+                return _ChatResult("", None, 0, 0.0)
+            raise
+
+    def _collect_with_retry(
+        self,
+        prompt: str,
+        config: BackendConfig,
+        max_bytes: int,
+        cancel: threading.Event | None,
+    ) -> _ChatResult:
+        result = self._stream_chat(
+            [{"role": "user", "content": prompt}],
+            config,
+            cancel=cancel,
+            on_token=None,
+            max_bytes=max_bytes,
+        )
+        if result.exceeded_limit:
+            raise TranslationError("empty", detail="output limit")
+        return result
+
+    def _stream_chat(
+        self,
+        messages: list[dict],
+        config: BackendConfig,
+        *,
+        cancel: threading.Event | None,
+        on_token: Callable[[str], None] | None,
+        max_bytes: int,
+    ) -> _ChatResult:
+        if not config.model:
+            raise TranslationError("model", detail="")
+        if config.requires_api_key and not config.api_key:
+            raise TranslationError("unauthorized", detail="api_key")
+        self._raise_if_cancelled(cancel)
+
+        base = config.compatible_base()
+        if config.kind == BackendKind.OLLAMA:
+            url = _ollama_endpoint(base)
+            body = self._ollama_body(messages, config)
+            protocol = "ollama"
+        else:
+            url = _openai_endpoint(base, "chat/completions")
+            body = self._openai_body(messages, config)
+            protocol = "openai"
+        self._validate_url(url, base)
+
+        response = self._post(url, body, config, base)
+        done = threading.Event()
+        budget = _OutputBudget(max_bytes)
+        tokens = 0
+        first_at: float | None = None
+        last_at: float | None = None
+        started = time.monotonic()
+        server_tokens: int | None = None
+        server_seconds: float | None = None
+
+        def emit(piece: str) -> bool:
+            nonlocal tokens, first_at, last_at
+            now = time.monotonic()
+            keep_going = budget.append(piece)
+            tokens += 1
+            if first_at is None:
+                first_at = now
+            last_at = now
+            if keep_going and on_token is not None:
+                on_token(piece)
+            return keep_going
+
+        try:
+            self._check_status(response, config)
+            if cancel is not None:
+                threading.Thread(
+                    target=_watch_cancel,
+                    args=(cancel, response, done),
+                    daemon=True,
+                ).start()
+
+            finished = False
+            for line in self._decoded_lines(response, cancel):
+                if cancel is not None and cancel.is_set():
+                    raise TranslationCancelled()
+                if not line.strip():
+                    continue
+                if protocol == "ollama":
+                    terminal, stats = self._consume_ollama(line, emit)
+                else:
+                    terminal, stats = self._consume_openai(line, emit)
+                if stats is not None:
+                    server_tokens, server_seconds = stats
+                if terminal:
+                    finished = True
+                    break
+
+            if cancel is not None and cancel.is_set():
+                raise TranslationCancelled()
+            if not finished:
+                raise TranslationError(
+                    "interrupted", detail="stream ended without a terminal event"
+                )
+        finally:
+            done.set()
+            self._close(response)
+
+        elapsed = time.monotonic() - started
+        span = (last_at - first_at) if first_at is not None and last_at is not None else 0.0
+        if server_seconds and server_seconds > 0:
+            generation_seconds = server_seconds
+        elif span > 0:
+            generation_seconds = span
+        elif tokens:
+            # Instant fake/real streams still get a measurable rate; the floor
+            # only avoids a division by zero.
+            generation_seconds = max(elapsed, 0.001)
+        else:
+            generation_seconds = 0.0
+        total_tokens = server_tokens or tokens
+        rate = (
+            total_tokens / generation_seconds if total_tokens and generation_seconds > 0 else None
+        )
+        return _ChatResult(
+            text=budget.text,
+            tokens_per_second=rate,
+            tokens=total_tokens,
+            seconds=generation_seconds,
+            exceeded_limit=budget.exceeded_limit,
+        )
+
+    def _consume_ollama(
+        self, line: str, emit: Callable[[str], bool]
+    ) -> tuple[bool, tuple[int, float] | None]:
+        try:
+            obj = json.loads(line)
+        except (ValueError, TypeError):
+            return False, None
+        if not isinstance(obj, dict):
+            return False, None
+        error = obj.get("error")
+        if isinstance(error, str) and error:
+            raise TranslationError("http", detail=error)
+        message = obj.get("message")
+        if isinstance(message, dict):
+            content = message.get("content")
+            if isinstance(content, str) and content and not emit(content):
+                return True, None
+        stats: tuple[int, float] | None = None
+        if obj.get("done") is True:
+            count = obj.get("eval_count")
+            duration = obj.get("eval_duration")
+            if isinstance(count, int) and count > 0 and isinstance(duration, (int, float)):
+                if duration > 0:
+                    stats = (count, float(duration) / 1_000_000_000)
+            if obj.get("done_reason") == "length":
+                raise TranslationError("empty", detail="length")
+            return True, stats
+        return False, stats
+
+    def _consume_openai(
+        self, line: str, emit: Callable[[str], bool]
+    ) -> tuple[bool, tuple[int, float] | None]:
+        stripped = line.strip()
+        if not stripped.startswith("data:"):
+            return False, None
+        payload = stripped[5:].strip()
+        if payload == "[DONE]":
+            return True, None
+        if not payload:
+            return False, None
+        try:
+            obj = json.loads(payload)
+        except (ValueError, TypeError):
+            return False, None
+        if not isinstance(obj, dict):
+            return False, None
+
+        error = obj.get("error")
+        if isinstance(error, dict):
+            message = error.get("message") or json.dumps(error)
+            raise TranslationError("http", detail=str(message))
+        if isinstance(error, str) and error:
+            raise TranslationError("http", detail=error)
+
+        stats: tuple[int, float] | None = None
+        choices = obj.get("choices")
+        if isinstance(choices, list) and choices:
+            first = choices[0]
+            if isinstance(first, dict):
+                delta = first.get("delta")
+                if not isinstance(delta, dict):
+                    delta = first.get("message")
+                if isinstance(delta, dict):
+                    content = delta.get("content")
+                    if isinstance(content, str) and content and not emit(content):
+                        return True, stats
+                reason = first.get("finish_reason")
+                if isinstance(reason, str) and reason:
+                    if reason == "length":
+                        raise TranslationError("empty", detail="length")
+                    if reason in ("stop", "end_turn"):
+                        return True, stats
+                    raise TranslationError("interrupted", detail=reason)
+        return False, stats
+
+    # ---------------------------------------------------------------- helpers
+
+    def _ollama_body(self, messages: list[dict], config: BackendConfig) -> dict:
+        return {
+            "model": config.model,
+            "messages": messages,
+            "stream": True,
+            "keep_alive": "5m",
+            "options": {
+                "temperature": config.temperature,
+                "top_p": config.top_p,
+                "top_k": config.top_k,
+                "repeat_penalty": config.repetition_penalty,
+                "num_ctx": config.context_window,
+                "num_predict": 4096,
+                "stop": list(_STOP_SEQUENCES),
+            },
+        }
+
+    def _openai_body(self, messages: list[dict], config: BackendConfig) -> dict:
+        return {
+            "model": config.model,
+            "messages": messages,
+            "stream": True,
+            "temperature": config.temperature,
+            "top_p": config.top_p,
+            "max_tokens": 4096,
+            "stop": list(_STOP_SEQUENCES),
+        }
+
+    def _headers(self, config: BackendConfig) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if config.api_key:
+            headers["Authorization"] = f"Bearer {config.api_key}"
+        return headers
+
+    def _post(
+        self,
+        url: str,
+        body: dict,
+        config: BackendConfig,
+        base: str,
+    ) -> requests.Response:
+        try:
+            return self._session.post(
+                url,
+                json=body,
+                headers=self._headers(config),
+                stream=True,
+                timeout=(_CONNECT_TIMEOUT, self._timeout),
+            )
+        except (
+            requests.exceptions.InvalidURL,
+            requests.exceptions.MissingSchema,
+            requests.exceptions.InvalidSchema,
+        ) as exc:
+            raise TranslationError("invalid_url", detail=base) from exc
+        except requests.exceptions.RequestException as exc:
+            raise TranslationError("connection", detail=base) from exc
+
+    def _decoded_lines(
+        self, response: object, cancel: threading.Event | None
+    ) -> Iterator[str]:
+        try:
+            for raw in response.iter_lines():  # type: ignore[attr-defined]
+                if cancel is not None and cancel.is_set():
+                    raise TranslationCancelled()
+                if isinstance(raw, bytes):
+                    yield raw.decode("utf-8", errors="replace")
+                else:
+                    yield str(raw)
+        except TranslationCancelled:
+            raise
+        except Exception as exc:
+            if cancel is not None and cancel.is_set():
+                raise TranslationCancelled() from None
+            raise TranslationError("interrupted", detail=str(exc) or type(exc).__name__) from exc
+
+    def _check_status(self, response: object, config: BackendConfig) -> None:
+        status = int(getattr(response, "status_code", 0))
+        if 200 <= status < 300:
+            return
+        detail = ""
+        headers = getattr(response, "headers", None)
+        if status == 429 and isinstance(headers, dict):
+            detail = str(headers.get("Retry-After", "") or "")
+        elif status == 404:
+            detail = config.model
+        raise _http_error(status, detail)
+
+    def _validate_url(self, url: str, base: str) -> None:
+        parsed = urlsplit(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise TranslationError("invalid_url", detail=base)
+
+    def _clean_output(self, raw: str) -> str:
+        cleaner = getattr(OutputSanitizer, "clean", None)
+        if callable(cleaner):
+            return cleaner(raw)
+        return OutputSanitizer.strip_wrappers(raw)
+
+    def _validated(
+        self,
+        raw: str,
+        source: str,
+        target: Language,
+        *,
+        preserve_line_breaks: bool = False,
+    ) -> str | None:
+        # Swift validates the collected text before OutputSanitizer.clean:
+        # the U+FFFD guard must see the raw stream (strip_wrappers would remove
+        # the replacement character together with the token around it).
+        if "\ufffd" in raw:
+            return None
+        candidate = OutputSanitizer.strip_preamble(raw, source)
+        cleaned = self._clean_output(candidate)
+        if not preserve_line_breaks:
+            cleaned = re.sub(r"\s*\n\s*", " ", cleaned)
+        cleaned = cleaned.strip()
+        if not cleaned:
+            return None
+        failed, reason = OutputSanitizer.is_degenerate(source, cleaned, target)
+        if failed:
+            logger.debug("sanitizer rejected output: %s", reason)
+            return None
+        return cleaned
+
+    def _report(
+        self,
+        callback: Callable[[int, int], None] | None,
+        completed: int,
+        total: int,
+    ) -> None:
+        if callback is not None:
+            try:
+                callback(completed, total)
+            except Exception:  # pragma: no cover - UI callbacks must not kill a job
+                logger.exception("progress callback failed")
+
+    def _emit_partial(
+        self,
+        callback: Callable[[str], None] | None,
+        text: str,
+    ) -> None:
+        if callback is not None:
+            try:
+                callback(text)
+            except Exception:  # pragma: no cover - UI callbacks must not kill a job
+                logger.exception("partial callback failed")
+
+    def _raise_if_cancelled(self, cancel: threading.Event | None) -> None:
+        if cancel is not None and cancel.is_set():
+            raise TranslationCancelled()
+
+    def _sleep(self, seconds: float, cancel: threading.Event | None) -> None:
+        if cancel is None:
+            time.sleep(seconds)
+            return
+        if cancel.wait(seconds):
+            raise TranslationCancelled()
+
+    @staticmethod
+    def _rate(tokens: int, seconds: float) -> float | None:
+        if tokens > 0 and seconds > 0:
+            return tokens / seconds
+        return None
+
+    @staticmethod
+    def _close(response: object) -> None:
+        try:
+            response.close()  # type: ignore[attr-defined]
+        except Exception:  # pragma: no cover - defensive
+            pass
