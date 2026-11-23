@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import QMimeData, Qt
+from PySide6.QtCore import QMimeData, QPoint, Qt
 from PySide6.QtTest import QTest
 
 from deepl_ofm.controller import AppController
@@ -294,25 +294,85 @@ def test_narrow_window_collapses_chips_into_menus(qapp, view, controller):
     assert not view._chips_group.isVisibleTo(view)
     assert not view._result_counter.isVisibleTo(view)
 
-    view.resize(1180, 760)
+    view.resize(1440, 760)
     qapp.processEvents()
     assert view._chips_group.isVisibleTo(view)
     assert not view._menu_group.isVisibleTo(view)
     assert view._result_counter.isVisibleTo(view)
 
 
-def test_long_interface_language_collapses_earlier_than_1040(qapp, view, controller):
+def test_long_interface_language_needs_a_wider_bar(qapp, view, controller):
+    # The breakpoint is a constant-width model of the translated labels, so
+    # a long interface language moves it without consulting font metrics.
     controller.set_interface_language("uk")
     qapp.processEvents()
+
+    view.resize(1440, 760)
+    qapp.processEvents()
+    assert view._menu_group.isVisibleTo(view)
+    assert not view._chips_group.isVisibleTo(view)
+
+    controller.set_interface_language("en")
+    qapp.processEvents()
+    view.resize(1440, 760)
+    qapp.processEvents()
+    assert view._chips_group.isVisibleTo(view)
 
     view.resize(1100, 760)
     qapp.processEvents()
     assert view._menu_group.isVisibleTo(view)
     assert not view._chips_group.isVisibleTo(view)
 
+
+# ---------------------------------------------------------------------------
+# Centred language controls (2.0.3)
+
+
+def test_language_cluster_is_centred_at_1180(qapp, view, controller):
     view.resize(1180, 760)
     qapp.processEvents()
+
+    group = view._language_group
+    centre = group.mapTo(view, QPoint(group.width() // 2, 0)).x()
+    assert abs(centre - view.width() / 2) <= 2
+
+
+def test_long_language_name_does_not_widen_the_cluster(qapp, view, controller):
+    controller.set_interface_language("en")
+    qapp.processEvents()
+    width = view._language_group.width()
+    assert view._source_combo.width() == 164
+    assert view._target_combo.width() == 164
+
+    view._source_combo._select("zh-Hant", True)
+    qapp.processEvents()
+
+    assert view._source_combo.display_text() == "Traditional Chinese"
+    assert view._source_combo.toolTip() == "Traditional Chinese"
+    assert view._language_group.width() == width
+
+
+def test_compact_style_tone_appears_below_the_threshold(qapp, view, controller):
+    view.resize(1180, 760)
+    qapp.processEvents()
+    assert view._menu_group.isVisibleTo(view)
+    assert not view._chips_group.isVisibleTo(view)
+
+    view.resize(1440, 760)
+    qapp.processEvents()
     assert view._chips_group.isVisibleTo(view)
+    assert not view._menu_group.isVisibleTo(view)
+
+
+def test_long_unbroken_text_keeps_the_panes_equal(qapp, view, controller):
+    text = "https://example.com/" + "a" * 1200
+    view.set_source_text(text)
+    controller.translated_text = text
+    controller.translatedTextChanged.emit(text)
+    qapp.processEvents()
+
+    assert view._source_card.width() == view._result_card.width()
+    assert view._source_card.width() >= 380
 
 
 # ---------------------------------------------------------------------------

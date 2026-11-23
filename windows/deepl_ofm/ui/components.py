@@ -1059,6 +1059,10 @@ class LanguageCombo(QWidget):
         return self._code
 
     # -- display ------------------------------------------------------------
+    def display_text(self) -> str:
+        """The full name drawn inside the picker (handy for tooltips)."""
+        return self._display_text()
+
     def _display_text(self) -> str:
         code = self.code()
         entries = self._entries()

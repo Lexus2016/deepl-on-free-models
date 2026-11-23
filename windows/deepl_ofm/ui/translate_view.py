@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QMenu,
     QPlainTextEdit,
     QPushButton,
@@ -68,10 +69,67 @@ COLLAPSE_WIDTH = 1040
 RESULT_COUNTER_WIDTH = 1120
 MIN_PANE_WIDTH = 380
 
+# The language bar is measured from the outside in, never from font metrics:
+# the two pickers have a fixed width, so the cluster is a constant and a long
+# language name cannot move it.  The style/tone controls get exactly half of
+# what is left, and these constants model their width (base + characters) so
+# the breakpoint stays identical on every font database and in the web UI.
+LANGUAGE_PICKER_WIDTH = 164
+BAR_PADDING = 16
+BAR_SPACING = 8
+FULL_CHIPS_BASE_WIDTH = 1100
+FULL_CHIPS_PER_CHARACTER = 5
+MINIMAL_MENUS_CONTENT_WIDTH = 1000
+COMPACT_TRAILING_MIN_WIDTH = 240
+COMPACT_ICON_TRAILING_MIN_WIDTH = 96
+COMPACT_ICON_BUTTON_WIDTH = 44
+CHIP_LABELS = (
+    "Style",
+    "Auto",
+    "Literal",
+    "Natural",
+    "Tone",
+    "Default",
+    "Formal",
+    "Casual",
+)
+
 
 # ---------------------------------------------------------------------------
 # Small local widgets
 # ---------------------------------------------------------------------------
+
+
+class _TrailingHost(QWidget):
+    """Right-aligned host that claims the other half of the free bar space.
+
+    Its size hint is deliberately empty: ``QHBoxLayout`` then splits the width
+    left over by the language cluster evenly between the leading spacer and
+    this host, which keeps the cluster centred.  The style/tone controls sit at
+    the trailing edge of the host.  A hidden size hint also keeps the breakpoint
+    independent of font metrics; if a very wide font makes the full controls
+    wider than their half, Qt clips the overflow at the host instead of letting
+    it run into the language cluster.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._row = QHBoxLayout(self)
+        self._row.setContentsMargins(0, 0, 0, 0)
+        self._row.setSpacing(0)
+        self._row.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self._row.addStretch(1)
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
+    def add_control(self, widget: QWidget) -> None:
+        self._row.addWidget(widget, 0, Qt.AlignmentFlag.AlignRight)
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        return QSize(0, 34)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        return QSize(0, 34)
 
 
 class _SourceEditor(QPlainTextEdit):
@@ -88,6 +146,11 @@ class _SourceEditor(QPlainTextEdit):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.document().setDocumentMargin(0)
+        # Long unbroken text must not push the pane wider than its sibling.
+        self.setMinimumWidth(0)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+        )
         self.setStyleSheet(
             "QPlainTextEdit { background: transparent; border: none; padding: 0px; }"
         )
@@ -322,6 +385,7 @@ class TranslateView(QWidget):
         self.controller = controller
         self._syncing = False
         self._source_previewing = False
+        self._minimal_menus = False
         self._error_text = controller.error_message or ""
         self._role_labels: dict[str, list[QLabel]] = {
             "muted": [],
@@ -376,8 +440,11 @@ class TranslateView(QWidget):
     def _build_top_bar(self) -> QWidget:
         bar = QWidget(self)
         row = QHBoxLayout(bar)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(12)
+        row.setContentsMargins(BAR_PADDING, 0, BAR_PADDING, 0)
+        # Spacing is added explicitly around the cluster below: QHBoxLayout
+        # folds a plain spacing into a leading stretch asymmetrically, which
+        # shifts the "centred" cluster a few pixels off centre.
+        row.setSpacing(0)
 
         languages = QWidget(bar)
         self._language_group = languages
@@ -388,7 +455,7 @@ class TranslateView(QWidget):
         self._source_combo = _LocalizedLanguageCombo(
             self.controller.settings.interface_language, True, languages
         )
-        self._source_combo.setFixedWidth(250)
+        self._source_combo.setFixedWidth(LANGUAGE_PICKER_WIDTH)
         self._source_combo.set_code(self.controller.source_language.code)
         language_row.addWidget(self._source_combo)
 
@@ -398,15 +465,21 @@ class TranslateView(QWidget):
         self._target_combo = _LocalizedLanguageCombo(
             self.controller.settings.interface_language, False, languages
         )
-        self._target_combo.setFixedWidth(160)
+        self._target_combo.setFixedWidth(LANGUAGE_PICKER_WIDTH)
         self._target_combo.set_code(self.controller.target_language.code)
         language_row.addWidget(self._target_combo)
 
-        row.addWidget(languages, 0, Qt.AlignmentFlag.AlignVCenter)
+        # Equal flexible space on both sides of the fixed-width language
+        # cluster keeps it (and the swap button) centred over the pane divider.
         row.addStretch(1)
+        row.addSpacing(BAR_SPACING)
+        row.addWidget(languages, 0, Qt.AlignmentFlag.AlignVCenter)
+        row.addSpacing(BAR_SPACING)
+        self._trailing_host = _TrailingHost(bar)
+        row.addWidget(self._trailing_host, 1)
 
         # Full chips, shown on wide windows.
-        self._chips_group = QWidget(bar)
+        self._chips_group = QWidget(self._trailing_host)
         chips = QHBoxLayout(self._chips_group)
         chips.setContentsMargins(0, 0, 0, 0)
         chips.setSpacing(7)
@@ -420,10 +493,10 @@ class TranslateView(QWidget):
         chips.addSpacing(12)
         chips.addWidget(self._tone_caption)
         chips.addWidget(self._tone_chips)
-        row.addWidget(self._chips_group, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._trailing_host.add_control(self._chips_group)
 
         # Compact menus, shown when the window gets narrow.
-        self._menu_group = QWidget(bar)
+        self._menu_group = QWidget(self._trailing_host)
         menus = QHBoxLayout(self._menu_group)
         menus.setContentsMargins(0, 0, 0, 0)
         menus.setSpacing(8)
@@ -433,7 +506,7 @@ class TranslateView(QWidget):
         self._tone_button.setFixedHeight(32)
         menus.addWidget(self._style_button)
         menus.addWidget(self._tone_button)
-        row.addWidget(self._menu_group, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._trailing_host.add_control(self._menu_group)
 
         self._style_menu = self._build_choice_menu(
             "style", [value.value for value in TranslationStyle]
@@ -506,9 +579,21 @@ class TranslateView(QWidget):
         self._editor.setAccessibleName(t("Source"))
         self._source_preview: MarkdownView | None = None
         self._source_stack = QStackedWidget(card)
+        self._source_stack.setMinimumWidth(0)
+        self._source_stack.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+        )
         self._source_stack.addWidget(self._editor)
         self._source_stack.setCurrentWidget(self._editor)
-        card.body.addWidget(self._source_stack, 1)
+        # SourceTextEditor.textInset: 20 x 16 around the text.  A plain
+        # container gives a stable inset for both the editor and the rendered
+        # preview, whose stacked page ignores margins set on the stack itself.
+        self._source_body = QWidget(card)
+        source_inset = QVBoxLayout(self._source_body)
+        source_inset.setContentsMargins(20, 16, 20, 16)
+        source_inset.setSpacing(0)
+        source_inset.addWidget(self._source_stack, 1)
+        card.body.addWidget(self._source_body, 1)
         return card
 
     def _build_result_card(self) -> Card:
@@ -546,6 +631,10 @@ class TranslateView(QWidget):
         card.body.addWidget(controls)
 
         self._stack = QStackedWidget(card)
+        self._stack.setMinimumWidth(0)
+        self._stack.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+        )
         self._progress_page = self._build_progress_page(card)
         self._error_page = self._build_error_page(card)
         self._empty_page = self._build_empty_page(card)
@@ -553,6 +642,12 @@ class TranslateView(QWidget):
         self._result_view.setObjectName("resultView")
         self._result_view.set_mode(self.controller.result_view)
         self._result_view.setAccessibleName(t("Translation"))
+        # MarkdownPreview.textInset: 10 x 12 around the rendered text.
+        self._result_view.setContentsMargins(10, 12, 10, 12)
+        self._result_view.setMinimumWidth(0)
+        self._result_view.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+        )
         self._stack.addWidget(self._progress_page)
         self._stack.addWidget(self._error_page)
         self._stack.addWidget(self._empty_page)
@@ -774,6 +869,7 @@ class TranslateView(QWidget):
         self._source_combo.set_detected(
             c.detected_language if c.source_language.is_auto else None
         )
+        self._refresh_language_tooltips()
         self._style_chips.set_value(c.style.value)
         self._tone_chips.set_value(c.tone.value)
         self._sync_choice_menus()
@@ -847,6 +943,7 @@ class TranslateView(QWidget):
         self._source_combo.set_detected(
             self.controller.detected_language if source == "auto" else None
         )
+        self._refresh_language_tooltips()
         self._refresh_footer()
 
     def _on_style(self, value: str) -> None:
@@ -872,6 +969,7 @@ class TranslateView(QWidget):
         self._source_combo.set_detected(
             language if self.controller.source_language.is_auto else None
         )
+        self._refresh_language_tooltips()
         self._refresh_footer()
 
     def _on_error(self, message: str) -> None:
@@ -921,6 +1019,11 @@ class TranslateView(QWidget):
     def _on_theme_changed(self, _dark: bool) -> None:
         self._apply_theme()
         self.update()
+
+    def _refresh_language_tooltips(self) -> None:
+        """Show the full picker label as its tooltip (it ellipses in 164 px)."""
+        self._source_combo.setToolTip(self._source_combo.display_text())
+        self._target_combo.setToolTip(self._target_combo.display_text())
 
     # -------------------------------------------------------------- states
     def _refresh_header(self) -> None:
@@ -1001,18 +1104,59 @@ class TranslateView(QWidget):
         self._metric_dot.setVisible(bool(model) and bool(metrics))
         self._fallback_pill.setVisible(c.using_fallback)
 
+    def _bar_width(self) -> int:
+        """Content width of the language bar, outside both sets of margins.
+
+        The fixed chips threshold is expressed on this width, exactly like the
+        web UI's ResizeObserver content width.
+        """
+        layout = self.layout()
+        if layout is None:
+            return self.width()
+        margins = layout.contentsMargins()
+        width = self.width() - margins.left() - margins.right()
+        bar_layout = self._top_bar.layout()
+        if bar_layout is not None:
+            bar_margins = bar_layout.contentsMargins()
+            width -= bar_margins.left() + bar_margins.right()
+        return max(0, width)
+
+    def _full_chips_threshold(self) -> int:
+        """Smallest bar that can show the full style/tone chips.
+
+        The breakpoint comes from the translated label lengths, not from
+        ``sizeHint()``: font metrics differ between machines and would make
+        the responsive state (and its tests) depend on the installed fonts.
+        A long selected language name does not enter this calculation because
+        the picker is fixed at 164 px.
+        """
+        characters = sum(len(t(label)) for label in CHIP_LABELS)
+        return FULL_CHIPS_BASE_WIDTH + characters * FULL_CHIPS_PER_CHARACTER
+
     def _update_responsive(self) -> None:
+        if not hasattr(self, "_trailing_host"):
+            return
+        bar_width = self._bar_width()
         collapsed = self.width() < COLLAPSE_WIDTH
-        if not collapsed and hasattr(self, "_language_group"):
-            needed = (
-                self._language_group.sizeHint().width()
-                + 12
-                + self._chips_group.sizeHint().width()
-                + 48
-            )
-            collapsed = self.width() < needed
+        if not collapsed:
+            collapsed = bar_width < self._full_chips_threshold()
         self._chips_group.setVisible(not collapsed)
         self._menu_group.setVisible(collapsed)
+        # At the smallest widths even "Style: value" is too wide for a long
+        # interface language; the menus then fall back to icon-only buttons.
+        minimal = collapsed and bar_width < MINIMAL_MENUS_CONTENT_WIDTH
+        if minimal != self._minimal_menus:
+            self._minimal_menus = minimal
+            self._sync_choice_menus()
+        # Keep the compact pair from being clipped at the smallest sizes while
+        # leaving the cluster centred whenever the two halves are wide enough.
+        if not collapsed:
+            trailing_min = 0
+        elif minimal:
+            trailing_min = COMPACT_ICON_TRAILING_MIN_WIDTH
+        else:
+            trailing_min = COMPACT_TRAILING_MIN_WIDTH
+        self._trailing_host.setMinimumWidth(trailing_min)
         if hasattr(self, "_result_counter"):
             self._refresh_header()
 
@@ -1027,8 +1171,32 @@ class TranslateView(QWidget):
             member = TranslationTone(value)
             action.setText(f"{t(member.title)} — {t(member.detail)}")
             action.setChecked(value == tone.value)
-        self._style_button.setText(self._menu_text("Style", style.title))
-        self._tone_button.setText(self._menu_text("Tone", tone.title))
+        if self._minimal_menus:
+            self._set_compact_button(self._style_button, "style", "Style", style.title)
+            self._set_compact_button(self._tone_button, "tone", "Tone", tone.title)
+        else:
+            style_text = self._menu_text("Style", style.title)
+            tone_text = self._menu_text("Tone", tone.title)
+            for button, text in (
+                (self._style_button, style_text),
+                (self._tone_button, tone_text),
+            ):
+                button.setMinimumWidth(0)
+                button.setMaximumWidth(16777215)
+                button.set_icon_name(None)
+                button.setText(text)
+                button.setToolTip(text)
+
+    def _set_compact_button(
+        self, button: SecondaryButton, icon: str, caption: str, value: str
+    ) -> None:
+        """Icon-only menu button for the narrowest bar (Swift's compact form)."""
+        button.setText("")
+        button.setFixedWidth(COMPACT_ICON_BUTTON_WIDTH)
+        button.set_icon_name(icon)
+        label = f"{t(caption)} · {t(value)}"
+        button.setToolTip(label)
+        button.setAccessibleName(label)
 
     # ------------------------------------------------------------- actions
     def _submit(self) -> None:
@@ -1068,6 +1236,10 @@ class TranslateView(QWidget):
             preview = MarkdownView("", self._source_stack)
             preview.set_mode(MarkdownView.PREVIEW)
             preview.setAccessibleName(t("Source"))
+            preview.setMinimumWidth(0)
+            preview.setSizePolicy(
+                QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding
+            )
             self._source_stack.addWidget(preview)
             self._source_preview = preview
         return preview
@@ -1147,10 +1319,9 @@ class TranslateView(QWidget):
         self._target_combo.set_app_language(language)
         self._source_combo.retranslate_ui()
         self._target_combo.retranslate_ui()
-        self._source_combo.setToolTip(t("Source language"))
         self._source_combo.setAccessibleName(t("Source language"))
-        self._target_combo.setToolTip(t("Target language"))
         self._target_combo.setAccessibleName(t("Target language"))
+        self._refresh_language_tooltips()
         self._swap_button.setToolTip(t("Swap languages") + " (Ctrl+Shift+S)")
         self._swap_button.setAccessibleName(t("Swap languages") + " (Ctrl+Shift+S)")
 

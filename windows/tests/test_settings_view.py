@@ -17,7 +17,9 @@ from deepl_ofm.core.languages import AppLanguage
 from deepl_ofm.core.providers import Provider
 from deepl_ofm.core.settings import AppSettings
 from deepl_ofm.i18n import set_language, t, tf
+from deepl_ofm.services import startup
 from deepl_ofm.services.history import HistoryStore
+from deepl_ofm.services.startup import StartupError, StartupStatus
 from deepl_ofm.ui.settings_view import SettingsView
 from deepl_ofm.ui.theme import Theme
 
@@ -381,4 +383,142 @@ def test_hotkey_caption_prompts_and_then_shows_the_combo(
     view.hotkey_reset.click()
     qapp.processEvents()
     assert view.hotkey_caption.text() == "Ctrl+Alt+T"
+    view.close()
+
+
+# ---------------------------------------------------------------------------
+# Open at login (SMAppService parity)
+
+
+def test_open_at_login_toggle_reflects_the_os_status(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        startup, "status", lambda: StartupStatus.ENABLED
+    )
+    view = _show(controller)
+    view.tabs.setCurrentIndex(2)
+    qapp.processEvents()
+
+    assert view.login_controls.isVisible()
+    assert view.login_toggle.is_checked()
+    assert view.login_approval.isHidden()
+    assert view.login_error.isHidden()
+    view.close()
+
+
+def test_open_at_login_hint_appears_only_for_requires_approval(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = {"status": StartupStatus.REQUIRES_APPROVAL}
+    monkeypatch.setattr(startup, "status", lambda: state["status"])
+    view = _show(controller)
+    view.tabs.setCurrentIndex(2)
+    qapp.processEvents()
+
+    assert not view.login_toggle.is_checked()
+    assert view.login_approval.isVisible()
+    assert view.login_hint.text() == t(
+        "Allow DeepL-oFM to open at login in System Settings."
+    )
+    assert view.login_settings_button.text() == t("Open System Settings")
+
+    state["status"] = StartupStatus.DISABLED
+    view._refresh_open_at_login()
+    qapp.processEvents()
+    assert view.login_controls.isVisible()
+    assert view.login_approval.isHidden()
+    view.close()
+
+
+def test_open_at_login_unsupported_hides_the_whole_row(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(startup, "status", lambda: StartupStatus.UNSUPPORTED)
+    view = _show(controller)
+    view.tabs.setCurrentIndex(2)
+    qapp.processEvents()
+
+    assert view.login_controls.isHidden()
+    assert not view.login_controls.isVisible()
+    view.close()
+
+
+def test_open_at_login_toggle_applies_the_change(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state = {"enabled": False}
+    applied: list[bool] = []
+    monkeypatch.setattr(
+        startup,
+        "status",
+        lambda: StartupStatus.ENABLED if state["enabled"] else StartupStatus.DISABLED,
+    )
+
+    def fake_set_enabled(enabled: bool) -> None:
+        applied.append(enabled)
+        state["enabled"] = enabled
+
+    monkeypatch.setattr(startup, "set_enabled", fake_set_enabled)
+    view = _show(controller)
+    view.tabs.setCurrentIndex(2)
+    qapp.processEvents()
+
+    assert not view.login_toggle.is_checked()
+    view.login_toggle.check_box().setChecked(True)
+    qapp.processEvents()
+
+    assert applied == [True]
+    assert view.login_toggle.is_checked()
+    assert view.login_error.isHidden()
+    view.close()
+
+
+def test_open_at_login_failure_shows_the_localised_error(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(startup, "status", lambda: StartupStatus.DISABLED)
+
+    def fail(_enabled: bool) -> None:
+        raise StartupError("Could not change Open at login. Access is denied.")
+
+    monkeypatch.setattr(startup, "set_enabled", fail)
+    view = _show(controller)
+    view.tabs.setCurrentIndex(2)
+    qapp.processEvents()
+
+    view.login_toggle.check_box().setChecked(True)
+    qapp.processEvents()
+
+    assert not view.login_toggle.is_checked()
+    assert view.login_error.isVisible()
+    assert view.login_error.text() == (
+        "Could not change Open at login. Access is denied."
+    )
+    view.close()
+
+
+def test_open_at_login_requires_approval_opens_system_settings(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(startup, "status", lambda: StartupStatus.REQUIRES_APPROVAL)
+    opened: list[bool] = []
+    applied: list[bool] = []
+    monkeypatch.setattr(
+        startup, "open_settings", lambda: opened.append(True) or True
+    )
+    monkeypatch.setattr(startup, "set_enabled", applied.append)
+    view = _show(controller)
+    view.tabs.setCurrentIndex(2)
+    qapp.processEvents()
+
+    view.login_toggle.check_box().setChecked(True)
+    qapp.processEvents()
+    assert opened == [True]
+    assert applied == []
+    assert not view.login_toggle.is_checked()
+
+    view.login_settings_button.click()
+    qapp.processEvents()
+    assert opened == [True, True]
     view.close()

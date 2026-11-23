@@ -47,6 +47,8 @@ from ..core.prompts import PromptBuilder, TranslationStyle, TranslationTone
 from ..core.providers import Provider
 from ..core.settings import AppSettings
 from ..i18n import t, tf
+from ..services import startup
+from ..services.startup import StartupError, StartupStatus
 from . import icons
 from .catalog_view import CatalogView
 from .components import (
@@ -355,6 +357,8 @@ class SettingsView(QDialog):
         self._models_error = ""
         self._fallback_error = ""
         self._connect_hint_provider: Provider | None = None
+        self._login_status = StartupStatus.UNSUPPORTED
+        self._login_error_text = ""
 
         self.setWindowTitle(t("Settings"))
         self.setWindowIcon(icons.icon("settings", size=64))
@@ -367,6 +371,7 @@ class SettingsView(QDialog):
         self._apply_theme()
         self._load_from_settings(capture=True)
         self.retranslate_ui()
+        self._refresh_open_at_login()
         Theme.changed.connect(self._apply_theme)
 
     # ------------------------------------------------------------------ ui
@@ -787,6 +792,48 @@ class SettingsView(QDialog):
         self.keep_history_toggle.setObjectName("keepHistoryToggle")
         self.behaviour_card.add(self.keep_history_toggle)
 
+        self.login_controls = QWidget(self.behaviour_card)
+        login_layout = QVBoxLayout(self.login_controls)
+        login_layout.setContentsMargins(0, 0, 0, 0)
+        login_layout.setSpacing(5)
+
+        self.login_toggle = ToggleRow(t("Open at login"), False, self.login_controls)
+        self.login_toggle.setObjectName("openAtLoginToggle")
+        self.login_toggle.toggled.connect(self._set_open_at_login)
+        login_layout.addWidget(self.login_toggle)
+
+        self.login_error = _RoleLabel("", "danger", 11, parent=self.login_controls)
+        self.login_error.setWordWrap(True)
+        self.login_error.setVisible(False)
+        login_layout.addWidget(self.login_error)
+
+        self.login_approval = QWidget(self.login_controls)
+        approval_layout = QVBoxLayout(self.login_approval)
+        approval_layout.setContentsMargins(0, 0, 0, 0)
+        approval_layout.setSpacing(5)
+        self.login_hint = _RoleLabel(
+            t("Allow DeepL-oFM to open at login in System Settings."),
+            "muted",
+            11,
+            parent=self.login_approval,
+        )
+        self.login_hint.setWordWrap(True)
+        approval_layout.addWidget(self.login_hint)
+        self.login_settings_button = SecondaryButton(
+            t("Open System Settings"), self.login_approval
+        )
+        self.login_settings_button.setObjectName("openLoginSettingsButton")
+        self.login_settings_button.setFixedHeight(28)
+        self.login_settings_button.setFont(Theme.font(11, 500))
+        self.login_settings_button.clicked.connect(self._open_login_settings)
+        approval_layout.addWidget(
+            self.login_settings_button, 0, Qt.AlignmentFlag.AlignLeft
+        )
+        self.login_approval.setVisible(False)
+        login_layout.addWidget(self.login_approval)
+
+        self.behaviour_card.add(self.login_controls)
+
         self.warm_up_toggle = ToggleRow(
             t("Load the translator at launch"),
             False,
@@ -870,6 +917,69 @@ class SettingsView(QDialog):
     def _sync_debounce_visibility(self, checked: bool) -> None:
         """The delay slider only matters while automatic translation is on."""
         self.debounce_row.setVisible(bool(checked))
+
+    # -- open at login -----------------------------------------------------
+    def _refresh_open_at_login(self) -> None:
+        """Read the OS state; unsupported platforms hide the whole row."""
+        try:
+            status = StartupStatus(startup.status())
+        except Exception:  # noqa: BLE001 - a service bug must not break Settings
+            log.exception("could not read the Open at login status")
+            status = StartupStatus.DISABLED
+        if status is not self._login_status:
+            self._login_error_text = ""
+        self._login_status = status
+        if status is StartupStatus.UNSUPPORTED:
+            self.login_controls.setVisible(False)
+            return
+
+        self.login_controls.setVisible(True)
+        self._apply_toggle(self.login_toggle, status is StartupStatus.ENABLED)
+        self.login_approval.setVisible(status is StartupStatus.REQUIRES_APPROVAL)
+        self.login_error.setText(self._login_error_text)
+        self.login_error.setVisible(bool(self._login_error_text))
+
+    def _set_open_at_login(self, enabled: bool) -> None:
+        """Apply a toggle change, mirroring ``setLoginItemEnabled`` in Swift."""
+        self._refresh_open_at_login()
+        self._login_error_text = ""
+        self.login_error.setText("")
+        self.login_error.setVisible(False)
+
+        if enabled == (self._login_status is StartupStatus.ENABLED):
+            return
+        if self._login_status is StartupStatus.REQUIRES_APPROVAL:
+            self._open_login_settings()
+            return
+
+        try:
+            startup.set_enabled(enabled)
+        except StartupError as error:
+            log.warning("could not change Open at login: %s", error)
+            self._refresh_open_at_login()
+            if (
+                self._login_status is not StartupStatus.REQUIRES_APPROVAL
+                and enabled != (self._login_status is StartupStatus.ENABLED)
+            ):
+                self._login_error_text = str(error)
+                self.login_error.setText(self._login_error_text)
+                self.login_error.setVisible(True)
+            return
+        except Exception:  # noqa: BLE001 - a service bug must not close the dialog
+            log.exception("unexpected Open at login failure")
+            self._refresh_open_at_login()
+            return
+
+        self._refresh_open_at_login()
+
+    def _open_login_settings(self) -> None:
+        if not startup.open_settings():
+            log.warning("could not open the system login-item settings")
+
+    def _on_application_state_changed(self, state: Qt.ApplicationState) -> None:
+        """Pick up a change made in System Settings when the app is activated."""
+        if state == Qt.ApplicationState.ApplicationActive and self.isVisible():
+            self._refresh_open_at_login()
 
     def _populate_voices(self) -> None:
         """List the voices for the current target language, like the macOS app.
@@ -1165,6 +1275,9 @@ class SettingsView(QDialog):
             lambda _code: self.retranslate_ui()
         )
         controller.settingsChanged.connect(self._sync_connect_status)
+        app = QGuiApplication.instance()
+        if app is not None:
+            app.applicationStateChanged.connect(self._on_application_state_changed)
 
     # ----------------------------------------------------------- load/save
     @staticmethod
@@ -1360,6 +1473,7 @@ class SettingsView(QDialog):
             self._load_from_settings(capture=True)
         else:
             self._shown_once = True
+        self._refresh_open_at_login()
         self._apply_theme()
         super().showEvent(event)
 
@@ -1982,6 +2096,11 @@ class SettingsView(QDialog):
         self.auto_toggle.set_label(t("Translate automatically while typing"))
         self.debounce_row.set_label(t("Delay"))
         self.keep_history_toggle.set_label(t("Keep translation history"))
+        self.login_toggle.set_label(t("Open at login"))
+        self.login_hint.setText(
+            t("Allow DeepL-oFM to open at login in System Settings.")
+        )
+        self.login_settings_button.setText(t("Open System Settings"))
         self.tray_toggle.set_label(t("Tray icon"))
         self.tray_toggle.set_hint(
             t("Keep DeepL-oFM in the notification area; closing the window then hides it.")

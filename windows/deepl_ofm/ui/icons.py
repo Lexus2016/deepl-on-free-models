@@ -34,6 +34,19 @@ _PATHS: dict[str, str] = {
         '<path d="M12 20h9"/>'
         '<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'
     ),
+    "style": (
+        '<path d="M4 7V4h16v3"/>'
+        '<path d="M9 20h6"/>'
+        '<path d="M12 4v16"/>'
+    ),
+    "tone": (
+        '<path d="M2 12h2"/>'
+        '<path d="M6 8v8"/>'
+        '<path d="M10 5v14"/>'
+        '<path d="M14 9v6"/>'
+        '<path d="M18 7v10"/>'
+        '<path d="M22 12h-2"/>'
+    ),
     "history": (
         '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>'
         '<path d="M3 3v5h5"/>'

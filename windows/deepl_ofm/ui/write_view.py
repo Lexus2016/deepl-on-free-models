@@ -229,7 +229,14 @@ class WriteView(QWidget):
         )
         self.editor.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.editor.setTabChangesFocus(True)
-        card.content_layout.addWidget(self.editor, 1)
+        # WriteView.swift: four points of vertical and six of horizontal
+        # breathing room around the text, inside the card padding.
+        holder = QWidget(card)
+        holder_layout = QVBoxLayout(holder)
+        holder_layout.setContentsMargins(6, 4, 6, 4)
+        holder_layout.setSpacing(0)
+        holder_layout.addWidget(self.editor, 1)
+        card.content_layout.addWidget(holder, 1)
 
         self.source_card = card
         return card
@@ -419,7 +426,11 @@ class WriteView(QWidget):
         """Editing the draft cancels the request and drops the stale result."""
         if self._suppress_edit:
             return
-        if self.controller.write_output or self.controller.write_error or self.controller.write_in_progress:
+        if (
+            self.controller.write_output
+            or self.controller.write_error
+            or self.controller.write_in_progress
+        ):
             self.controller.reset_write()
         self._sync_detected_language()
         self._update_actions()
@@ -430,7 +441,9 @@ class WriteView(QWidget):
             return
         from ..core.languages import detect_language
 
-        detected = detect_language(self.editor.toPlainText(), self.controller.settings.interface_language)
+        detected = detect_language(
+            self.editor.toPlainText(), self.controller.settings.interface_language
+        )
         if detected is None or detected.code == self.language_combo.code():
             return
         self._syncing_language = True
