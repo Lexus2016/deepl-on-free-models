@@ -34,6 +34,7 @@ from .components import (
     PrimaryButton,
     ProgressBar,
     SecondaryButton,
+    SegmentedControl,
 )
 from .markdown_view import MarkdownView
 from .theme import Theme
@@ -124,6 +125,8 @@ class WriteView(QWidget):
         self._last_output: str | None = None
         self._copied = False
         self._syncing_language = False
+        self._language_was_chosen = False
+        self._suppress_edit = False
         self._first_show = True
         self.setAutoFillBackground(True)
 
@@ -235,6 +238,14 @@ class WriteView(QWidget):
         card = Card(t("Result"), parent=self, padding=16, spacing=12)
         card.setMinimumHeight(250)
 
+        self.view_switch = SegmentedControl(
+            [t("Preview"), t("Text only"), t("Markdown")], 0, card
+        )
+        self.view_switch.setObjectName("writeViewSwitch")
+        self.view_switch.setFixedWidth(250)
+        self.view_switch.changed.connect(self._on_view_mode_changed)
+        card.add_header_widget(self.view_switch)
+
         self.result_stack = QStackedWidget(card)
         self.placeholder = EmptyState(
             "sparkles", t("Improved text will appear here"), "", self.result_stack
@@ -268,6 +279,10 @@ class WriteView(QWidget):
         self.warning_label.hide()
         card.content_layout.addWidget(self.warning_label)
 
+        self.duration_label = _Label("", "faint", 11, 400, card)
+        self.duration_label.hide()
+        card.content_layout.addWidget(self.duration_label)
+
         self.result_card = card
         return card
 
@@ -291,7 +306,7 @@ class WriteView(QWidget):
         controller.languagesChanged.connect(self._on_languages_changed)
         controller.copyFeedback.connect(self._on_copy_feedback)
 
-        self.editor.textChanged.connect(self._update_actions)
+        self.editor.textChanged.connect(self._on_source_edited)
         self.improve_button.clicked.connect(self._improve)
         self.cancel_button.clicked.connect(self._cancel)
         self.copy_button.clicked.connect(self._copy)
@@ -317,6 +332,7 @@ class WriteView(QWidget):
     def _on_language_selected(self, code: str) -> None:
         if self._syncing_language or not code or code == "auto":
             return
+        self._language_was_chosen = True
         self.controller.set_target_language(code)
 
     def _on_copy_feedback(self, _message: str) -> None:
@@ -342,6 +358,12 @@ class WriteView(QWidget):
             int(self.controller.write_warning_count or 0) if output else 0
         )
         self._sync_error(None if busy else self.controller.write_error)
+        duration = self.controller.write_duration_ms
+        if output and duration:
+            self.duration_label.setText(self._format_seconds(int(duration)))
+            self.duration_label.show()
+        else:
+            self.duration_label.hide()
         self.copy_button.setEnabled(bool(output) and not busy and not self._copied)
         self._update_actions()
 
@@ -388,6 +410,30 @@ class WriteView(QWidget):
         self.improve_button.setEnabled(bool(text.strip()) and not self._busy)
 
     # -- commands -----------------------------------------------------------
+    def _on_source_edited(self) -> None:
+        """Editing the draft cancels the request and drops the stale result."""
+        if self._suppress_edit:
+            return
+        if self.controller.write_output or self.controller.write_error or self.controller.write_in_progress:
+            self.controller.reset_write()
+        self._sync_detected_language()
+        self._update_actions()
+
+    def _sync_detected_language(self) -> None:
+        """Show the language the text is written in until the user chooses one."""
+        if self._language_was_chosen:
+            return
+        from ..core.languages import detect_language
+
+        detected = detect_language(self.editor.toPlainText(), self.controller.settings.interface_language)
+        if detected is None or detected.code == self.language_combo.code():
+            return
+        self._syncing_language = True
+        try:
+            self.language_combo.set_code(detected.code)
+        finally:
+            self._syncing_language = False
+
     def _improve(self) -> None:
         text = self.editor.toPlainText()
         if not text.strip() or self._busy:
@@ -395,7 +441,8 @@ class WriteView(QWidget):
         self._end_copied()
         self._sync_error(None)
         self._sync_warning(0)
-        self.controller.write_text(text, self.language_combo.code())
+        language_code = self.language_combo.code() if self._language_was_chosen else "auto"
+        self.controller.write_text(text, language_code)
         self._sync_from_controller()
         if self.controller.write_in_progress:
             self._poll_timer.start()
@@ -413,6 +460,19 @@ class WriteView(QWidget):
         self._sync_from_controller()
         if not self.controller.write_in_progress:
             self._poll_timer.stop()
+
+    @staticmethod
+    def _format_seconds(duration_ms: int) -> str:
+        """Format a duration with the localised ``%.1f s`` template."""
+        value = f"{duration_ms / 1000.0:.1f}"
+        template = t("%.1f s")
+        if "%.1f" in template:
+            return template.replace("%.1f", value)
+        return f"{value} {t('s')}"
+
+    def _on_view_mode_changed(self, index: int) -> None:
+        mode = ("preview", "text", "markdown")[index] if 0 <= index <= 2 else "preview"
+        self.result_view.set_mode(mode)
 
     def _copy(self) -> None:
         text = self.controller.write_output
@@ -454,6 +514,7 @@ class WriteView(QWidget):
         self.clear_button.set_tooltip(t("Clear"))
         self.source_card.set_title(t("Source"))
         self.result_card.set_title(t("Result"))
+        self.view_switch.set_labels([t("Preview"), t("Text only"), t("Markdown")])
         self.placeholder.set_title(
             t("Improving…") if self._busy else t("Improved text will appear here")
         )

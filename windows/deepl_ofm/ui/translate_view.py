@@ -477,11 +477,15 @@ class TranslateView(QWidget):
         self._speak_source_button = IconButton(
             "speaker", t("Listen to the original"), card, size=28, icon_size=15
         )
+        self._copy_source_button = IconButton(
+            "copy", t("Copy the original"), card, size=28, icon_size=15
+        )
         self._paste_button = IconButton(
             "clipboard", t("Paste from clipboard"), card, size=28, icon_size=15
         )
         self._clear_button = IconButton("x", t("Clear"), card, size=28, icon_size=15)
         card.add_header_widget(self._speak_source_button)
+        card.add_header_widget(self._copy_source_button)
         card.add_header_widget(self._paste_button)
         card.add_header_widget(self._clear_button)
 
@@ -500,8 +504,12 @@ class TranslateView(QWidget):
         self._speak_result_button = IconButton(
             "speaker", t("Listen to the translation"), card, size=28, icon_size=15
         )
+        self._again_button = IconButton(
+            "refresh", t("Translate again"), card, size=28, icon_size=15
+        )
         self._copy_button = _CopyButton(t("Copy"), card)
         card.add_header_widget(self._warning_pill)
+        card.add_header_widget(self._again_button)
         card.add_header_widget(self._speak_result_button)
         card.add_header_widget(self._copy_button)
 
@@ -723,6 +731,8 @@ class TranslateView(QWidget):
         self._style_chips.changed.connect(self.controller.set_style)
         self._tone_chips.changed.connect(self.controller.set_tone)
         self._segmented.changed.connect(self._on_segment_changed)
+        self._copy_source_button.clicked.connect(self.controller.copy_source)
+        self._again_button.clicked.connect(lambda: self.controller.translate(force=True))
         self._speak_source_button.clicked.connect(self._toggle_source_speech)
         self._speak_result_button.clicked.connect(self._toggle_result_speech)
         self._paste_button.clicked.connect(self.controller.translate_clipboard)
@@ -905,6 +915,8 @@ class TranslateView(QWidget):
         has_source = bool(source.strip())
         has_result = bool(translated.strip())
         self._speak_source_button.setEnabled(has_source)
+        self._copy_source_button.setEnabled(has_source)
+        self._again_button.setEnabled(has_source and not self.controller.is_translating)
         self._clear_button.setEnabled(has_source)
         self._speak_result_button.setEnabled(
             has_result or self.controller.speaking == "translation"
@@ -1069,8 +1081,8 @@ class TranslateView(QWidget):
         self._source_combo.setAccessibleName(t("Source language"))
         self._target_combo.setToolTip(t("Target language"))
         self._target_combo.setAccessibleName(t("Target language"))
-        self._swap_button.setToolTip(t("Swap languages (⇧⌘S)"))
-        self._swap_button.setAccessibleName(t("Swap languages (⇧⌘S)"))
+        self._swap_button.setToolTip(t("Swap languages") + " (Ctrl+Shift+S)")
+        self._swap_button.setAccessibleName(t("Swap languages") + " (Ctrl+Shift+S)")
 
         self._style_caption.setText(t("Style"))
         self._tone_caption.setText(t("Tone"))

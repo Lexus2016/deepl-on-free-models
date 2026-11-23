@@ -135,18 +135,29 @@ class _Hotkeys:
         }
         if combos == self._registered:
             return
+        previous = dict(self._registered)
         # Settings changed: release the old bindings before claiming the new ones,
         # otherwise RegisterHotKey fails with "already registered" for the same id.
         self.manager.unregister_all()
         self._registered = dict(combos)
+        failed = False
         for action, combo in combos.items():
             ok = self.manager.register(action, combo)
+            failed = failed or not ok
             message = "" if ok else t("Hotkey does not work")
             if action == "translate":
                 self.controller.hotkey_message = message
             else:
                 self.controller.selection_hotkey_message = message
             self.controller.hotkeyStatusChanged.emit(action, message)
+
+        if failed and previous:
+            # Keep a working shortcut instead of losing both bindings.
+            log.warning("new hotkeys failed; restoring the previous combination")
+            self.manager.unregister_all()
+            for action, combo in previous.items():
+                self.manager.register(action, combo)
+            self._registered = previous
 
     def schedule_reregister(self) -> None:
         """Coalesce settings changes and re-register once the UI settles."""
@@ -209,13 +220,22 @@ def main(argv: list[str] | None = None) -> int:
 
         tray = TrayIcon(controller, window)
         controller.interfaceLanguageChanged.connect(lambda _code: tray.retranslate_ui())
+        controller.settingsChanged.connect(tray.retranslate_ui)
+        tray.retranslate_ui()
         tray.settingsRequested.connect(window.open_settings)
         tray.quitRequested.connect(app.quit)
         window.tray = tray
-        if controller.settings.show_in_menu_bar:
-            tray.show()
-        else:
-            app.setQuitOnLastWindowClosed(True)
+
+        def apply_tray_setting() -> None:
+            visible = bool(controller.settings.show_in_menu_bar)
+            if visible:
+                tray.show()
+            else:
+                tray.hide()
+            app.setQuitOnLastWindowClosed(not visible)
+
+        apply_tray_setting()
+        controller.settingsChanged.connect(apply_tray_setting)
     except Exception:  # noqa: BLE001 - tray may be unavailable in a bare session
         log.debug("tray unavailable", exc_info=True)
 
@@ -231,6 +251,7 @@ def main(argv: list[str] | None = None) -> int:
         window.select_tab(args.tab)
 
     window.show()
+    window.focus_translate()
     controller.bootstrap()
     if args.self_test:
         from PySide6.QtCore import QTimer

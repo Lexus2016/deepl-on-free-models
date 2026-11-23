@@ -87,7 +87,9 @@ def test_improve_captures_text_and_target(qapp, view, controller, monkeypatch):
     view.editor.setPlainText("  Hello world  ")
     view.improve_button.click()
 
-    assert calls == [("  Hello world  ", view.language_combo.code())]
+    # Without an explicit choice the text is improved in its own language:
+    # the controller receives "auto" and detects it (macOS WriteStore behaviour).
+    assert calls == [("  Hello world  ", "auto")]
     assert view.improve_button.text() == t("Improving…")
     assert not view.improve_button.isEnabled()
     assert view.cancel_button.isVisible()

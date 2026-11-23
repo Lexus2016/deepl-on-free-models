@@ -42,6 +42,7 @@ from .components import (
     IconButton,
     LanguageCombo,
     LinkButton,
+    Pill,
     PrimaryButton,
     ProgressBar,
     SecondaryButton,
@@ -54,7 +55,9 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 #: Extensions accepted by the drop zone and the open dialog.
-SUPPORTED_EXTENSIONS = frozenset({".txt", ".md", ".markdown", ".pdf", ".docx"})
+SUPPORTED_EXTENSIONS = frozenset(
+    {".txt", ".text", ".md", ".markdown", ".mdown", ".pdf", ".docx"}
+)
 SUPPORTED_PATTERNS = "*.txt *.md *.markdown *.pdf *.docx"
 
 _KIND_ICONS = {
@@ -79,6 +82,16 @@ _RUNNING_STATES = frozenset({"reading", "translating"})
 def _role_colour(role: str) -> str:
     palette = Theme.palette()
     return getattr(palette, role, palette.text)
+
+
+def _format_size(size: int) -> str:
+    """``12.4 MB``-style size for the file card."""
+    value = float(size)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} GB"
 
 
 def _kind_label(kind: str) -> str:
@@ -434,6 +447,12 @@ class FilesView(QWidget):
         top.addLayout(text_column, 1)
         card.content_layout.addLayout(top)
 
+        self.fallback_label = Pill("", "warning", card)
+        self.fallback_label.hide()
+        card.content_layout.addWidget(
+            self.fallback_label, 0, Qt.AlignmentFlag.AlignLeft
+        )
+
         self.warning_label = _Label("", "warning", 12, 400, card)
         self.warning_label.setWordWrap(True)
         self.warning_label.hide()
@@ -538,7 +557,8 @@ class FilesView(QWidget):
         has_job = bool(job)
         running = state in _RUNNING_STATES
         done = state == "done"
-        failed = state in ("failed", "cancelled")
+        cancelled = state == "cancelled"
+        failed = state == "failed"
 
         self.drop_zone.setVisible(not has_job)
         self.file_card.setVisible(has_job)
@@ -561,13 +581,22 @@ class FilesView(QWidget):
                 str(job.get("message") or t("The file could not be translated."))
             )
             self.retry_button.setVisible(bool(job.get("path")))
+        if cancelled:
+            # macOS returns to the idle controls after Stop, keeping the file.
+            self.translate_button.setEnabled(True)
+            self.language_combo.setEnabled(True)
 
     def _sync_file(self, job: dict[str, Any]) -> None:
         path = str(job.get("path") or "")
         name = str(job.get("name") or (Path(path).name if path else ""))
         kind = str(job.get("kind") or "").lower()
         self.file_name_label.setText(name)
-        self.file_kind_label.setText(_kind_label(kind) if kind else "")
+        details = _kind_label(kind) if kind else ""
+        size = int(job.get("size") or 0)
+        if size > 0:
+            details = f"{details} · {_format_size(size)}" if details else _format_size(size)
+        self.file_kind_label.setText(details)
+        self.file_kind_label.setVisible(bool(details))
         self.file_badge.set_icon_name(_KIND_ICONS.get(kind, "file"))
 
     def _sync_progress(self, job: dict[str, Any], state: str) -> None:
@@ -613,6 +642,16 @@ class FilesView(QWidget):
             self.warning_label.clear()
             self.warning_label.setVisible(False)
 
+        if job.get("fallback"):
+            label = str(job.get("fallback_label") or "")
+            self.fallback_label.setText(
+                f"{t('Fallback')}: {label}" if label else t("Fallback")
+            )
+            self.fallback_label.setVisible(True)
+        else:
+            self.fallback_label.clear()
+            self.fallback_label.setVisible(False)
+
         # The copy is only meaningful when the controller produced a file.
         self.save_button.setEnabled(bool(output))
         self.show_folder_button.setEnabled(bool(output or job.get("path")))
@@ -654,6 +693,10 @@ class FilesView(QWidget):
 
     def _is_running(self) -> bool:
         return str(self._job.get("state") or "") in _RUNNING_STATES
+
+    def save_output(self) -> None:
+        """Save the finished translation (File → Save translation…)."""
+        self._save_output()
 
     def _save_output(self) -> None:
         job = self._job
@@ -747,7 +790,8 @@ class FilesView(QWidget):
                 event.acceptProposedAction()
                 self._begin_translation(path)
                 return
-        event.ignore()
+        event.acceptProposedAction()
+        self.controller.report_error(t("This file type is not supported."))
 
     # -- retranslation ------------------------------------------------------
     def retranslate_ui(self) -> None:

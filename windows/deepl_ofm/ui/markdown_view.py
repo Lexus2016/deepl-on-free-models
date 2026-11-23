@@ -917,3 +917,19 @@ class MarkdownView(QWidget):
     def resizeEvent(self, event: Any) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._position_copy_button()
+
+
+# Public conversions used by the clipboard code in the controller.
+def markdown_to_plain(markdown: str) -> str:
+    """Markdown with every marker removed, paragraphs separated by blank lines."""
+    return _render_blocks_plain(parse_blocks(markdown or ""))
+
+
+def markdown_to_html(markdown: str) -> str:
+    """A complete, theme-styled HTML document for the rich clipboard."""
+    return _document_html(markdown or "")
+
+
+def markdown_to_rtf(markdown: str) -> str:
+    """RTF for applications that only accept rich text."""
+    return _document_rtf(markdown or "")

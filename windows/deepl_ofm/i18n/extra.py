@@ -657,3 +657,97 @@ _VOICE: dict[str, dict[str, str]] = {
 }
 
 _merge(_VOICE)
+
+
+_HINTS: dict[str, dict[str, str]] = {
+    "More voices can be added in Windows Settings → Time & language → Speech.": {
+        "uk": "Більше голосів можна додати в Параметрах Windows → Час і мова → Мовлення.",
+        "ru": "Больше голосов можно добавить в Параметрах Windows → Время и язык → Речь.",
+        "de": "Weitere Stimmen lassen sich in den Windows-Einstellungen → Zeit und Sprache → Sprache hinzufügen.",
+        "fr": "D’autres voix s’ajoutent dans Paramètres Windows → Heure et langue → Parole.",
+        "es": "Se pueden añadir más voces en Configuración de Windows → Hora e idioma → Voz.",
+        "pl": "Więcej głosów można dodać w Ustawieniach Windows → Czas i język → Mowa.",
+        "pt": "É possível adicionar mais vozes em Definições do Windows → Hora e idioma → Fala.",
+        "it": "Altre voci si possono aggiungere in Impostazioni di Windows → Data/ora e lingua → Riconoscimento vocale.",
+    },
+}
+
+_merge(_HINTS)
+
+
+_SELECTION: dict[str, dict[str, str]] = {
+    "Selected text is only captured on Windows.": {
+        "uk": "Виділений текст перехоплюється лише у Windows.",
+        "ru": "Выделенный текст перехватывается только в Windows.",
+        "de": "Markierter Text wird nur unter Windows übernommen.",
+        "fr": "Le texte sélectionné n’est capturé que sous Windows.",
+        "es": "El texto seleccionado solo se captura en Windows.",
+        "pl": "Zaznaczony tekst jest przechwytywany tylko w Windows.",
+        "pt": "O texto selecionado só é capturado no Windows.",
+        "it": "Il testo selezionato viene acquisito solo in Windows.",
+    },
+    "Could not copy the selected text. If the other app runs as administrator, this shortcut cannot reach it.": {
+        "uk": "Не вдалося скопіювати виділений текст. Якщо інша програма запущена від імені адміністратора, це сполучення до неї не дійде.",
+        "ru": "Не удалось скопировать выделенный текст. Если другая программа запущена от имени администратора, это сочетание до неё не дойдёт.",
+        "de": "Der markierte Text ließ sich nicht kopieren. Läuft die andere App als Administrator, erreicht sie dieses Kürzel nicht.",
+        "fr": "Impossible de copier le texte sélectionné. Si l’autre application s’exécute en administrateur, ce raccourci ne peut pas l’atteindre.",
+        "es": "No se pudo copiar el texto seleccionado. Si la otra aplicación se ejecuta como administrador, este atajo no puede alcanzarla.",
+        "pl": "Nie udało się skopiować zaznaczonego tekstu. Jeśli druga aplikacja działa jako administrator, ten skrót do niej nie dotrze.",
+        "pt": "Não foi possível copiar o texto selecionado. Se a outra aplicação for executada como administrador, este atalho não a alcança.",
+        "it": "Impossibile copiare il testo selezionato. Se l’altra app è in esecuzione come amministratore, questa scorciatoia non la raggiunge.",
+    },
+}
+
+_merge(_SELECTION)
+
+
+_TRAY: dict[str, dict[str, str]] = {
+    "Tray icon": {
+        "uk": "Значок у треї",
+        "ru": "Значок в трее",
+        "de": "Infobereich-Symbol",
+        "fr": "Icône de la zone de notification",
+        "es": "Icono de la bandeja",
+        "pl": "Ikona w zasobniku",
+        "pt": "Ícone da área de notificação",
+        "it": "Icona nell’area di notifica",
+    },
+    "Keep DeepL-oFM in the notification area; closing the window then hides it.": {
+        "uk": "Тримати DeepL-oFM у треї: закриття вікна тоді лише ховає його.",
+        "ru": "Держать DeepL-oFM в трее: закрытие окна тогда лишь скрывает его.",
+        "de": "DeepL-oFM im Infobereich behalten; das Schließen des Fensters blendet es dann nur aus.",
+        "fr": "Garder DeepL-oFM dans la zone de notification ; fermer la fenêtre ne fait alors que la masquer.",
+        "es": "Mantener DeepL-oFM en la bandeja; al cerrar la ventana solo se oculta.",
+        "pl": "Trzymaj DeepL-oFM w zasobniku; zamknięcie okna tylko je ukryje.",
+        "pt": "Manter o DeepL-oFM na área de notificação; fechar a janela apenas a oculta.",
+        "it": "Mantieni DeepL-oFM nell’area di notifica; chiudere la finestra la nasconde soltanto.",
+    },
+}
+
+_merge(_TRAY)
+
+
+_DATES: dict[str, dict[str, str]] = {
+    "today": {
+        "uk": "сьогодні",
+        "ru": "сегодня",
+        "de": "heute",
+        "fr": "aujourd’hui",
+        "es": "hoy",
+        "pl": "dzisiaj",
+        "pt": "hoje",
+        "it": "oggi",
+    },
+    "yesterday": {
+        "uk": "вчора",
+        "ru": "вчера",
+        "de": "gestern",
+        "fr": "hier",
+        "es": "ayer",
+        "pl": "wczoraj",
+        "pt": "ontem",
+        "it": "ieri",
+    },
+}
+
+_merge(_DATES)

@@ -104,6 +104,8 @@ class MainWindow(QMainWindow):
         self._connect()
         self.retranslate_ui()
         self._sync_tab(self.controller.tab)
+        self._sync_view_mode(self.controller.result_view)
+        self._sync_history_tab()
 
     # ------------------------------------------------------------------- ui
     def _build_ui(self) -> None:
@@ -243,6 +245,12 @@ class MainWindow(QMainWindow):
         self.action_open.setShortcut(QKeySequence.Open)
         self.action_open.triggered.connect(self._open_file)
         self.file_menu.addAction(self.action_open)
+
+        self.action_save = QAction(t("Save translation…"), self)
+        self.action_save.setShortcut(QKeySequence.Save)
+        self.action_save.setEnabled(False)
+        self.action_save.triggered.connect(self._save_translation)
+        self.file_menu.addAction(self.action_save)
         self.file_menu.addSeparator()
 
         self.action_quit = QAction(t("Quit DeepL-oFM"), self)
@@ -269,6 +277,27 @@ class MainWindow(QMainWindow):
         self.action_clear.triggered.connect(self.controller.clear_source)
         self.edit_menu.addAction(self.action_clear)
 
+        # Mirrors the macOS "Translation" command menu.
+        self.translation_menu = menu.addMenu(t("Translation"))
+        self.action_translate_now = QAction(t("Translate now"), self)
+        self.action_translate_now.setShortcut(QKeySequence("Ctrl+Return"))
+        self.action_translate_now.triggered.connect(lambda: self.controller.translate(force=True))
+        self.translation_menu.addAction(self.action_translate_now)
+
+        self.action_clipboard = QAction(t("Translate clipboard"), self)
+        self.action_clipboard.triggered.connect(self.controller.translate_clipboard)
+        self.translation_menu.addAction(self.action_clipboard)
+
+        self.action_selection = QAction(t("Translate selection"), self)
+        self.action_selection.triggered.connect(self.controller.translate_selection)
+        self.translation_menu.addAction(self.action_selection)
+
+        self.translation_menu.addSeparator()
+        self.action_swap = QAction(t("Swap languages"), self)
+        self.action_swap.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        self.action_swap.triggered.connect(self.controller.swap_languages)
+        self.translation_menu.addAction(self.action_swap)
+
         self.view_menu = menu.addMenu(t("View"))
         group = QActionGroup(self)
         group.setExclusive(True)
@@ -283,11 +312,7 @@ class MainWindow(QMainWindow):
             group.addAction(action)
             self.view_menu.addAction(action)
             self.view_actions[mode] = action
-        self.view_menu.addSeparator()
-        self.action_hotkeys = QAction(t("Translate clipboard"), self)
-        self.action_hotkeys.setShortcut(QKeySequence("Ctrl+Alt+T"))
-        self.action_hotkeys.triggered.connect(self.controller.translate_clipboard)
-        self.view_menu.addAction(self.action_hotkeys)
+        self.action_hotkeys = self.action_clipboard
 
         self.settings_menu = menu.addMenu(t("Settings"))
         self.action_settings = QAction(t("Settings…"), self)
@@ -322,6 +347,8 @@ class MainWindow(QMainWindow):
         c.resultViewChanged.connect(self._sync_view_mode)
         c.speakingChanged.connect(self._sync_speaking)
         c.settingsChanged.connect(self._sync_settings_actions)
+        c.fileJobChanged.connect(self._sync_save_action)
+        c.settingsChanged.connect(self._sync_history_tab)
 
     # ------------------------------------------------------------- commands
     def present(self) -> None:
@@ -389,6 +416,33 @@ class MainWindow(QMainWindow):
         view = self.pages.get("files")
         if hasattr(view, "pick_file"):
             QTimer.singleShot(0, view.pick_file)
+
+    def _save_translation(self) -> None:
+        """File → Save translation… (Ctrl+S) for the finished document."""
+        files = self.pages.get("files")
+        if files is not None and hasattr(files, "save_output"):
+            files.save_output()
+
+    def _sync_history_tab(self) -> None:
+        """Hide the History tab while the user has turned history recording off."""
+        enabled = bool(self.controller.settings.keep_history)
+        button = self.tab_buttons.get("history")
+        if button is not None:
+            button.setVisible(enabled)
+        if not enabled and self.controller.tab == "history":
+            self._on_tab_clicked("translate")
+
+    def focus_translate(self) -> None:
+        """Put the caret into the Translate editor (called at launch)."""
+        view = self.pages.get("translate")
+        if hasattr(view, "focus_source"):
+            view.focus_source()
+
+    def _sync_save_action(self, job: object = None) -> None:
+        job = job if isinstance(job, dict) else (self.controller.file_job or {})
+        self.action_save.setEnabled(
+            bool(job.get("output")) and str(job.get("state") or "") == "done"
+        )
 
     def _paste_into_source(self) -> None:
         text = QApplication.clipboard().text()
@@ -497,6 +551,7 @@ class MainWindow(QMainWindow):
         self.file_menu.setTitle(t("File"))
         self.edit_menu.setTitle(t("Edit"))
         self.view_menu.setTitle(t("View"))
+        self.translation_menu.setTitle(t("Translation"))
         self.settings_menu.setTitle(t("Settings"))
         self.help_menu.setTitle(t("Help"))
         self.language_menu.setTitle(t("Interface language"))
@@ -507,7 +562,19 @@ class MainWindow(QMainWindow):
         self.action_copy_source.setText(t("Copy source"))
         self.action_paste.setText(t("Paste"))
         self.action_clear.setText(t("Clear"))
-        self.action_hotkeys.setText(t("Translate clipboard"))
+        hot = getattr(self.controller.settings.hot_key, "display", "") or ""
+        selection = getattr(self.controller.settings.selection_hot_key, "display", "") or ""
+        self.action_clipboard.setText(
+            f"{t('Translate clipboard')} ({hot})" if hot else t("Translate clipboard")
+        )
+        self.action_selection.setText(
+            f"{t('Translate selection')} ({selection})" if selection else t("Translate selection")
+        )
+        self.action_hotkeys = self.action_clipboard
+        self.action_save.setText(t("Save translation…"))
+        self.action_translate_now.setText(t("Translate now"))
+        self.action_selection.setText(t("Translate selection"))
+        self.action_swap.setText(t("Swap languages"))
         self.action_settings.setText(t("Settings…"))
         self.action_catalog.setText(t("Model catalog…"))
         self.action_about.setText(t("About DeepL-oFM"))

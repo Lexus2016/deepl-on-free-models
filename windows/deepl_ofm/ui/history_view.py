@@ -205,9 +205,9 @@ def format_relative_date(value: str, locale: QLocale | None = None) -> str:
         return (value or "")[:16]
     today = date.today()
     if parsed.date() == today:
-        return f"today {parsed:%H:%M}"
+        return f"{t('today')} {parsed:%H:%M}"
     if (today - parsed.date()).days == 1:
-        return "yesterday"
+        return t("yesterday")
     locale = locale or QLocale(QLocale.Language.English, QLocale.Country.UnitedStates)
     english = locale.language() == QLocale.Language.English
     pattern = "MMM d" if english else "d MMM"
@@ -275,6 +275,18 @@ class _HistoryRow(QFrame):
         self.target_chip.setToolTip(target)
         meta.addWidget(self.target_chip)
         meta.addSpacing(4)
+
+        self.style_pill = Pill(t(str(entry.style or "auto").capitalize()), "muted", self)
+        self.style_pill.setToolTip(t("Style"))
+        meta.addWidget(self.style_pill)
+        meta.addSpacing(4)
+        if str(entry.tone or "standard") != "standard":
+            self.tone_pill = Pill(t(str(entry.tone).capitalize()), "muted", self)
+            self.tone_pill.setToolTip(t("Tone"))
+            meta.addWidget(self.tone_pill)
+            meta.addSpacing(4)
+        else:
+            self.tone_pill = None
 
         self.engine_label = _RoleLabel(entry.engine or "", "faint", 11, parent=self)
         self.engine_label.setSizePolicy(
@@ -351,6 +363,24 @@ class _HistoryRow(QFrame):
         if language_obj is None:
             return (code or "?").upper()
         return language_obj.display_name(language)
+
+    def matches(self, needle: str) -> bool:
+        """Search text, engine, language names and the style/tone words."""
+        entry = self.entry
+        haystack = [
+            entry.source_text,
+            entry.translated_text,
+            entry.engine,
+            self._language_name(
+                entry.source_code, self._controller.settings.interface_language
+            ),
+            self._language_name(
+                entry.target_code, self._controller.settings.interface_language
+            ),
+            t(entry.style.capitalize()) if entry.style else "",
+            t(entry.tone.capitalize()) if entry.tone else "",
+        ]
+        return any(needle in str(value).casefold() for value in haystack if value)
 
     def _sync_arrow(self) -> None:
         self.arrow_label.setPixmap(
@@ -587,10 +617,7 @@ class HistoryView(QWidget):
         needle = self._query.strip().casefold()
         visible = 0
         for row in self.rows:
-            match = not needle or (
-                needle in row.entry.source_text.casefold()
-                or needle in row.entry.translated_text.casefold()
-            )
+            match = not needle or row.matches(needle)
             row.setVisible(match)
             if match:
                 visible += 1

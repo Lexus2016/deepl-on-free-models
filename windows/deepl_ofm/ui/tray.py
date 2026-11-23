@@ -26,17 +26,20 @@ class TrayIcon(QObject):
 
         self._menu = QMenu()
         self._show_action = QAction(t("Open DeepL-oFM"), self._menu)
+        self._selection_action = QAction(t("Translate selection"), self._menu)
         self._clip_action = QAction(t("Translate clipboard"), self._menu)
         self._settings_action = QAction(t("Settings"), self._menu)
         self._quit_action = QAction(t("Quit DeepL-oFM"), self._menu)
-        for action in (self._show_action, self._clip_action):
-            self._menu.addAction(action)
+        self._menu.addAction(self._show_action)
+        self._menu.addAction(self._selection_action)
+        self._menu.addAction(self._clip_action)
         self._menu.addSeparator()
         self._menu.addAction(self._settings_action)
         self._menu.addSeparator()
         self._menu.addAction(self._quit_action)
 
         self._show_action.triggered.connect(self._show_window)
+        self._selection_action.triggered.connect(self.controller.translate_selection)
         self._clip_action.triggered.connect(self.controller.translate_clipboard)
         self._settings_action.triggered.connect(self.settingsRequested.emit)
         self._quit_action.triggered.connect(self.quitRequested.emit)
@@ -58,10 +61,18 @@ class TrayIcon(QObject):
             self._icon.showMessage(title, message, icons.icon("translate"), 4000)
 
     def retranslate_ui(self) -> None:
+        """Rebuild the menu text, including the current shortcuts."""
         self._show_action.setText(t("Open DeepL-oFM"))
-        self._clip_action.setText(t("Translate clipboard"))
+        self._selection_action.setText(self._with_shortcut("Translate selection", "selection_hot_key"))
+        self._clip_action.setText(self._with_shortcut("Translate clipboard", "hot_key"))
         self._settings_action.setText(t("Settings"))
         self._quit_action.setText(t("Quit DeepL-oFM"))
+
+    def _with_shortcut(self, key: str, attribute: str) -> str:
+        """``Translate clipboard (Ctrl+Alt+T)`` — the macOS menu shows this too."""
+        combo = getattr(self.controller.settings, attribute, None)
+        display = str(getattr(combo, "display", "") or "")
+        return f"{t(key)} ({display})" if display else t(key)
 
     # -------------------------------------------------------------- internal
     def _show_window(self) -> None:

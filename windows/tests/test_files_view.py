@@ -163,8 +163,10 @@ def test_failed_and_cancelled_show_message_and_retry(qapp, view, tmp_path):
     )
     qapp.processEvents()
 
-    assert view.error_card.isVisible()
-    assert view.message_label.text() == "Cancelled"
+    # Stop returns to the idle state instead of showing a failure card.
+    assert not view.error_card.isVisible()
+    assert view.translate_button.isEnabled()
+    assert view.language_combo.isEnabled()
 
 
 def test_pick_file_filters_and_starts_translation(qapp, view, controller, monkeypatch, tmp_path):
@@ -292,7 +294,7 @@ def test_drop_event_starts_supported_file(qapp, view, controller, monkeypatch, t
     assert not view.drop_zone._active
 
 
-def test_unsupported_drop_is_ignored(qapp, view, controller, monkeypatch, tmp_path):
+def test_unsupported_drop_reports_an_error(qapp, view, controller, monkeypatch, tmp_path):
     calls: list[Path] = []
     monkeypatch.setattr(
         controller, "start_file_translation", lambda path: calls.append(Path(path))
@@ -311,6 +313,8 @@ def test_unsupported_drop_is_ignored(qapp, view, controller, monkeypatch, tmp_pa
         QPointF(10.0, 10.0), Qt.DropAction.CopyAction, mime,
         Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
     )
-    QApplication.sendEvent(view, drop)
-    assert not drop.isAccepted()
+    errors: list[str] = []
+    controller.errorRaised.connect(errors.append)
+    view.dropEvent(drop)
     assert calls == []
+    assert errors and "not supported" in errors[-1].lower()

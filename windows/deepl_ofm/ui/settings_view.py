@@ -244,6 +244,15 @@ class _ApiKeyField(QWidget):
 # Dialog
 
 
+def _voice_language_matches(locale: str, code: str) -> bool:
+    """True when a Qt voice locale belongs to the given language code."""
+    tag = (locale or "").lower().replace("-", "_")
+    wanted = (code or "").lower().replace("-", "_")
+    if not tag or not wanted or wanted == "auto":
+        return False
+    return tag == wanted or tag.startswith(wanted + "_")
+
+
 class SettingsView(QDialog):
     """Tabbed settings dialog with a draft that is committed by Save."""
 
@@ -554,7 +563,7 @@ class SettingsView(QDialog):
         body = self.generation_card.content_layout
         body.setSpacing(3)
 
-        self.temperature_field = _SliderField(0.0, 2.0, 0.05, 0.7, self.generation_card)
+        self.temperature_field = _SliderField(0.0, 1.5, 0.05, 0.7, self.generation_card)
         self.temperature_field.slider.setObjectName("temperatureSlider")
         self.temperature_slider = self.temperature_field.slider
         self.temperature_row = FormRow(
@@ -562,14 +571,14 @@ class SettingsView(QDialog):
         )
         self.generation_card.add(self.temperature_row)
 
-        self.top_p_field = _SliderField(0.0, 1.0, 0.05, 0.6, self.generation_card)
+        self.top_p_field = _SliderField(0.1, 1.0, 0.05, 0.6, self.generation_card)
         self.top_p_field.slider.setObjectName("topPSlider")
         self.top_p_slider = self.top_p_field.slider
         self.top_p_row = FormRow("Top-p", self.top_p_field, parent=self.generation_card)
         self.generation_card.add(self.top_p_row)
 
         self.top_k_field = _SliderField(
-            0, 200, 1, 20, self.generation_card, decimals=0
+            1, 100, 1, 20, self.generation_card, decimals=0
         )
         self.top_k_field.slider.setObjectName("topKSlider")
         self.top_k_slider = self.top_k_field.slider
@@ -577,7 +586,7 @@ class SettingsView(QDialog):
         self.generation_card.add(self.top_k_row)
 
         self.repetition_field = _SliderField(
-            0.8, 2.0, 0.01, 1.05, self.generation_card
+            1.0, 1.5, 0.01, 1.05, self.generation_card
         )
         self.repetition_field.slider.setObjectName("repetitionSlider")
         self.repetition_slider = self.repetition_field.slider
@@ -587,7 +596,7 @@ class SettingsView(QDialog):
         self.generation_card.add(self.repetition_row)
 
         self.context_field = _SliderField(
-            512, 131072, 512, 8192, self.generation_card, decimals=0
+            2048, 32768, 512, 8192, self.generation_card, decimals=0
         )
         self.context_field.slider.setObjectName("contextSlider")
         self.context_slider = self.context_field.slider
@@ -661,10 +670,11 @@ class SettingsView(QDialog):
             t("Translate automatically while typing"), False, self.behaviour_card
         )
         self.auto_toggle.setObjectName("autoTranslateToggle")
+        self.auto_toggle.toggled.connect(self._sync_debounce_visibility)
         self.behaviour_card.add(self.auto_toggle)
 
         self.debounce_field = _SliderField(
-            0.1, 3.0, 0.05, 0.45, self.behaviour_card, suffix=" s"
+            0.2, 2.0, 0.05, 0.45, self.behaviour_card, suffix=" s"
         )
         self.debounce_field.slider.setObjectName("debounceSlider")
         self.debounce_slider = self.debounce_field.slider
@@ -702,14 +712,23 @@ class SettingsView(QDialog):
         )
         self.behaviour_card.add(self.language_row)
 
+        self.tray_toggle = ToggleRow(
+            t("Tray icon"),
+            False,
+            self.behaviour_card,
+            hint=t("Keep DeepL-oFM in the notification area; closing the window then hides it."),
+        )
+        self.tray_toggle.setObjectName("trayToggle")
+        self.behaviour_card.add(self.tray_toggle)
+
         self.voice_combo = QComboBox(self.behaviour_card)
         self.voice_combo.setObjectName("speechVoiceCombo")
         self.voice_combo.setMinimumHeight(34)
-        self.voice_combo.setAccessibleName(t("Speech voice"))
+        self.voice_combo.setAccessibleName(t("Voice"))
         self.voice_row = FormRow(
-            t("Speech voice"),
+            t("Voice"),
             self.voice_combo,
-            t("Used when the app reads the original or the translation aloud."),
+            t("More voices can be added in Windows Settings → Time & language → Speech."),
             parent=self.behaviour_card,
         )
         self.behaviour_card.add(self.voice_row)
@@ -719,19 +738,73 @@ class SettingsView(QDialog):
         page_layout.addStretch(1)
         return scroll
 
-    def _populate_voices(self) -> None:
-        """List the system voices; a missing speech engine leaves the default."""
-        self.voice_combo.clear()
-        self.voice_combo.addItem(t("System default"), "")
-        try:
-            from ..services.speech import Speaker
+    def _reset_hotkey(self) -> None:
+        from ..core.keycombo import KeyCombo
 
-            speaker = Speaker(self)
-            for voice_id, label in speaker.voices():
-                self.voice_combo.addItem(label, voice_id)
-            speaker.deleteLater()
-        except Exception:  # noqa: BLE001 - speech is optional
-            pass
+        self._set_hotkey_edit(self.hotkey_edit, KeyCombo.standard())
+        self._validate_hotkey(self.hotkey_edit, self.hotkey_row)
+
+    def _reset_selection_hotkey(self) -> None:
+        from ..core.keycombo import KeyCombo
+
+        self._set_hotkey_edit(self.selection_hotkey_edit, KeyCombo.selection())
+        self._validate_hotkey(self.selection_hotkey_edit, self.selection_hotkey_row)
+
+    def _sync_hotkey_status(self) -> None:
+        """Show whether the system actually accepted each shortcut."""
+        controller = self.controller
+        combos = (
+            (self.hotkey_status, getattr(controller, "hotkey_message", "")),
+            (self.selection_hotkey_status, getattr(controller, "selection_hotkey_message", "")),
+        )
+        for label, message in combos:
+            if message:
+                label.setText(message)
+                label.setProperty("role", "danger")
+            else:
+                label.setText(t("Active"))
+                label.setProperty("role", "success")
+            label.style().unpolish(label)
+            label.style().polish(label)
+
+    def _sync_debounce_visibility(self, checked: bool) -> None:
+        """The delay slider only matters while automatic translation is on."""
+        self.debounce_row.setVisible(bool(checked))
+
+    def _populate_voices(self) -> None:
+        """List the voices for the current target language, like the macOS app.
+
+        The stored voice stays selectable even when it does not match the
+        language, so opening the dialog never silently drops a choice.
+        """
+        combo = self.voice_combo
+        chosen = str(combo.currentData() or "") or self.controller.settings.speech_voice_id
+        target = self.controller.target_language
+        code = getattr(target, "code", "") if target is not None else ""
+
+        with QSignalBlocker(combo):
+            combo.clear()
+            combo.addItem(t("Automatic"), "")
+            listed: set[str] = set()
+            try:
+                from ..services.speech import Speaker
+
+                if getattr(self, "_speaker", None) is None:
+                    self._speaker = Speaker(self)
+                for voice_id, label in self._speaker.voices():
+                    locale = voice_id.split("::", 1)[0] if "::" in voice_id else ""
+                    matches = _voice_language_matches(locale, code)
+                    if code and code != "auto" and not matches and voice_id != chosen:
+                        continue
+                    combo.addItem(f"{label} — {locale.replace('_', '-')}" if locale else label, voice_id)
+                    listed.add(voice_id)
+            except Exception:  # noqa: BLE001 - speech is optional
+                pass
+            if chosen and chosen not in listed:
+                combo.addItem(chosen.split("::", 1)[-1], chosen)
+            index = combo.findData(chosen)
+            if index >= 0:
+                combo.setCurrentIndex(index)
 
     # -- hotkeys tab -------------------------------------------------------
     def _build_hotkeys_tab(self) -> QWidget:
@@ -751,10 +824,22 @@ class SettingsView(QDialog):
         self.hotkey_edit = QKeySequenceEdit(self.hotkey_card)
         self.hotkey_edit.setObjectName("hotkeyEdit")
         self.hotkey_edit.setMinimumHeight(34)
+        self.hotkey_edit.setClearButtonEnabled(True)
+        self.hotkey_status = _RoleLabel("", "muted", 11, parent=self.hotkey_card)
+        self.hotkey_status.setWordWrap(True)
+        self.hotkey_reset = LinkButton(t("Reset"), self.hotkey_card)
+        self.hotkey_reset.clicked.connect(self._reset_hotkey)
+        hotkey_control = QWidget(self.hotkey_card)
+        hotkey_control_layout = QHBoxLayout(hotkey_control)
+        hotkey_control_layout.setContentsMargins(0, 0, 0, 0)
+        hotkey_control_layout.setSpacing(8)
+        hotkey_control_layout.addWidget(self.hotkey_edit, 1)
+        hotkey_control_layout.addWidget(self.hotkey_reset, 0)
         self.hotkey_row = FormRow(
-            t("Translate clipboard"), self.hotkey_edit, parent=self.hotkey_card
+            t("Translate clipboard"), hotkey_control, parent=self.hotkey_card
         )
         self.hotkey_card.add(self.hotkey_row)
+        self.hotkey_card.add(self.hotkey_status)
         self.hotkey_edit.keySequenceChanged.connect(
             lambda _seq: self._validate_hotkey(self.hotkey_edit, self.hotkey_row)
         )
@@ -762,12 +847,24 @@ class SettingsView(QDialog):
         self.selection_hotkey_edit = QKeySequenceEdit(self.hotkey_card)
         self.selection_hotkey_edit.setObjectName("selectionHotkeyEdit")
         self.selection_hotkey_edit.setMinimumHeight(34)
+        self.selection_hotkey_edit.setClearButtonEnabled(True)
+        self.selection_hotkey_status = _RoleLabel("", "muted", 11, parent=self.hotkey_card)
+        self.selection_hotkey_status.setWordWrap(True)
+        self.selection_hotkey_reset = LinkButton(t("Reset"), self.hotkey_card)
+        self.selection_hotkey_reset.clicked.connect(self._reset_selection_hotkey)
+        selection_control = QWidget(self.hotkey_card)
+        selection_control_layout = QHBoxLayout(selection_control)
+        selection_control_layout.setContentsMargins(0, 0, 0, 0)
+        selection_control_layout.setSpacing(8)
+        selection_control_layout.addWidget(self.selection_hotkey_edit, 1)
+        selection_control_layout.addWidget(self.selection_hotkey_reset, 0)
         self.selection_hotkey_row = FormRow(
             t("Selected text"),
-            self.selection_hotkey_edit,
+            selection_control,
             parent=self.hotkey_card,
         )
         self.hotkey_card.add(self.selection_hotkey_row)
+        self.hotkey_card.add(self.selection_hotkey_status)
         self.selection_hotkey_edit.keySequenceChanged.connect(
             lambda _seq: self._validate_hotkey(
                 self.selection_hotkey_edit, self.selection_hotkey_row
@@ -829,6 +926,31 @@ class SettingsView(QDialog):
             t("MIT license · free and open source."), "faint", 11, parent=self.about_card
         )
         self.about_card.add(self.about_license)
+
+        self.model_license = _RoleLabel(
+            t("Model: Hy-MT2 7B (Tencent Hy). License and model card on Hugging Face."),
+            "faint",
+            11,
+            parent=self.about_card,
+        )
+        self.model_license.setWordWrap(True)
+        self.about_card.add(self.model_license)
+
+        self.huggingface_button = LinkButton(
+            "huggingface.co/tencent/Hy-MT2-7B", self.about_card
+        )
+        self.huggingface_button.setObjectName("huggingFaceButton")
+        self.huggingface_button.clicked.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://huggingface.co/tencent/Hy-MT2-7B")
+            )
+        )
+        huggingface_host = QWidget(self.about_card)
+        huggingface_layout = QHBoxLayout(huggingface_host)
+        huggingface_layout.setContentsMargins(0, 0, 0, 0)
+        huggingface_layout.addWidget(self.huggingface_button, 0)
+        huggingface_layout.addStretch(1)
+        self.about_card.add(huggingface_host)
 
         github_host = QWidget(self.about_card)
         github_layout = QHBoxLayout(github_host)
@@ -941,6 +1063,7 @@ class SettingsView(QDialog):
             "debounce": settings.debounce,
             "keep_history": settings.keep_history,
             "warm_up_on_launch": settings.warm_up_on_launch,
+            "show_in_menu_bar": settings.show_in_menu_bar,
             "interface_language": settings.interface_language,
             "speech_voice_id": settings.speech_voice_id,
             "hot_key": settings.hot_key,
@@ -979,11 +1102,14 @@ class SettingsView(QDialog):
         self.context_field.set_value(settings.context_window)
 
         self._apply_toggle(self.auto_toggle, settings.auto_translate)
+        self._sync_debounce_visibility(settings.auto_translate)
         self.debounce_field.set_value(settings.debounce)
         self._apply_toggle(self.keep_history_toggle, settings.keep_history)
         self._apply_toggle(self.warm_up_toggle, settings.warm_up_on_launch)
+        self._apply_toggle(self.tray_toggle, settings.show_in_menu_bar)
         with QSignalBlocker(self.language_combo):
             self._fill_language_combo(self.language_combo, settings.interface_language)
+        self._populate_voices()
         index = self.voice_combo.findData(settings.speech_voice_id)
         with QSignalBlocker(self.voice_combo):
             self.voice_combo.setCurrentIndex(index if index >= 0 else 0)
@@ -994,6 +1120,7 @@ class SettingsView(QDialog):
         self._update_preview()
 
         self._set_hotkey_edit(self.hotkey_edit, settings.hot_key)
+        self._sync_hotkey_status()
         self._set_hotkey_edit(self.selection_hotkey_edit, settings.selection_hot_key)
         self._validate_hotkey(self.hotkey_edit, self.hotkey_row)
         self._validate_hotkey(self.selection_hotkey_edit, self.selection_hotkey_row)
@@ -1037,6 +1164,7 @@ class SettingsView(QDialog):
         settings.debounce = self.debounce_field.value()
         settings.keep_history = self.keep_history_toggle.is_checked()
         settings.warm_up_on_launch = self.warm_up_toggle.is_checked()
+        settings.show_in_menu_bar = self.tray_toggle.is_checked()
         settings.speech_voice_id = str(self.voice_combo.currentData() or "")
 
         translated_hotkey = self._combo_from_edit(self.hotkey_edit)
@@ -1086,6 +1214,7 @@ class SettingsView(QDialog):
         settings.debounce = values["debounce"]
         settings.keep_history = values["keep_history"]
         settings.warm_up_on_launch = values["warm_up_on_launch"]
+        settings.show_in_menu_bar = values.get("show_in_menu_bar", True)
         settings.interface_language = values["interface_language"]
         settings.speech_voice_id = values.get("speech_voice_id", "")
         settings.hot_key = values["hot_key"]
@@ -1648,6 +1777,10 @@ class SettingsView(QDialog):
         self.auto_toggle.set_label(t("Translate automatically while typing"))
         self.debounce_row.set_label(t("Delay"))
         self.keep_history_toggle.set_label(t("Keep translation history"))
+        self.tray_toggle.set_label(t("Tray icon"))
+        self.tray_toggle.set_hint(
+            t("Keep DeepL-oFM in the notification area; closing the window then hides it.")
+        )
         self.warm_up_toggle.set_label(t("Load the translator at launch"))
         self.warm_up_toggle.set_hint(
             t(
@@ -1683,6 +1816,9 @@ class SettingsView(QDialog):
 
         # --- about tab
         self.about_card.set_title(t("About"))
+        self.model_license.setText(
+            t("Model: Hy-MT2 7B (Tencent Hy). License and model card on Hugging Face.")
+        )
         self.about_description.setText(
             t("A native translator for local and cloud models.")
         )

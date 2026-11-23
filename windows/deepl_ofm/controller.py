@@ -9,9 +9,9 @@ exposes everything the views need through signals.
 from __future__ import annotations
 
 import logging
-import os
+import shutil
+import tempfile
 import threading
-import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -27,7 +27,7 @@ from .core.languages import (
 )
 from .core.prompts import TranslationStyle, TranslationTone
 from .core.settings import AppSettings
-from .i18n import set_language, t
+from .i18n import set_language, t, tf
 from .services.documents import DocumentError, DocumentTranslator, DocumentKind, OpenedDocument
 from .services.history import HistoryEntry, HistoryStore
 from .services.translation import (
@@ -168,6 +168,8 @@ class AppController(QObject):
         self.write_output: str = ""
         self.write_error: str | None = None
         self.write_warning_count: int = 0
+        self.write_duration_ms: int | None = None
+        self.write_detected_code: str = ""
 
         # --- internals -------------------------------------------------------
         self._generation = 0
@@ -177,6 +179,7 @@ class AppController(QObject):
         self._booted = False
         self._last_completed_key: tuple[str, str, str] | None = None
         self._suppress_auto = False
+        self._capturing_selection = False
 
         self._detect_timer = QTimer(self)
         self._detect_timer.setSingleShot(True)
@@ -187,9 +190,18 @@ class AppController(QObject):
         self._auto_timer.setSingleShot(True)
         self._auto_timer.timeout.connect(lambda: self.translate(force=False))
 
+        self._probe_timer = QTimer(self)
+        self._probe_timer.setSingleShot(True)
+        self._probe_timer.setInterval(600)
+        self._probe_timer.timeout.connect(self.check_connection)
+
         set_language(self.settings.interface_language)
 
     # ------------------------------------------------------------------ utils
+    def report_error(self, message: str) -> None:
+        """Show a local error in the window status bar (used by the views)."""
+        self._emit_error(message)
+
     def _emit_error(self, message: str) -> None:
         self.error_message = message
         self.errorRaised.emit(message)
@@ -224,7 +236,8 @@ class AppController(QObject):
 
     def _warm_up(self) -> None:
         config = self.settings.snapshot()
-        if not config.model:
+        # A cloud request at launch would be billed just for starting the app.
+        if not config.model or not self.settings.provider.is_local:
             return
 
         def job(signals: _JobSignals) -> bool:
@@ -245,7 +258,7 @@ class AppController(QObject):
         self.settings.last_source_code = language.code
         self.settings.save()
         self.languagesChanged.emit(self.source_language.code, self.target_language.code)
-        self._schedule_translation()
+        self._retranslate_if_possible()
 
     def set_target_language(self, code: str) -> None:
         language = get_language(code)
@@ -255,7 +268,7 @@ class AppController(QObject):
         self.settings.last_target_code = language.code
         self.settings.save()
         self.languagesChanged.emit(self.source_language.code, self.target_language.code)
-        self._schedule_translation()
+        self._retranslate_if_possible()
 
     def swap_languages(self) -> None:
         source = self.source_language
@@ -272,8 +285,29 @@ class AppController(QObject):
         self.settings.last_source_code = self.source_language.code
         self.settings.last_target_code = self.target_language.code
         self.settings.save()
+        self.detected_language = None
+        self.detectedLanguageChanged.emit("")
+
+        source_text, translated_text = self.source_text, self.translated_text
+        self._suppress_auto = True
+        try:
+            if translated_text.strip():
+                self.set_source_text(translated_text)
+                self.translated_text = source_text
+                self.translatedTextChanged.emit(self.translated_text)
+        finally:
+            self._suppress_auto = False
         self.languagesChanged.emit(self.source_language.code, self.target_language.code)
         self.translate(force=True)
+
+    def _retranslate_if_possible(self) -> None:
+        """Directions and styles invalidate the result even with auto-translate off."""
+        if not self.source_text.strip():
+            return
+        if self.settings.auto_translate:
+            self._schedule_translation()
+        else:
+            self.translate(force=True)
 
     def _schedule_detection(self) -> None:
         self._detect_timer.start()
@@ -303,6 +337,9 @@ class AppController(QObject):
             self.completed = self.total = 0
             self.progressChanged.emit(0, 0)
         self.sourceTextChanged.emit(text)
+        if from_user and self.is_translating:
+            # A result for the previous text must never land in the pane.
+            self.cancel()
         if self.source_language.is_auto:
             self._schedule_detection()
         if from_user:
@@ -317,10 +354,24 @@ class AppController(QObject):
         self._auto_timer.start()
 
     def clear_source(self) -> None:
+        if self.is_translating:
+            self.cancel()
+        self._auto_timer.stop()
         self.set_source_text("")
+        self.translated_text = ""
+        self.translatedTextChanged.emit("")
         self.error_message = None
+        self.warning_count = 0
+        self.warningCountChanged.emit(0)
         self.completed = self.total = 0
         self.progressChanged.emit(0, 0)
+        self.detected_language = None
+        self.detectedLanguageChanged.emit("")
+        self.tokens_per_second = None
+        self.last_duration_ms = None
+        self.using_fallback = False
+        self.metricsChanged.emit()
+        self._last_completed_key = None
 
     def set_result_view(self, mode: str) -> None:
         if mode not in RESULT_VIEWS or mode == self.result_view:
@@ -338,6 +389,7 @@ class AppController(QObject):
         self.settings.last_style = value
         self.settings.save()
         self.styleChanged.emit(value.value)
+        self._retranslate_if_possible()
 
     def set_tone(self, tone: TranslationTone | str) -> None:
         value = TranslationTone(tone)
@@ -347,6 +399,7 @@ class AppController(QObject):
         self.settings.last_tone = value
         self.settings.save()
         self.toneChanged.emit(value.value)
+        self._retranslate_if_possible()
 
     def set_tab(self, tab: str) -> None:
         if tab not in TABS or tab == self.tab:
@@ -418,7 +471,12 @@ class AppController(QObject):
                 return
             self._fail_translation(exc)
 
-        self._run_job(job, on_done=done, on_error=failed, on_progress=self._on_progress)
+        self._run_job(
+            job,
+            on_done=done,
+            on_error=failed,
+            on_progress=lambda completed, total: self._on_progress(completed, total, generation),
+        )
 
     def _alternative_target(self, source: Language) -> Language:
         interface = self.settings.interface_language.resolved
@@ -428,7 +486,9 @@ class AppController(QObject):
                 return candidate
         return get_language("en") if source.code != "en" else get_language("uk")
 
-    def _on_progress(self, completed: int, total: int) -> None:
+    def _on_progress(self, completed: int, total: int, generation: int | None = None) -> None:
+        if generation is not None and generation != self._generation:
+            return
         self.completed, self.total = completed, total
         self.progressChanged.emit(completed, total)
 
@@ -476,6 +536,8 @@ class AppController(QObject):
             return
         if isinstance(exc, TranslationError):
             self._emit_error(exc.message(self.settings.interface_language))
+            if exc.kind in ("connection", "server", "rate_limit", "unauthorized", "invalid_url"):
+                self._set_backend_status("failed", exc.message(self.settings.interface_language))
         else:  # pragma: no cover - unexpected
             log.exception("translation failed", exc_info=exc)
             self._emit_error(str(exc))
@@ -492,36 +554,53 @@ class AppController(QObject):
 
     # --------------------------------------------------------------- clipboard
     def copy_translation(self) -> None:
-        self._copy_text(self.translated_text, t("Translation copied"))
+        self._copy_text(self.translated_text, t("Translation copied"), self.result_view)
 
     def copy_source(self) -> None:
         self._copy_text(self.source_text, t("Source text copied"))
 
-    def _copy_text(self, markdown: str, feedback: str) -> None:
+    def _copy_text(self, markdown: str, feedback: str, mode: str = "") -> None:
+        """Copy in the flavour of the active result view (macOS AppState 654-665)."""
         if not markdown.strip():
             return
+        mode = mode or self.result_view
         clipboard = QGuiApplication.clipboard()
         mime = QMimeData()
-        mime.setText(markdown)
-        try:
-            try:
-                from .ui.markdown_view import markdown_to_html, markdown_to_rtf
-            except ImportError:  # private aliases while the renderer evolves
-                from .ui.markdown_view import _document_html as markdown_to_html
-                from .ui.markdown_view import _document_rtf as markdown_to_rtf
+        if mode == "text":
+            from .ui.markdown_view import markdown_to_plain
 
-            mime.setHtml(markdown_to_html(markdown))
-            mime.setData("text/rtf", markdown_to_rtf(markdown).encode("latin-1", "replace"))
-        except Exception:  # noqa: BLE001 - rich formats are a bonus
-            log.debug("rich clipboard formats unavailable", exc_info=True)
+            mime.setText(markdown_to_plain(markdown))
+        elif mode == "markdown":
+            mime.setText(markdown)
+        else:  # preview: rich text plus a plain fallback
+            from .ui.markdown_view import markdown_to_html, markdown_to_plain, markdown_to_rtf
+
+            mime.setText(markdown_to_plain(markdown))
+            try:
+                mime.setHtml(markdown_to_html(markdown))
+                mime.setData("text/rtf", markdown_to_rtf(markdown).encode("latin-1", "replace"))
+            except Exception:  # noqa: BLE001 - rich formats are a bonus
+                log.debug("rich clipboard formats unavailable", exc_info=True)
         clipboard.setMimeData(mime)
         self.copyFeedback.emit(feedback)
 
     def translate_clipboard(self) -> None:
-        text = QGuiApplication.clipboard().text()
+        clipboard = QGuiApplication.clipboard()
+        text = clipboard.text()
+        try:  # rich text from a browser or a document becomes Markdown first
+            from .support.pasteboard import mime_to_markdown
+
+            mime = clipboard.mimeData()
+            if mime is not None and (mime.hasHtml() or mime.hasFormat("text/rtf")):
+                converted = mime_to_markdown(mime)
+                if converted.strip():
+                    text = converted
+        except Exception:  # noqa: BLE001 - plain text is always a valid fallback
+            log.debug("rich clipboard conversion failed", exc_info=True)
         if not text.strip():
             self._emit_error(t("The clipboard is empty."))
             return
+        self.set_tab("translate")
         self.windowRequested.emit()
         self._suppress_auto = True
         self.set_source_text(text)
@@ -529,12 +608,37 @@ class AppController(QObject):
         self.translate(force=True)
 
     def translate_selection(self) -> None:
-        """Copy the selection of the foreground app, then translate it."""
-        self.windowRequested.emit()
-        text = _capture_selection()
-        if not text.strip():
-            self._emit_error(t("Selected text does not copy"))
+        """Copy the selection of the foreground app, then translate it.
+
+        The capture must happen *before* the window is shown: raising our own
+        window would take focus away from the app that holds the selection.
+        """
+        if self._capturing_selection:
             return
+        from .support.selection import capture_selection, is_supported
+
+        if not is_supported():
+            self._emit_error(t("Selected text is only captured on Windows."))
+            self.windowRequested.emit()
+            return
+
+        self._capturing_selection = True
+        try:
+            text = capture_selection()
+        finally:
+            self._capturing_selection = False
+
+        self.set_tab("translate")
+        self.windowRequested.emit()
+        if not text.strip():
+            self._emit_error(
+                t(
+                    "Could not copy the selected text. If the other app runs as "
+                    "administrator, this shortcut cannot reach it."
+                )
+            )
+            return
+
         self._suppress_auto = True
         self.set_source_text(text)
         self._suppress_auto = False
@@ -608,14 +712,33 @@ class AppController(QObject):
             return self.translator.list_models(config)
 
         def done(models: list[str]) -> None:
+            from .services.probe import model_listed
+
             self.models_loading = False
             self.modelsLoadingChanged.emit(False)
             self.provider_models = models
             self.modelsChanged.emit(models)
-            self._set_backend_status("connected", t("Connected"))
+
             if not models:
-                self.models_error = t("The server returned no models.")
-                self.modelsErrorChanged.emit(self.models_error)
+                message = t("The server returned no models.")
+                self.models_error = message
+                self.modelsErrorChanged.emit(message)
+                self._set_backend_status("failed", message)
+                return
+            if config.model and not model_listed(config.model, models):
+                message = tf(
+                    "Server responds, but model “%@” is missing. Available: %@.",
+                    config.model,
+                    ", ".join(models[:6]),
+                )
+                self.models_error = message
+                self.modelsErrorChanged.emit(message)
+                self._set_backend_status("failed", tf("Model “%@” not found", config.model))
+                self._emit_error(message)
+                return
+            self.models_error = None
+            self.modelsErrorChanged.emit("")
+            self._set_backend_status("connected", t("Connected"))
 
         def failed(exc: BaseException) -> None:
             self.models_loading = False
@@ -661,6 +784,7 @@ class AppController(QObject):
     def save_settings(self) -> None:
         self.settings.save()
         self.settingsChanged.emit()
+        self._probe_timer.start()  # refresh the connection badge for the new values
         if self.settings.auto_translate:
             self._schedule_translation()
 
@@ -706,13 +830,23 @@ class AppController(QObject):
         if not config.model:
             self._emit_error(t("Choose a model in Settings."))
             return
+        kind = DocumentKind.from_path(path)
+        if kind is None:
+            self._emit_error(t("This file type is not supported."))
+            return
 
+        self._discard_file_output()
         self._file_cancel = threading.Event()
         cancel = self._file_cancel
+        try:
+            size = path.stat().st_size
+        except OSError:
+            size = 0
         self.file_job = {
             "path": str(path),
             "name": path.name,
-            "kind": (DocumentKind.from_path(path).value if DocumentKind.from_path(path) else ""),
+            "kind": kind.value,
+            "size": size,
             "state": "reading",
             "completed": 0,
             "total": 0,
@@ -721,6 +855,8 @@ class AppController(QObject):
             "message": None,
             "result_name": None,
             "warnings": 0,
+            "fallback": False,
+            "fallback_label": "",
         }
         self._file_document = None
         self._file_output = None
@@ -729,8 +865,11 @@ class AppController(QObject):
         translator = self.translator
         style, tone = self.style, self.tone
         fallback = self.settings.fallback_config()
+        if fallback is not None and fallback.uses_same_endpoint(config):
+            fallback = None
         source = self.source_language
         settings = self.settings
+        counters = {"warnings": 0, "fallback": False}
 
         def translate_paragraph(text: str) -> str:
             result = translator.translate(
@@ -743,32 +882,55 @@ class AppController(QObject):
                 fallback=fallback,
                 cancel=cancel,
             )
+            counters["warnings"] += int(result.warnings or 0)
+            if result.used_fallback:
+                counters["fallback"] = True
             return result.text
 
-        def job(signals: _JobSignals) -> Path:
+        def job(signals: _JobSignals) -> tuple[Path, int, bool]:
             document = DocumentTranslator.read(path)
             self._file_document = document
             self._update_file_job(state="translating")
-            out_path = DocumentTranslator.suggested_path(path, target)
-            DocumentTranslator.write(
-                document,
-                out_path,
-                translate_paragraph,
-                on_progress=lambda done, total: signals.progress.emit(done, total),
-                cancel=cancel,
-            )
-            return out_path
+            # Stage the result in a private folder: the user's source folder must
+            # not receive (or have overwritten) a file before they press Save.
+            suggested = DocumentTranslator.suggested_path(path, target)
+            staging = Path(tempfile.mkdtemp(prefix="deepl-ofm-"))
+            self._file_tempdir = staging
+            out_path = staging / suggested.name
+            try:
+                DocumentTranslator.write(
+                    document,
+                    out_path,
+                    translate_paragraph,
+                    on_progress=lambda done, total: signals.progress.emit(done, total),
+                    cancel=cancel,
+                )
+            except BaseException:
+                shutil.rmtree(staging, ignore_errors=True)
+                self._file_tempdir = None
+                raise
+            return out_path, counters["warnings"], counters["fallback"]
 
-        def done(out_path: Path) -> None:
+        def done(result: tuple[Path, int, bool]) -> None:
+            out_path, warnings, used_fallback = result
             self._file_output = out_path
+            label = ""
+            if used_fallback:
+                fallback_config = settings.fallback_config()
+                if fallback_config is not None:
+                    label = f"{settings.fallback_provider.title} · {fallback_config.model}"
             self._update_file_job(
                 state="done",
                 percent=100,
                 output=str(out_path),
                 result_name=out_path.name,
+                warnings=int(warnings),
+                fallback=bool(used_fallback),
+                fallback_label=label,
             )
 
         def failed(exc: BaseException) -> None:
+            self._discard_file_tempdir()
             if isinstance(exc, TranslationCancelled):
                 self._update_file_job(state="cancelled", message=t("Cancelled"))
                 return
@@ -780,6 +942,16 @@ class AppController(QObject):
             self._update_file_job(state="failed", message=message)
 
         self._run_job(job, on_done=done, on_error=failed, on_progress=self._on_file_progress)
+
+    def _discard_file_tempdir(self) -> None:
+        directory = getattr(self, "_file_tempdir", None)
+        if directory is not None:
+            shutil.rmtree(directory, ignore_errors=True)
+            self._file_tempdir = None
+
+    def _discard_file_output(self) -> None:
+        self._discard_file_tempdir()
+        self._file_output = None
 
     def _on_file_progress(self, completed: int, total: int) -> None:
         percent = int(round(completed * 100 / total)) if total else 0
@@ -816,7 +988,7 @@ class AppController(QObject):
     def clear_file_job(self) -> None:
         self.file_job = None
         self._file_document = None
-        self._file_output = None
+        self._discard_file_output()
         self._publish_file_job()
 
     # ------------------------------------------------------------------ write
@@ -827,13 +999,21 @@ class AppController(QObject):
         if not config.model:
             self._emit_error(t("Choose a model in Settings."))
             return
-        target = get_language(target_code) or self.target_language
+        # The Write tab has no explicit language until the user picks one: in
+        # that case the text is improved in its own language, like macOS.
+        if not target_code or target_code == "auto":
+            target = detect_language(text, self.settings.interface_language) or self.target_language
+            self.write_detected_code = target.code
+        else:
+            target = get_language(target_code) or self.target_language
+            self.write_detected_code = ""
         self._write_cancel = threading.Event()
         cancel = self._write_cancel
         self.write_in_progress = True
         self.write_output = ""
         self.write_error = None
         self.write_warning_count = 0
+        self.write_duration_ms = None
         self.writeStateChanged.emit(True)
         translator = self.translator
         fallback = self.settings.fallback_config()
@@ -844,6 +1024,7 @@ class AppController(QObject):
         def done(result: TranslationOutput) -> None:
             self.write_output = result.text
             self.write_warning_count = result.warnings
+            self.write_duration_ms = result.duration_ms
             self.write_in_progress = False
             self.writeStateChanged.emit(False)
             # Deliberately not translatedTextChanged: the Write tab has its own
@@ -861,6 +1042,16 @@ class AppController(QObject):
             self._emit_error(self.write_error)
 
         self._run_job(job, on_done=done, on_error=failed)
+
+    def reset_write(self) -> None:
+        """Drop the previous result when its source text changed."""
+        if self.write_in_progress:
+            self.cancel_write()
+        self.write_output = ""
+        self.write_error = None
+        self.write_warning_count = 0
+        self.write_duration_ms = None
+        self.writeStateChanged.emit(False)
 
     def cancel_write(self) -> None:
         self._write_cancel.set()
@@ -905,29 +1096,3 @@ class AppController(QObject):
             signals.progress.connect(on_progress)
         self.pool.start(_Job(fn, signals))
         return signals
-
-
-# --------------------------------------------------------------------------
-# Selected-text capture (Windows: send Ctrl+C to the foreground window)
-# --------------------------------------------------------------------------
-def _capture_selection() -> str:
-    """Copy the current selection of the foreground application to the clipboard."""
-    if os.name != "nt":
-        return ""
-    try:
-        import ctypes
-
-        user32 = ctypes.windll.user32
-        keybd_event = user32.keybd_event
-        VK_CONTROL, VK_C, KEYEVENTF_KEYUP = 0x11, 0x43, 0x0002
-        keybd_event(VK_CONTROL, 0, 0, 0)
-        keybd_event(VK_C, 0, 0, 0)
-        keybd_event(VK_C, 0, KEYEVENTF_KEYUP, 0)
-        keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
-        time.sleep(0.12)
-    except Exception:  # noqa: BLE001 - best effort
-        log.debug("selection capture failed", exc_info=True)
-    app = QGuiApplication.instance()
-    if app is None:
-        return ""
-    return QGuiApplication.clipboard().text()
