@@ -198,6 +198,15 @@ def _locale_for(controller: "AppController") -> QLocale:
     return QLocale(QLocale.Language.English, QLocale.Country.UnitedStates)
 
 
+def _style_text(value: object) -> str:
+    """Localised chip text for a style or tone, tolerating enums and None."""
+    raw = getattr(value, "value", value)
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    return t(text[:1].upper() + text[1:])
+
+
 def format_relative_date(value: str, locale: QLocale | None = None) -> str:
     """Return ``today 14:02``, ``yesterday`` or a short local date."""
     parsed = _parse_date(value)
@@ -276,12 +285,12 @@ class _HistoryRow(QFrame):
         meta.addWidget(self.target_chip)
         meta.addSpacing(4)
 
-        self.style_pill = Pill(t(str(entry.style or "auto").capitalize()), "muted", self)
+        self.style_pill = Pill(_style_text(entry.style), "muted", self)
         self.style_pill.setToolTip(t("Style"))
         meta.addWidget(self.style_pill)
         meta.addSpacing(4)
         if str(entry.tone or "standard") != "standard":
-            self.tone_pill = Pill(t(str(entry.tone).capitalize()), "muted", self)
+            self.tone_pill = Pill(_style_text(entry.tone), "muted", self)
             self.tone_pill.setToolTip(t("Tone"))
             meta.addWidget(self.tone_pill)
             meta.addSpacing(4)
@@ -377,8 +386,8 @@ class _HistoryRow(QFrame):
             self._language_name(
                 entry.target_code, self._controller.settings.interface_language
             ),
-            t(entry.style.capitalize()) if entry.style else "",
-            t(entry.tone.capitalize()) if entry.tone else "",
+            _style_text(entry.style),
+            _style_text(entry.tone),
         ]
         return any(needle in str(value).casefold() for value in haystack if value)
 
@@ -427,6 +436,9 @@ class _HistoryRow(QFrame):
             format_relative_date(self.entry.date, _locale_for(self._controller))
         )
         self._sync_arrow()
+        self.style_pill.setText(_style_text(self.entry.style))
+        if self.tone_pill is not None:
+            self.tone_pill.setText(_style_text(self.entry.tone))
         self.restore_button.set_tooltip(t("Translate again"))
         self.copy_button.set_tooltip(t("Copy translation"))
         self.delete_button.set_tooltip(t("Delete entry"))
@@ -622,7 +634,7 @@ class HistoryView(QWidget):
             if match:
                 visible += 1
         total = len(self.rows)
-        self.count_label.setText(str(visible if needle else total))
+        self.count_label.setText(f"{visible}/{total}" if needle else str(total))
 
         if total and visible:
             self.stack.setCurrentWidget(self.scroll)

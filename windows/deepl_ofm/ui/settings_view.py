@@ -12,8 +12,15 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from PySide6.QtCore import QSignalBlocker, Qt, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QIcon, QKeySequence
+from PySide6.QtCore import QRectF, QSignalBlocker, Qt, QUrl, Signal
+from PySide6.QtGui import (
+    QColor,
+    QDesktopServices,
+    QGuiApplication,
+    QIcon,
+    QKeySequence,
+    QPainter,
+)
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -26,6 +33,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPlainTextEdit,
     QScrollArea,
+    QSizePolicy,
     QSlider,
     QTabWidget,
     QVBoxLayout,
@@ -240,6 +248,84 @@ class _ApiKeyField(QWidget):
         self.reveal_button.setToolTip(self.reveal_button.text())
 
 
+class _HotkeyEdit(QKeySequenceEdit):
+    """Key-sequence editor that reports focus changes for the idle caption."""
+
+    focusChanged = Signal(bool)
+
+    def focusInEvent(self, event: Any) -> None:  # noqa: N802 - Qt API
+        super().focusInEvent(event)
+        self.focusChanged.emit(True)
+
+    def focusOutEvent(self, event: Any) -> None:  # noqa: N802 - Qt API
+        super().focusOutEvent(event)
+        self.focusChanged.emit(False)
+
+
+class _InstallCommandBox(QWidget):
+    """Compact read-only install command with a copy link.
+
+    Matches the catalogue's command box without importing its private widget,
+    which belongs to a dialog the settings page does not otherwise depend on.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("installCommandBox")
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 5, 6, 5)
+        layout.setSpacing(8)
+
+        self.command_label = _RoleLabel("", "muted", 10, parent=self, mono=True)
+        self.command_label.setWordWrap(True)
+        self.command_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self.command_label.setSizePolicy(
+            QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred
+        )
+        layout.addWidget(self.command_label, 1)
+
+        self.copy_button = LinkButton(t("Copy install command"), self)
+        self.copy_button.setObjectName("copyInstallCommandButton")
+        self.copy_button.clicked.connect(self._copy)
+        layout.addWidget(self.copy_button, 0, Qt.AlignmentFlag.AlignTop)
+
+        Theme.changed.connect(self._on_theme_changed)
+
+    def _on_theme_changed(self, *_args: object) -> None:
+        self.update()
+
+    def command(self) -> str:
+        return self.command_label.text()
+
+    def set_command(self, command: str) -> None:
+        self.command_label.setText(command or "")
+        self.copy_button.setVisible(bool(command))
+
+    def _copy(self) -> None:
+        if self.command():
+            QGuiApplication.clipboard().setText(self.command())
+
+    def paintEvent(self, event: object) -> None:  # noqa: N802 - Qt API
+        palette = Theme.palette()
+        painter = QPainter(self)
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+            painter.setBrush(QColor(palette.card_hover))
+            painter.setPen(QColor(palette.border))
+            painter.drawRoundedRect(rect, 7.0, 7.0)
+        finally:
+            painter.end()
+
+    def retranslate_ui(self) -> None:
+        self.copy_button.setText(t("Copy install command"))
+        self.updateGeometry()
+
+
 # ---------------------------------------------------------------------------
 # Dialog
 
@@ -268,6 +354,7 @@ class SettingsView(QDialog):
         self._fallback_loading = False
         self._models_error = ""
         self._fallback_error = ""
+        self._connect_hint_provider: Provider | None = None
 
         self.setWindowTitle(t("Settings"))
         self.setWindowIcon(icons.icon("settings", size=64))
@@ -413,6 +500,12 @@ class SettingsView(QDialog):
         connect_layout.addWidget(self.connect_status, 1)
         self.model_card.add(connect_host)
 
+        self.install_row = _InstallCommandBox(self.model_card)
+        self.install_command_label = self.install_row.command_label
+        self.install_copy_button = self.install_row.copy_button
+        self.install_row.setVisible(False)
+        self.model_card.add(self.install_row)
+
         self.model_card.add(Divider("horizontal", self.model_card))
 
         models_header = QWidget(self.model_card)
@@ -423,6 +516,11 @@ class SettingsView(QDialog):
             t("Models on the server"), "text", 12, 600, models_header
         )
         header_layout.addWidget(self.models_title_label)
+        self.models_refresh = LinkButton(t("Refresh"), models_header)
+        self.models_refresh.setObjectName("refreshModelsButton")
+        self.models_refresh.setToolTip(t("Refresh"))
+        self.models_refresh.clicked.connect(self._refresh_models)
+        header_layout.addWidget(self.models_refresh)
         header_layout.addStretch(1)
         self.models_count_label = _RoleLabel(
             "", "faint", 11, parent=models_header, mono=True
@@ -437,8 +535,8 @@ class SettingsView(QDialog):
 
         self.models_list = QListWidget(self.model_card)
         self.models_list.setObjectName("modelsList")
-        self.models_list.setMinimumHeight(84)
-        self.models_list.setMaximumHeight(88)
+        self.models_list.setMinimumHeight(210)
+        self.models_list.setMaximumHeight(210)
         self.models_list.setFont(Theme.font(11, 400, mono=True))
         self.models_list.setAlternatingRowColors(False)
         self.models_list.setUniformItemSizes(True)
@@ -743,12 +841,14 @@ class SettingsView(QDialog):
 
         self._set_hotkey_edit(self.hotkey_edit, KeyCombo.standard())
         self._validate_hotkey(self.hotkey_edit, self.hotkey_row)
+        self._sync_hotkey_caption(self.hotkey_edit)
 
     def _reset_selection_hotkey(self) -> None:
         from ..core.keycombo import KeyCombo
 
         self._set_hotkey_edit(self.selection_hotkey_edit, KeyCombo.selection())
         self._validate_hotkey(self.selection_hotkey_edit, self.selection_hotkey_row)
+        self._sync_hotkey_caption(self.selection_hotkey_edit)
 
     def _sync_hotkey_status(self) -> None:
         """Show whether the system actually accepted each shortcut."""
@@ -821,7 +921,7 @@ class SettingsView(QDialog):
         body = self.hotkey_card.content_layout
         body.setSpacing(10)
 
-        self.hotkey_edit = QKeySequenceEdit(self.hotkey_card)
+        self.hotkey_edit = _HotkeyEdit(self.hotkey_card)
         self.hotkey_edit.setObjectName("hotkeyEdit")
         self.hotkey_edit.setMinimumHeight(34)
         self.hotkey_edit.setClearButtonEnabled(True)
@@ -834,6 +934,11 @@ class SettingsView(QDialog):
         hotkey_control_layout.setContentsMargins(0, 0, 0, 0)
         hotkey_control_layout.setSpacing(8)
         hotkey_control_layout.addWidget(self.hotkey_edit, 1)
+        self.hotkey_caption = _RoleLabel(
+            "", "muted", 11, 500, parent=hotkey_control, mono=True
+        )
+        self.hotkey_caption.setMinimumWidth(120)
+        hotkey_control_layout.addWidget(self.hotkey_caption, 0)
         hotkey_control_layout.addWidget(self.hotkey_reset, 0)
         self.hotkey_row = FormRow(
             t("Translate clipboard"), hotkey_control, parent=self.hotkey_card
@@ -843,8 +948,14 @@ class SettingsView(QDialog):
         self.hotkey_edit.keySequenceChanged.connect(
             lambda _seq: self._validate_hotkey(self.hotkey_edit, self.hotkey_row)
         )
+        self.hotkey_edit.keySequenceChanged.connect(
+            lambda _seq: self._sync_hotkey_caption(self.hotkey_edit)
+        )
+        self.hotkey_edit.focusChanged.connect(
+            lambda _focused: self._sync_hotkey_caption(self.hotkey_edit)
+        )
 
-        self.selection_hotkey_edit = QKeySequenceEdit(self.hotkey_card)
+        self.selection_hotkey_edit = _HotkeyEdit(self.hotkey_card)
         self.selection_hotkey_edit.setObjectName("selectionHotkeyEdit")
         self.selection_hotkey_edit.setMinimumHeight(34)
         self.selection_hotkey_edit.setClearButtonEnabled(True)
@@ -857,6 +968,11 @@ class SettingsView(QDialog):
         selection_control_layout.setContentsMargins(0, 0, 0, 0)
         selection_control_layout.setSpacing(8)
         selection_control_layout.addWidget(self.selection_hotkey_edit, 1)
+        self.selection_hotkey_caption = _RoleLabel(
+            "", "muted", 11, 500, parent=selection_control, mono=True
+        )
+        self.selection_hotkey_caption.setMinimumWidth(120)
+        selection_control_layout.addWidget(self.selection_hotkey_caption, 0)
         selection_control_layout.addWidget(self.selection_hotkey_reset, 0)
         self.selection_hotkey_row = FormRow(
             t("Selected text"),
@@ -869,6 +985,12 @@ class SettingsView(QDialog):
             lambda _seq: self._validate_hotkey(
                 self.selection_hotkey_edit, self.selection_hotkey_row
             )
+        )
+        self.selection_hotkey_edit.keySequenceChanged.connect(
+            lambda _seq: self._sync_hotkey_caption(self.selection_hotkey_edit)
+        )
+        self.selection_hotkey_edit.focusChanged.connect(
+            lambda _focused: self._sync_hotkey_caption(self.selection_hotkey_edit)
         )
 
         self.hotkey_hint = _RoleLabel(
@@ -884,7 +1006,10 @@ class SettingsView(QDialog):
         self.hotkey_card.add(self.hotkey_hint)
 
         self.hotkey_examples = _RoleLabel(
-            "Examples: Ctrl+Alt+T or Ctrl+Alt+C.", "faint", 11, parent=self.hotkey_card
+            t("Examples: Ctrl+Alt+T or Ctrl+Alt+C."),
+            "faint",
+            11,
+            parent=self.hotkey_card,
         )
         self.hotkey_card.add(self.hotkey_examples)
 
@@ -1124,6 +1249,8 @@ class SettingsView(QDialog):
         self._set_hotkey_edit(self.selection_hotkey_edit, settings.selection_hot_key)
         self._validate_hotkey(self.hotkey_edit, self.hotkey_row)
         self._validate_hotkey(self.selection_hotkey_edit, self.selection_hotkey_row)
+        self._sync_hotkey_caption(self.hotkey_edit)
+        self._sync_hotkey_caption(self.selection_hotkey_edit)
 
         self._models_cache = list(self.controller.provider_models)
         self._fallback_models_cache = list(self.controller.fallback_models)
@@ -1194,6 +1321,7 @@ class SettingsView(QDialog):
     def _restore_initial(self) -> None:
         if not self._initial:
             return
+        self._connect_hint_provider = None
         values = self._initial
         settings = self.controller.settings
         settings.provider = values["provider"]
@@ -1314,6 +1442,7 @@ class SettingsView(QDialog):
         else:
             self.model_edit.clear()
             self.api_key_field.set_value(self._stored_key(provider))
+        self._connect_hint_provider = None
         self._sync_provider_widgets(provider)
         self._models_cache = []
         self._models_error = ""
@@ -1344,6 +1473,25 @@ class SettingsView(QDialog):
     # --------------------------------------------------------------- models
     def _connect_models(self) -> None:
         self._stage_primary_settings()
+        provider = self._current_provider(
+            self.provider_combo, self.controller.settings.provider
+        )
+        if provider.requires_key and not self.api_key_field.value():
+            self._connect_hint_provider = provider
+            self._sync_connect_status()
+            self._update_install_command()
+            return
+        self._connect_hint_provider = None
+        self._models_error = ""
+        self._sync_connect_status()
+        self.controller.connect_and_load_models()
+
+    def _refresh_models(self) -> None:
+        """Re-run the probe with the provider values currently shown."""
+        if self._models_loading:
+            return
+        self._stage_primary_settings()
+        self._connect_hint_provider = None
         self._models_error = ""
         self._sync_connect_status()
         self.controller.connect_and_load_models()
@@ -1386,6 +1534,7 @@ class SettingsView(QDialog):
 
     def _connect_button_state(self) -> None:
         self.connect_button.setEnabled(not self._models_loading)
+        self.models_refresh.setEnabled(not self._models_loading)
 
     def _refresh_model_list(self) -> None:
         needle = (self.model_filter.text() or "").strip().casefold()
@@ -1429,6 +1578,7 @@ class SettingsView(QDialog):
         self.models_error_label.setText(self._models_error)
         self.models_error_label.setVisible(bool(self._models_error))
         self._connect_button_state()
+        self._update_install_command()
 
     def _on_model_clicked(self, item: QListWidgetItem) -> None:
         model = str(item.data(Qt.ItemDataRole.UserRole) or item.text())
@@ -1450,11 +1600,21 @@ class SettingsView(QDialog):
                     self.models_list.setCurrentItem(item)
         finally:
             self.models_list.setUpdatesEnabled(True)
+        self._update_install_command()
+
+    def _connect_hint(self) -> str:
+        provider = self._connect_hint_provider
+        if provider is None:
+            return ""
+        return tf("Enter the API key for %@ in Settings first.", t(provider.title))
 
     def _sync_connect_status(self) -> None:
+        hint = self._connect_hint()
         status = self.controller.backend_status
         message = self.controller.probe_message
-        if self._models_loading:
+        if hint:
+            text, role = hint, "danger"
+        elif self._models_loading:
             text, role = t("Connecting…"), "warning"
         elif status == "connected":
             text, role = (message or t("Connected")), "success"
@@ -1466,6 +1626,35 @@ class SettingsView(QDialog):
             text, role = t("Not checked yet"), "muted"
         self.connect_status.setText(text)
         self.connect_status.set_role(role)
+
+    def _probe_reported_missing_model(self) -> bool:
+        """True when the last probe failed because the chosen model is absent."""
+        model = self.model_edit.text().strip()
+        if not model:
+            return False
+        message = (self._models_error or self.controller.models_error or "").strip()
+        if not message:
+            return False
+        lowered = message.casefold()
+        if "missing" in lowered or "not found" in lowered:
+            return True
+        if message == tf("Model “%@” not found", model):
+            return True
+        template = t("Server responds, but model “%@” is missing. Available: %@.")
+        before, placeholder, remainder = template.partition("%@")
+        after_model, second, _tail = remainder.partition("%@")
+        if placeholder and second and after_model:
+            if message.startswith(before) and after_model in message[len(before):]:
+                return True
+        listed = {item.casefold() for item in self._models_cache}
+        return bool(listed) and model.casefold() not in listed
+
+    def _update_install_command(self) -> None:
+        command = ""
+        if not self._models_loading and self._probe_reported_missing_model():
+            command = self.controller.settings.install_command() or ""
+        self.install_row.set_command(command)
+        self.install_row.setVisible(bool(command))
 
     # ------------------------------------------------------------- fallback
     def _sync_fallback_body(self) -> None:
@@ -1575,6 +1764,19 @@ class SettingsView(QDialog):
         valid = combo is not None and combo.is_valid
         row.set_hint("" if valid else t(_INVALID_HOTKEY_HINT))
         return valid
+
+    def _sync_hotkey_caption(self, edit: QKeySequenceEdit) -> None:
+        """Show the recording prompt while focused, the captured combo after."""
+        caption = (
+            self.hotkey_caption
+            if edit is self.hotkey_edit
+            else self.selection_hotkey_caption
+        )
+        if edit.hasFocus():
+            caption.setText(t("Press a combination…"))
+            return
+        combo = self._combo_from_edit(edit)
+        caption.setText(combo.display if combo is not None else "")
 
     # --------------------------------------------------------------- catalog
     def _open_catalog(self) -> None:
@@ -1711,6 +1913,9 @@ class SettingsView(QDialog):
         self.catalog_button.setText(t("Model catalog…"))
         self.connect_button.setText(t("Connect"))
         self.models_title_label.setText(t("Models on the server"))
+        self.models_refresh.setText(t("Refresh"))
+        self.models_refresh.setToolTip(t("Refresh"))
+        self.install_row.retranslate_ui()
         self.model_filter.set_placeholder(t("Filter by name"))
 
         with QSignalBlocker(self.provider_combo):
@@ -1810,9 +2015,11 @@ class SettingsView(QDialog):
                 "it and translates."
             )
         )
-        self.hotkey_examples.setText("Examples: Ctrl+Alt+T or Ctrl+Alt+C.")
+        self.hotkey_examples.setText(t("Examples: Ctrl+Alt+T or Ctrl+Alt+C."))
         self._validate_hotkey(self.hotkey_edit, self.hotkey_row)
         self._validate_hotkey(self.selection_hotkey_edit, self.selection_hotkey_row)
+        self._sync_hotkey_caption(self.hotkey_edit)
+        self._sync_hotkey_caption(self.selection_hotkey_edit)
 
         # --- about tab
         self.about_card.set_title(t("About"))

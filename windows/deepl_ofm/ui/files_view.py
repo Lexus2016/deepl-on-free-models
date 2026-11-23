@@ -76,7 +76,7 @@ _KIND_LABELS = {
     "pdf": "PDF",
     "docx": "DOCX",
 }
-_RUNNING_STATES = frozenset({"reading", "translating"})
+_RUNNING_STATES = frozenset({"reading", "translating", "writing"})
 
 
 def _role_colour(role: str) -> str:
@@ -276,6 +276,7 @@ class FilesView(QWidget):
         self.controller = controller
         self._job: dict[str, Any] = dict(controller.file_job or {})
         self._syncing_language = False
+        self._target_code = getattr(controller.target_language, "code", "")
         self.setAcceptDrops(True)
         self.setAutoFillBackground(True)
         self._build_ui()
@@ -359,6 +360,10 @@ class FilesView(QWidget):
         self.translate_label = _Label(t("Translate to"), "muted", 13, 500, controls)
         self.language_combo = LanguageCombo(False, controls)
         self.language_combo.setMinimumWidth(210)
+        self.clear_button = LinkButton(t("Clear"), controls)
+        self.clear_button.clicked.connect(self._clear)
+        row.addWidget(self.clear_button, 0, Qt.AlignmentFlag.AlignVCenter)
+
         self.translate_button = PrimaryButton(
             t("Translate"), controls, icon_name="translate"
         )
@@ -446,6 +451,11 @@ class FilesView(QWidget):
         text_column.addWidget(self.output_name_label)
         top.addLayout(text_column, 1)
         card.content_layout.addLayout(top)
+
+        self.save_error_label = _Label("", "danger", 11, 400, card)
+        self.save_error_label.setWordWrap(True)
+        self.save_error_label.hide()
+        card.content_layout.addWidget(self.save_error_label)
 
         self.fallback_label = Pill("", "warning", card)
         self.fallback_label.hide()
@@ -538,18 +548,20 @@ class FilesView(QWidget):
         self._sync_languages()
 
     def _sync_languages(self) -> None:
-        code = getattr(self.controller.target_language, "code", "")
+        """Seed the picker from the app-wide target once; later choices stay local."""
+        code = self._target_code or getattr(self.controller.target_language, "code", "")
         if code and self.language_combo.code() != code:
             self._syncing_language = True
             try:
                 self.language_combo.set_code(code)
+                self._target_code = code
             finally:
                 self._syncing_language = False
 
     def _on_language_selected(self, code: str) -> None:
         if self._syncing_language or not code or code == "auto":
             return
-        self.controller.set_target_language(code)
+        self._target_code = code
 
     def _sync_state(self) -> None:
         job = self._job
@@ -608,7 +620,9 @@ class FilesView(QWidget):
 
         self.percent_label.setText(f"{percent}%")
         self.progress_status.setText(
-            t("Preparing file…") if state == "reading" else t("Translating…")
+            t("Preparing file…")
+            if state in ("reading", "writing")
+            else t("Translating…")
         )
         if total > 0:
             self.progress_bar.indeterminate(False)
@@ -652,6 +666,10 @@ class FilesView(QWidget):
             self.fallback_label.clear()
             self.fallback_label.setVisible(False)
 
+        save_error = str(job.get("save_error") or "")
+        self.save_error_label.setText(save_error)
+        self.save_error_label.setVisible(bool(save_error))
+
         # The copy is only meaningful when the controller produced a file.
         self.save_button.setEnabled(bool(output))
         self.show_folder_button.setEnabled(bool(output or job.get("path")))
@@ -670,6 +688,11 @@ class FilesView(QWidget):
         if path:
             self._begin_translation(Path(path))
 
+    def _clear(self) -> None:
+        if self._is_running():
+            self.controller.cancel_file_translation()
+        self.controller.clear_file_job()
+
     def _translate_again(self) -> None:
         path = str(self._job.get("path") or "")
         if path and not self._is_running():
@@ -684,12 +707,15 @@ class FilesView(QWidget):
             self._begin_translation(Path(path))
 
     def _begin_translation(self, path: Path) -> None:
-        if self._is_running():
-            return
         if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            log.debug("ignoring unsupported file type: %s", path.suffix)
+            self.controller.report_error(t("This file type is not supported."))
             return
-        self.controller.start_file_translation(Path(path))
+        if self._is_running():
+            # macOS replaces the document and cancels the previous task.
+            self.controller.cancel_file_translation()
+        self.controller.start_file_translation(
+            Path(path), self._target_code or None
+        )
 
     def _is_running(self) -> bool:
         return str(self._job.get("state") or "") in _RUNNING_STATES
@@ -753,7 +779,7 @@ class FilesView(QWidget):
         return None
 
     def _drop_candidate(self, event: Any) -> Path | None:
-        if self._is_running() or not event.mimeData().hasUrls():
+        if not event.mimeData().hasUrls():
             return None
         for url in event.mimeData().urls():
             path = self._drop_path(url)
@@ -781,7 +807,7 @@ class FilesView(QWidget):
 
     def dropEvent(self, event: QDropEvent) -> None:
         self.drop_zone.set_drag_active(False)
-        if self._is_running() or not event.mimeData().hasUrls():
+        if not event.mimeData().hasUrls():
             event.ignore()
             return
         for url in event.mimeData().urls():

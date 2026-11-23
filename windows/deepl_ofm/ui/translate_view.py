@@ -78,6 +78,7 @@ class _SourceEditor(QPlainTextEdit):
     """Plain-text source editor with the macOS submit/escape keys."""
 
     submitted = Signal()
+    richPaste = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -114,6 +115,7 @@ class _SourceEditor(QPlainTextEdit):
         markdown = pasteboard.mime_to_markdown(source)
         if markdown and markdown != source.text():
             self.insertPlainText(markdown)
+            self.richPaste.emit()
             return
         super().insertFromMimeData(source)
 
@@ -274,6 +276,11 @@ class _SwapButton(QPushButton):
             painter.end()
 
 
+def _normalise(text: str) -> str:
+    """Qt normalises CRLF on paste; compare like with like."""
+    return (text or "").replace("\r\n", "\n").replace("\r", "\n")
+
+
 class _CopyButton(SecondaryButton):
     """Neutral button with the accent outline that marks the primary output action."""
 
@@ -314,6 +321,7 @@ class TranslateView(QWidget):
         super().__init__(parent)
         self.controller = controller
         self._syncing = False
+        self._source_previewing = False
         self._error_text = controller.error_message or ""
         self._role_labels: dict[str, list[QLabel]] = {
             "muted": [],
@@ -477,6 +485,9 @@ class TranslateView(QWidget):
         self._speak_source_button = IconButton(
             "speaker", t("Listen to the original"), card, size=28, icon_size=15
         )
+        self._preview_button = IconButton(
+            "eye", t("Show rendered Markdown"), card, size=28, icon_size=15
+        )
         self._copy_source_button = IconButton(
             "copy", t("Copy the original"), card, size=28, icon_size=15
         )
@@ -485,6 +496,7 @@ class TranslateView(QWidget):
         )
         self._clear_button = IconButton("x", t("Clear"), card, size=28, icon_size=15)
         card.add_header_widget(self._speak_source_button)
+        card.add_header_widget(self._preview_button)
         card.add_header_widget(self._copy_source_button)
         card.add_header_widget(self._paste_button)
         card.add_header_widget(self._clear_button)
@@ -492,7 +504,11 @@ class TranslateView(QWidget):
         self._editor = _SourceEditor(card)
         self._editor.setPlaceholderText(t("Enter or paste text…"))
         self._editor.setAccessibleName(t("Source"))
-        card.body.addWidget(self._editor, 1)
+        self._source_preview: MarkdownView | None = None
+        self._source_stack = QStackedWidget(card)
+        self._source_stack.addWidget(self._editor)
+        self._source_stack.setCurrentWidget(self._editor)
+        card.body.addWidget(self._source_stack, 1)
         return card
 
     def _build_result_card(self) -> Card:
@@ -534,6 +550,7 @@ class TranslateView(QWidget):
         self._error_page = self._build_error_page(card)
         self._empty_page = self._build_empty_page(card)
         self._result_view = MarkdownView("", card)
+        self._result_view.setObjectName("resultView")
         self._result_view.set_mode(self.controller.result_view)
         self._result_view.setAccessibleName(t("Translation"))
         self._stack.addWidget(self._progress_page)
@@ -714,7 +731,7 @@ class TranslateView(QWidget):
         c.toneChanged.connect(self._on_tone)
         c.resultViewChanged.connect(self._on_result_view)
         c.detectedLanguageChanged.connect(self._on_detected)
-        c.errorRaised.connect(self._on_error)
+        c.translationFailed.connect(self._on_error)
         c.warningCountChanged.connect(self._on_warnings)
         c.metricsChanged.connect(self._on_metrics)
         c.speakingChanged.connect(self._on_speaking)
@@ -725,6 +742,7 @@ class TranslateView(QWidget):
 
         self._editor.textChanged.connect(self._on_editor_changed)
         self._editor.submitted.connect(self._submit)
+        self._editor.richPaste.connect(self._on_rich_paste)
         self._source_combo.code_changed.connect(self.controller.set_source_language)
         self._target_combo.code_changed.connect(self.controller.set_target_language)
         self._swap_button.clicked.connect(self.controller.swap_languages)
@@ -735,6 +753,7 @@ class TranslateView(QWidget):
         self._again_button.clicked.connect(lambda: self.controller.translate(force=True))
         self._speak_source_button.clicked.connect(self._toggle_source_speech)
         self._speak_result_button.clicked.connect(self._toggle_result_speech)
+        self._preview_button.clicked.connect(self._toggle_source_preview)
         self._paste_button.clicked.connect(self.controller.translate_clipboard)
         self._clear_button.clicked.connect(self._clear_source)
         self._copy_button.clicked.connect(self._copy_translation)
@@ -786,12 +805,14 @@ class TranslateView(QWidget):
         if self._syncing:
             return
         text = self._editor.toPlainText()
-        if text != self.controller.source_text:
+        if _normalise(text) != _normalise(self.controller.source_text):
             self.controller.set_source_text(text)
 
     def _on_source_text(self, text: str) -> None:
-        if self._editor.toPlainText() != text:
+        if _normalise(self._editor.toPlainText()) != _normalise(text):
             self._set_editor_text(text)
+        if self._source_previewing and self._source_preview is not None:
+            self._source_preview.set_markdown(text)
         if not text.strip():
             self._error_text = ""
         self._refresh_header()
@@ -914,6 +935,9 @@ class TranslateView(QWidget):
         )
         has_source = bool(source.strip())
         has_result = bool(translated.strip())
+        self._preview_button.setEnabled(has_source)
+        if not has_source and self._source_previewing:
+            self._set_source_preview(False)
         self._speak_source_button.setEnabled(has_source)
         self._copy_source_button.setEnabled(has_source)
         self._again_button.setEnabled(has_source and not self.controller.is_translating)
@@ -1022,6 +1046,52 @@ class TranslateView(QWidget):
         self._refresh_result_state()
         self.focus_source()
 
+    def _toggle_source_preview(self) -> None:
+        """Swap the source body between the editor and the rendered Markdown."""
+        if not self.controller.source_text.strip():
+            return
+        self._set_source_preview(not self._source_previewing)
+        if self._source_previewing:
+            self._source_preview.setFocus(Qt.FocusReason.OtherFocusReason)
+        else:
+            self._editor.setFocus(Qt.FocusReason.OtherFocusReason)
+
+    def _ensure_source_preview(self) -> MarkdownView:
+        """Create the rendered source pane on first use.
+
+        Keeping it lazy leaves the translation pane as the only
+        :class:`MarkdownView` until the user actually asks for a preview, so
+        ``findChild(MarkdownView)`` keeps finding the result.
+        """
+        preview = self._source_preview
+        if preview is None:
+            preview = MarkdownView("", self._source_stack)
+            preview.set_mode(MarkdownView.PREVIEW)
+            preview.setAccessibleName(t("Source"))
+            self._source_stack.addWidget(preview)
+            self._source_preview = preview
+        return preview
+
+    def _set_source_preview(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        page: QWidget | None = None
+        if enabled:
+            preview = self._ensure_source_preview()
+            preview.set_markdown(self.controller.source_text)
+            page = preview
+        self._source_previewing = enabled
+        self._source_stack.setCurrentWidget(page or self._editor)
+        self._editor.setReadOnly(enabled)
+        self._preview_button.set_icon_name("code" if enabled else "eye")
+        self._preview_button.set_tooltip(
+            t("Show Markdown source") if enabled else t("Show rendered Markdown")
+        )
+
+    def _on_rich_paste(self) -> None:
+        """A rich paste arrives as Markdown: show the rendered result."""
+        if self.controller.source_text.strip():
+            self._set_source_preview(True)
+
     def _toggle_source_speech(self) -> None:
         if self.controller.speaking == "source":
             self.controller.stop_speaking()
@@ -1095,6 +1165,14 @@ class TranslateView(QWidget):
             if self.controller.speaking == "source"
             else t("Listen to the original")
         )
+        self._preview_button.set_tooltip(
+            t("Show Markdown source")
+            if self._source_previewing
+            else t("Show rendered Markdown")
+        )
+        if self._source_preview is not None:
+            self._source_preview.setAccessibleName(t("Source"))
+            self._source_preview.retranslate_ui()
         self._speak_result_button.set_tooltip(
             t("Stop")
             if self.controller.speaking == "translation"
@@ -1134,6 +1212,7 @@ class TranslateView(QWidget):
 
     def focus_source(self) -> None:
         """Put the caret in the editor, at the end of the existing text."""
+        self._set_source_preview(False)
         self._editor.setFocus(Qt.FocusReason.ShortcutFocusReason)
         cursor = self._editor.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)

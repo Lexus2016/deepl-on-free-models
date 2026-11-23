@@ -249,3 +249,47 @@ def test_date_and_duration_formatting() -> None:
     assert format_duration(840) == "840 ms"
     assert format_duration(1240) == "1.2 s"
     assert format_duration(0) == ""
+
+
+def test_count_badge_shows_visible_over_total_while_searching(
+    qapp, controller: AppController
+) -> None:
+    _seed(controller)
+    view = HistoryView(controller)
+    view.show()
+    qapp.processEvents()
+
+    assert view.count_label.text() == "3"
+
+    view.search.setText("goodbye")
+    qapp.processEvents()
+    assert view.count_label.text() == "1/3"
+
+    view.search.setText("en")
+    qapp.processEvents()
+    assert view.count_label.text() == "3/3"
+
+    view.search.clear()
+    qapp.processEvents()
+    assert view.count_label.text() == "3"
+
+
+def test_restore_keeps_the_entry_duration_on_the_controller(
+    qapp, controller: AppController
+) -> None:
+    _seed(controller)
+    entry = next(item for item in controller.history.entries if item.duration_ms == 1240)
+    view = HistoryView(controller)
+    view.show()
+    qapp.processEvents()
+
+    row = next(item for item in view.rows if item.entry.id == entry.id)
+    row.restore_button.click()
+    qapp.processEvents()
+
+    assert controller.source_text == entry.source_text
+    assert controller.last_duration_ms == 1240
+
+    view.refresh()
+    qapp.processEvents()
+    assert controller.last_duration_ms == 1240

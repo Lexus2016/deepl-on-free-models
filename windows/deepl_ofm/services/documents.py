@@ -584,17 +584,24 @@ def _translate_paragraphs(
     on_progress: _Progress | None,
     cancel: threading.Event | None,
 ) -> list[str]:
-    """Translate every paragraph, leaving whitespace-only ones untouched."""
-    total = len(paragraphs)
+    """Translate every paragraph, leaving whitespace-only ones untouched.
+
+    Progress counts only the paragraphs that are actually sent to the model, so
+    "X of Y" matches what the user sees in the macOS app (blank paragraphs are
+    not translation units).
+    """
+    total = sum(1 for paragraph in paragraphs if paragraph.strip())
     translated: list[str] = []
-    for index, paragraph in enumerate(paragraphs):
+    completed = 0
+    for paragraph in paragraphs:
         _check_cancel(cancel)
         if paragraph.strip():
             translated.append(translate(paragraph))
+            completed += 1
+            if on_progress is not None:
+                on_progress(completed, total)
         else:
             translated.append(paragraph)
-        if on_progress is not None:
-            on_progress(index + 1, total)
     return translated
 
 

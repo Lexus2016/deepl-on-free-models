@@ -253,9 +253,10 @@ def test_docx_roundtrip_keeps_package_and_formatting(tmp_path: Path) -> None:
         translate,
         on_progress=lambda done, total: progress.append((done, total)),
     )
-    # Whitespace-only paragraphs are left alone, but progress counts them.
+    # Whitespace-only paragraphs are left alone and are not translation units,
+    # so progress only counts the two paragraphs that reach the model.
     assert calls == ["Hello world", "Second paragraph"]
-    assert progress == [(1, 3), (2, 3), (3, 3)]
+    assert progress == [(1, 2), (2, 2)]
 
     assert DocumentTranslator.read(output).paragraphs == [
         "HELLO WORLD",

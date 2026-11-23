@@ -9,14 +9,25 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from PySide6.QtCore import QSize, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QKeySequence
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, QUrl
+from PySide6.QtGui import (
+    QAction,
+    QActionGroup,
+    QColor,
+    QDesktopServices,
+    QFontMetrics,
+    QKeySequence,
+    QPainter,
+    QPen,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMenu,
     QPushButton,
+    QSizePolicy,
     QStackedWidget,
     QToolButton,
     QVBoxLayout,
@@ -24,13 +35,135 @@ from PySide6.QtWidgets import (
 )
 
 from .. import APP_NAME, __version__
-from ..i18n import t
+from ..i18n import t, tf
 from . import icons
 from .theme import Theme
 
 log = logging.getLogger(__name__)
 
 GITHUB_URL = "https://github.com/Lexus2016/deepl-on-free-models"
+
+
+def _status_colour(status: str) -> str:
+    """Palette colour for a backend status, shared by the bar and the capsule."""
+    palette = Theme.palette()
+    return {
+        "connected": palette.success,
+        "failed": palette.danger,
+        "checking": palette.warning,
+        "warming": palette.warning,
+        "unknown": palette.faint,
+    }.get(status, palette.faint)
+
+
+class _ConnectionCapsule(QPushButton):
+    """Clickable header capsule: status dot, provider and model.
+
+    Mirrors the connection button in ``RootView.swift`` but paints itself like
+    the shared :class:`~deepl_ofm.ui.components.Pill` so the header keeps one
+    visual language.
+    """
+
+    _HEIGHT = 28
+    _PADDING = 10
+    _DOT = 7
+    _GAP = 7
+    _MIN_WIDTH = 96
+    _MAX_WIDTH = 260
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._status = "unknown"
+        self._provider = ""
+        self._model = ""
+        self.setObjectName("connectionCapsule")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFlat(True)
+        self.setFixedHeight(self._HEIGHT)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self._capsule_font = Theme.font(11, 600)
+        self.setFont(self._capsule_font)
+        self.setStyleSheet(
+            "QPushButton { background: transparent; border: none; padding: 0px; "
+            "font-size: 11px; font-weight: 600; }"
+        )
+        Theme.changed.connect(self._on_theme_changed)
+
+    def set_state(self, status: str, provider: str, model: str) -> None:
+        self._status = str(status or "unknown")
+        self._provider = str(provider or "")
+        self._model = str(model or "")
+        self.setText(
+            f"{self._provider} · {self._model}" if self._provider else self._model
+        )
+        self.setAccessibleName(t("Connection status"))
+        self.setAccessibleDescription(self.text())
+        self.setToolTip(t("Connection status"))
+        self.updateGeometry()
+        self.update()
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt API
+        width = self._PADDING * 2 + self._DOT + self._GAP
+        width += QFontMetrics(self._capsule_font).horizontalAdvance(self.text()) + 2
+        width = max(self._MIN_WIDTH, min(width, self._MAX_WIDTH))
+        return QSize(width, self._HEIGHT)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt API
+        return QSize(self._MIN_WIDTH, self._HEIGHT)
+
+    def _on_theme_changed(self, *_args: object) -> None:
+        self.update()
+
+    def paintEvent(self, event: object) -> None:  # noqa: N802 - Qt API
+        palette = Theme.palette()
+        painter = QPainter(self)
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+            radius = rect.height() / 2.0
+            hovered = self.underMouse()
+            active = hovered or self.isDown()
+            background = palette.selection if active else palette.card_hover
+            painter.setBrush(QColor(background))
+            painter.setPen(QPen(QColor(palette.border), 1.0))
+            painter.drawRoundedRect(rect, radius, radius)
+            if self.hasFocus():
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.setPen(QPen(QColor(palette.accent), 1.2))
+                painter.drawRoundedRect(
+                    rect.adjusted(1.4, 1.4, -1.4, -1.4),
+                    radius - 1.4,
+                    radius - 1.4,
+                )
+
+            centre = QPointF(
+                rect.left() + self._PADDING + self._DOT / 2.0,
+                rect.center().y(),
+            )
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(_status_colour(self._status)))
+            painter.drawEllipse(centre, self._DOT / 2.0, self._DOT / 2.0)
+
+            text_left = rect.left() + self._PADDING + self._DOT + self._GAP
+            text_rect = QRectF(
+                text_left,
+                rect.top(),
+                max(0.0, rect.right() - self._PADDING - text_left),
+                rect.height(),
+            )
+            painter.setPen(QColor(palette.text if hovered else palette.muted))
+            painter.setFont(self._capsule_font)
+            text = painter.fontMetrics().elidedText(
+                self.text(), Qt.TextElideMode.ElideRight, int(text_rect.width())
+            )
+            painter.drawText(
+                text_rect,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                text,
+            )
+        finally:
+            painter.end()
 
 
 class _TabButton(QToolButton):
@@ -48,7 +181,7 @@ class _TabButton(QToolButton):
         self.setObjectName("tabButton")
         self.setMinimumHeight(34)
         self.set_label(label)
-        Theme.changed.connect(lambda *_: self._apply_style())
+        Theme.changed.connect(self._on_theme_changed)
 
     def set_label(self, label: str) -> None:
         self.setText(label)
@@ -57,6 +190,9 @@ class _TabButton(QToolButton):
     def set_active(self, active: bool) -> None:
         self._active = active
         self.setChecked(active)
+        self._apply_style()
+
+    def _on_theme_changed(self, *_args: object) -> None:
         self._apply_style()
 
     def _apply_style(self) -> None:
@@ -134,14 +270,14 @@ class MainWindow(QMainWindow):
         try:
             from importlib import import_module
 
-            module = import_module(f"deepl_ofm.ui.{key}_view")
+            module = import_module(f".{key}_view", package=__package__)
             view_class = getattr(module, class_name)
             return view_class(self.controller)
         except Exception:  # noqa: BLE001 - a broken tab must not kill the window
             log.exception("could not create %s", class_name)
             placeholder = QWidget()
             layout = QVBoxLayout(placeholder)
-            message = QLabel(t("%s is unavailable.") % key.capitalize())
+            message = QLabel(tf("%s is unavailable.", key.capitalize()))
             message.setAlignment(Qt.AlignCenter)
             layout.addWidget(message)
             return placeholder
@@ -183,6 +319,10 @@ class MainWindow(QMainWindow):
 
         layout.addStretch(1)
 
+        self.connection_capsule = _ConnectionCapsule(header)
+        self.connection_capsule.clicked.connect(lambda: self.open_settings())
+        layout.addWidget(self.connection_capsule)
+
         self.settings_button = QToolButton()
         self.settings_button.setObjectName("iconButton")
         self.settings_button.setToolTip(t("Settings"))
@@ -190,6 +330,18 @@ class MainWindow(QMainWindow):
         self.settings_button.setAutoRaise(True)
         self.settings_button.clicked.connect(self.open_settings)
         layout.addWidget(self.settings_button)
+
+        self.more_button = QToolButton()
+        self.more_button.setObjectName("iconButton")
+        self.more_button.setCursor(Qt.PointingHandCursor)
+        self.more_button.setAutoRaise(True)
+        self.more_button.setFixedSize(30, 30)
+        self.more_button.setIconSize(QSize(18, 18))
+        self.more_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.more_menu = QMenu(self.more_button)
+        self.more_button.setMenu(self.more_menu)
+        layout.addWidget(self.more_button)
+        self._rebuild_more_menu()
         return header
 
     def _build_status_bar(self) -> QWidget:
@@ -334,19 +486,63 @@ class MainWindow(QMainWindow):
         self.action_site.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_URL)))
         self.help_menu.addAction(self.action_site)
 
+    def _rebuild_more_menu(self) -> None:
+        """Rebuild the header's More-actions menu (also after retranslation)."""
+        menu = self.more_menu
+        menu.clear()
+        hot = getattr(self.controller.settings.hot_key, "display", "") or ""
+        selection = getattr(self.controller.settings.selection_hot_key, "display", "") or ""
+        clipboard = t("Translate clipboard")
+        selection_label = t("Translate selection")
+        if hot:
+            clipboard = f"{clipboard} ({hot})"
+        if selection:
+            selection_label = f"{selection_label} ({selection})"
+
+        self.action_more_clipboard = QAction(clipboard, menu)
+        self.action_more_clipboard.triggered.connect(
+            lambda: self.controller.translate_clipboard()
+        )
+        menu.addAction(self.action_more_clipboard)
+
+        self.action_more_selection = QAction(selection_label, menu)
+        self.action_more_selection.triggered.connect(
+            lambda: self.controller.translate_selection()
+        )
+        menu.addAction(self.action_more_selection)
+        menu.addSeparator()
+
+        self.action_more_check = QAction(t("Check connection"), menu)
+        self.action_more_check.triggered.connect(
+            lambda: self.controller.check_connection()
+        )
+        menu.addAction(self.action_more_check)
+        menu.addSeparator()
+
+        self.action_more_history = QAction(t("History"), menu)
+        self.action_more_history.triggered.connect(lambda: self.select_tab("history"))
+        menu.addAction(self.action_more_history)
+
+        self.action_more_settings = QAction(t("Settings"), menu)
+        self.action_more_settings.triggered.connect(lambda: self.open_settings())
+        menu.addAction(self.action_more_settings)
+
     # -------------------------------------------------------------- signals
     def _connect(self) -> None:
         c = self.controller
         c.tabChanged.connect(self._sync_tab)
         c.backendStatusChanged.connect(self._sync_status)
+        c.backendStatusChanged.connect(self._sync_connection_capsule)
         c.probeMessageChanged.connect(self._sync_status)
         c.errorRaised.connect(self._show_error)
         c.copyFeedback.connect(self._show_feedback)
         c.interfaceLanguageChanged.connect(self._on_language_changed)
+        c.interfaceLanguageChanged.connect(self._sync_connection_capsule)
         c.metricsChanged.connect(self._sync_metrics)
         c.resultViewChanged.connect(self._sync_view_mode)
         c.speakingChanged.connect(self._sync_speaking)
         c.settingsChanged.connect(self._sync_settings_actions)
+        c.settingsChanged.connect(self._sync_connection_capsule)
         c.fileJobChanged.connect(self._sync_save_action)
         c.settingsChanged.connect(self._sync_history_tab)
 
@@ -456,14 +652,7 @@ class MainWindow(QMainWindow):
 
     def _sync_status(self, _value: str = "") -> None:
         status = self.controller.backend_status
-        colors = {
-            "connected": Theme.palette().success,
-            "failed": Theme.palette().danger,
-            "checking": Theme.palette().warning,
-            "warming": Theme.palette().warning,
-            "unknown": Theme.palette().faint,
-        }
-        self.status_dot.setStyleSheet(f"color: {colors.get(status, Theme.palette().faint)};")
+        self.status_dot.setStyleSheet(f"color: {_status_colour(status)};")
         label = {
             "connected": t("Connected"),
             "failed": self.controller.probe_message or t("Server unavailable"),
@@ -474,6 +663,15 @@ class MainWindow(QMainWindow):
         settings = self.controller.settings
         model = settings.snapshot().model or t("No model")
         self.status_label.setText(f"{label}  ·  {settings.provider.title}  ·  {model}")
+
+    def _sync_connection_capsule(self, _value: object = None) -> None:
+        settings = self.controller.settings
+        model = settings.snapshot().model.strip() or t("No model")
+        self.connection_capsule.set_state(
+            self.controller.backend_status,
+            settings.provider.title,
+            model,
+        )
 
     def _sync_metrics(self) -> None:
         parts = []
@@ -499,16 +697,19 @@ class MainWindow(QMainWindow):
         self._sync_status()
 
     def _show_error(self, message: str) -> None:
+        if not message:
+            self.error_label.hide()
+            return
         self.error_label.setText(message)
         self.error_label.setStyleSheet(f"color: {Theme.palette().danger};")
         self.error_label.show()
-        QTimer.singleShot(6000, self.error_label.hide)
+        QTimer.singleShot(6000, self.error_label, self.error_label.hide)
 
     def _show_feedback(self, message: str) -> None:
         if self.tray is not None:
             self.tray.notify(APP_NAME, message)
         self.status_label.setText(message)
-        QTimer.singleShot(2500, self._sync_status)
+        QTimer.singleShot(2500, self, self._sync_status)
 
     def _show_about(self) -> None:
         from PySide6.QtWidgets import QMessageBox
@@ -546,6 +747,11 @@ class MainWindow(QMainWindow):
             button.set_label(labels[key])
         self.settings_button.setIcon(icons.icon("settings", Theme.palette().muted, 18))
         self.settings_button.setToolTip(t("Settings"))
+        self.more_button.setIcon(
+            icons.icon("more-horizontal", Theme.palette().muted, 18)
+        )
+        self.more_button.setToolTip(t("More actions"))
+        self.more_button.setAccessibleName(t("More actions"))
 
         self.title.setText(APP_NAME)
         self.file_menu.setTitle(t("File"))
@@ -583,20 +789,22 @@ class MainWindow(QMainWindow):
         self.view_actions["text"].setText(t("Plain text"))
         self.view_actions["markdown"].setText(t("Markdown"))
         self._build_language_menu()
+        self._rebuild_more_menu()
         for page in self.pages.values():
             if hasattr(page, "retranslate_ui"):
                 page.retranslate_ui()
         self._sync_status()
+        self._sync_connection_capsule()
 
     def _build_language_menu(self) -> None:
         from ..core.languages import AppLanguage
 
         self.language_menu.clear()
-        group = QActionGroup(self)
+        group = QActionGroup(self.language_menu)
         group.setExclusive(True)
         current = self.controller.settings.interface_language
         for language in AppLanguage:
-            action = QAction(language.picker_title, self, checkable=True)
+            action = QAction(language.picker_title, self.language_menu, checkable=True)
             action.setChecked(language == current)
             action.triggered.connect(
                 lambda _checked=False, value=language: self._set_language(value)

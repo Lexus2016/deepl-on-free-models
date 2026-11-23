@@ -9,13 +9,23 @@ exposes everything the views need through signals.
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import tempfile
 import threading
 from pathlib import Path
 from typing import Any, Callable
 
-from PySide6.QtCore import QMimeData, QObject, QRunnable, QThreadPool, QTimer, Signal
+from PySide6.QtCore import (
+    QMimeData,
+    QObject,
+    QRunnable,
+    QThreadPool,
+    QTimer,
+    Qt,
+    Signal,
+    Slot,
+)
 from PySide6.QtGui import QGuiApplication
 
 from .core.languages import (
@@ -44,12 +54,64 @@ RESULT_VIEWS = ("preview", "text", "markdown")
 
 
 class _JobSignals(QObject):
-    """Signals for one background job (created in the GUI thread, emitted from a worker)."""
+    """Signals for one background job (created in the GUI thread, emitted from a worker).
+
+    Delivery is forced through ``Qt.QueuedConnection``: PySide only marshals a
+    signal into the receiver's thread when the receiver is a QObject, and plain
+    Python callbacks would otherwise run inside the worker thread — mutating
+    controller state and emitting view signals from there.  Every signal is
+    therefore connected to a slot on this GUI-thread object, which then calls
+    the per-job callback.
+    """
 
     progress = Signal(int, int)
     partial = Signal(str)
+    state = Signal(str)
     finished = Signal(object)
     failed = Signal(object)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.on_progress: Callable[[int, int], None] | None = None
+        self.on_partial: Callable[[str], None] | None = None
+        self.on_state: Callable[[str], None] | None = None
+        self.on_finished: Callable[[Any], None] | None = None
+        self.on_failed: Callable[[BaseException], None] | None = None
+        queued = Qt.ConnectionType.QueuedConnection
+        self.progress.connect(self._deliver_progress, queued)
+        self.partial.connect(self._deliver_partial, queued)
+        self.state.connect(self._deliver_state, queued)
+        self.finished.connect(self._deliver_finished, queued)
+        self.failed.connect(self._deliver_failed, queued)
+
+    # -- GUI-thread delivery ------------------------------------------------
+    def _call(self, callback, *args) -> None:
+        if callback is None:
+            return
+        try:
+            callback(*args)
+        except Exception:  # noqa: BLE001 - a broken callback must not kill the app
+            log.exception("job callback failed")
+
+    @Slot(int, int)
+    def _deliver_progress(self, completed: int, total: int) -> None:
+        self._call(self.on_progress, completed, total)
+
+    @Slot(str)
+    def _deliver_partial(self, text: str) -> None:
+        self._call(self.on_partial, text)
+
+    @Slot(str)
+    def _deliver_state(self, state: str) -> None:
+        self._call(self.on_state, state)
+
+    @Slot(object)
+    def _deliver_finished(self, result: object) -> None:
+        self._call(self.on_finished, result)
+
+    @Slot(object)
+    def _deliver_failed(self, error: object) -> None:
+        self._call(self.on_failed, error)
 
 
 class _Job(QRunnable):
@@ -80,6 +142,7 @@ class AppController(QObject):
     translatingChanged = Signal(bool)
     warningCountChanged = Signal(int)
     errorRaised = Signal(str)
+    translationFailed = Signal(str)
     detectedLanguageChanged = Signal(str)
     languagesChanged = Signal(str, str)
     styleChanged = Signal(str)
@@ -172,6 +235,9 @@ class AppController(QObject):
         self.write_detected_code: str = ""
 
         # --- internals -------------------------------------------------------
+        self._jobs: set[_JobSignals] = set()
+        self._file_generation = 0
+        self._write_generation = 0
         self._generation = 0
         self._cancel = threading.Event()
         self._file_cancel = threading.Event()
@@ -358,9 +424,12 @@ class AppController(QObject):
             self.cancel()
         self._auto_timer.stop()
         self.set_source_text("")
+        self.sourceTextChanged.emit("")
         self.translated_text = ""
         self.translatedTextChanged.emit("")
-        self.error_message = None
+        if self.error_message is not None:
+            self.error_message = None
+            self.errorRaised.emit("")
         self.warning_count = 0
         self.warningCountChanged.emit(0)
         self.completed = self.total = 0
@@ -424,17 +493,20 @@ class AppController(QObject):
             self._emit_error(t("Choose a model in Settings."))
             return
 
-        key = (text, source.code, target.code)
+        key = (text, source.code, target.code, self.style.value, self.tone.value, config.model)
         if not force and key == self._last_completed_key and self.translated_text:
             return
 
+        self._cancel.set()
         self._generation += 1
         generation = self._generation
         self._cancel = threading.Event()
         cancel = self._cancel
         self.is_translating = True
         self.translatingChanged.emit(True)
-        self.error_message = None
+        if self.error_message is not None:
+            self.error_message = None
+            self.errorRaised.emit("")
         self.warning_count = 0
         self.warningCountChanged.emit(0)
         self.completed = self.total = 0
@@ -505,9 +577,17 @@ class AppController(QObject):
         self.last_duration_ms = result.duration_ms
         self.using_fallback = result.used_fallback
         self.metricsChanged.emit()
-        self.completed = self.total
-        self.progressChanged.emit(self.completed, self.total)
-        self._last_completed_key = (text, source.code, target.code)
+        if self.total:
+            self.completed = self.total
+            self.progressChanged.emit(self.completed, self.total)
+        self._last_completed_key = (
+            text,
+            source.code,
+            target.code,
+            self.style.value,
+            self.tone.value,
+            self.settings.snapshot().model,
+        )
         if result.warnings:
             self._emit_error(
                 t("Some paragraphs are still in the original language (%d).") % result.warnings
@@ -535,12 +615,15 @@ class AppController(QObject):
             self.progressChanged.emit(0, 0)
             return
         if isinstance(exc, TranslationError):
-            self._emit_error(exc.message(self.settings.interface_language))
+            message = exc.message(self.settings.interface_language)
+            self._emit_error(message)
+            self.translationFailed.emit(message)
             if exc.kind in ("connection", "server", "rate_limit", "unauthorized", "invalid_url"):
                 self._set_backend_status("failed", exc.message(self.settings.interface_language))
         else:  # pragma: no cover - unexpected
             log.exception("translation failed", exc_info=exc)
             self._emit_error(str(exc))
+            self.translationFailed.emit(str(exc))
 
     def cancel(self) -> None:
         if not self.is_translating:
@@ -671,6 +754,9 @@ class AppController(QObject):
         speaker = getattr(self, "_speaker", None)
         if speaker is not None:
             speaker.stop()
+        if self.speaking:
+            self.speaking = ""
+            self.speakingChanged.emit("")
 
     def _on_speaking_started(self, target: str) -> None:
         self.speaking = target
@@ -762,6 +848,7 @@ class AppController(QObject):
         def done(models: list[str]) -> None:
             self.fallback_models_loading = False
             self.fallbackModelsLoadingChanged.emit(False)
+            self.fallback_models_error = None
             self.fallback_models = models
             self.fallbackModelsChanged.emit(models)
 
@@ -789,7 +876,14 @@ class AppController(QObject):
             self._schedule_translation()
 
     def set_interface_language(self, language: AppLanguage | str) -> None:
-        value = language if isinstance(language, AppLanguage) else AppLanguage(str(language))
+        if isinstance(language, AppLanguage):
+            value = language
+        else:
+            try:
+                value = AppLanguage(str(language))
+            except ValueError:
+                log.warning("unknown interface language %r", language)
+                return
         if value == self.settings.interface_language:
             return
         self.settings.interface_language = value
@@ -814,8 +908,28 @@ class AppController(QObject):
         if target is not None:
             self.target_language = target
         self.languagesChanged.emit(self.source_language.code, self.target_language.code)
-        self.style = TranslationStyle(entry.style) if entry.style in TranslationStyle._value2member_map_ else self.style
-        self.tone = TranslationTone(entry.tone) if entry.tone in TranslationTone._value2member_map_ else self.tone
+        self.detected_language = (
+            detect_language(entry.source_text, self.settings.interface_language)
+            if self.source_language.is_auto
+            else None
+        )
+        self.detectedLanguageChanged.emit(
+            self.detected_language.code if self.detected_language else ""
+        )
+        self.last_duration_ms = entry.duration_ms or None
+        self.tokens_per_second = None
+        self.metricsChanged.emit()
+        if entry.style in TranslationStyle._value2member_map_:
+            self.style = TranslationStyle(entry.style)
+            self.settings.last_style = self.style
+        if entry.tone in TranslationTone._value2member_map_:
+            self.tone = TranslationTone(entry.tone)
+            self.settings.last_tone = self.tone
+        self.settings.last_source_code = self.source_language.code
+        self.settings.last_target_code = self.target_language.code
+        self.settings.save()
+        self.styleChanged.emit(self.style.value)
+        self.toneChanged.emit(self.tone.value)
         self._last_completed_key = (entry.source_text, entry.source_code, entry.target_code)
         self.set_tab("translate")
         self.windowRequested.emit()
@@ -835,9 +949,15 @@ class AppController(QObject):
             self._emit_error(t("This file type is not supported."))
             return
 
+        # A new document replaces the current one: cancel the previous job first,
+        # otherwise its worker keeps writing into a folder we are about to drop.
+        self._file_cancel.set()
         self._discard_file_output()
+        self._file_generation += 1
+        generation = self._file_generation
         self._file_cancel = threading.Event()
         cancel = self._file_cancel
+
         try:
             size = path.stat().st_size
         except OSError:
@@ -857,9 +977,11 @@ class AppController(QObject):
             "warnings": 0,
             "fallback": False,
             "fallback_label": "",
+            "save_error": None,
         }
         self._file_document = None
         self._file_output = None
+        self._file_tempdir = None
         self._publish_file_job()
 
         translator = self.translator
@@ -887,15 +1009,12 @@ class AppController(QObject):
                 counters["fallback"] = True
             return result.text
 
-        def job(signals: _JobSignals) -> tuple[Path, int, bool]:
+        def job(signals: _JobSignals) -> tuple[object, Path, Path, int, bool]:
+            # Nothing in here may touch ``self``: this runs in a pool thread.
             document = DocumentTranslator.read(path)
-            self._file_document = document
-            self._update_file_job(state="translating")
-            # Stage the result in a private folder: the user's source folder must
-            # not receive (or have overwritten) a file before they press Save.
+            signals.state.emit("translating")
             suggested = DocumentTranslator.suggested_path(path, target)
             staging = Path(tempfile.mkdtemp(prefix="deepl-ofm-"))
-            self._file_tempdir = staging
             out_path = staging / suggested.name
             try:
                 DocumentTranslator.write(
@@ -907,12 +1026,16 @@ class AppController(QObject):
                 )
             except BaseException:
                 shutil.rmtree(staging, ignore_errors=True)
-                self._file_tempdir = None
                 raise
-            return out_path, counters["warnings"], counters["fallback"]
+            return document, staging, out_path, counters["warnings"], counters["fallback"]
 
-        def done(result: tuple[Path, int, bool]) -> None:
-            out_path, warnings, used_fallback = result
+        def done(result: tuple[object, Path, Path, int, bool]) -> None:
+            if generation != self._file_generation:
+                shutil.rmtree(result[1], ignore_errors=True)  # superseded job
+                return
+            document, staging, out_path, warnings, used_fallback = result
+            self._file_document = document  # type: ignore[assignment]
+            self._file_tempdir = staging
             self._file_output = out_path
             label = ""
             if used_fallback:
@@ -930,7 +1053,8 @@ class AppController(QObject):
             )
 
         def failed(exc: BaseException) -> None:
-            self._discard_file_tempdir()
+            if generation != self._file_generation:
+                return
             if isinstance(exc, TranslationCancelled):
                 self._update_file_job(state="cancelled", message=t("Cancelled"))
                 return
@@ -941,7 +1065,17 @@ class AppController(QObject):
                 message = str(exc)
             self._update_file_job(state="failed", message=message)
 
-        self._run_job(job, on_done=done, on_error=failed, on_progress=self._on_file_progress)
+        self._run_job(
+            job,
+            on_done=done,
+            on_error=failed,
+            on_progress=self._on_file_progress,
+            on_state=self._on_file_state,
+        )
+
+    def _on_file_state(self, state: str) -> None:
+        if self.file_job is not None:
+            self._update_file_job(state=state)
 
     def _discard_file_tempdir(self) -> None:
         directory = getattr(self, "_file_tempdir", None)
@@ -956,6 +1090,9 @@ class AppController(QObject):
     def _on_file_progress(self, completed: int, total: int) -> None:
         percent = int(round(completed * 100 / total)) if total else 0
         self._update_file_job(completed=completed, total=total, percent=percent)
+        if total and completed >= total:
+            # Translation is finished; the format is being rebuilt now.
+            self._update_file_job(state="writing")
 
     def _update_file_job(self, **changes: Any) -> None:
         if self.file_job is None:
@@ -977,15 +1114,26 @@ class AppController(QObject):
             return
         try:
             destination = Path(destination)
-            destination.write_bytes(self._file_output.read_bytes())
+            # Copy next to the target and rename, so a failure never truncates
+            # an existing file the user chose.
+            staging = destination.with_name(destination.name + ".part")
+            shutil.copyfile(self._file_output, staging)
+            os.replace(staging, destination)
         except OSError as exc:
             log.exception("could not save translated file")
+            self._update_file_job(save_error=str(exc))
             self._emit_error(str(exc))
             return
-        self._update_file_job(output=str(destination), result_name=destination.name)
+        self._update_file_job(
+            output=str(destination),
+            result_name=destination.name,
+            save_error=None,
+        )
         self.copyFeedback.emit(t("Saved"))
 
     def clear_file_job(self) -> None:
+        self._file_cancel.set()
+        self._file_generation += 1  # late callbacks are ignored
         self.file_job = None
         self._file_document = None
         self._discard_file_output()
@@ -1007,6 +1155,9 @@ class AppController(QObject):
         else:
             target = get_language(target_code) or self.target_language
             self.write_detected_code = ""
+        self._write_cancel.set()
+        self._write_generation += 1
+        generation = self._write_generation
         self._write_cancel = threading.Event()
         cancel = self._write_cancel
         self.write_in_progress = True
@@ -1022,6 +1173,8 @@ class AppController(QObject):
             return translator.rewrite(text, target=target, config=config, fallback=fallback, cancel=cancel)
 
         def done(result: TranslationOutput) -> None:
+            if generation != self._write_generation:
+                return
             self.write_output = result.text
             self.write_warning_count = result.warnings
             self.write_duration_ms = result.duration_ms
@@ -1032,6 +1185,8 @@ class AppController(QObject):
             self.writeFinished.emit(result.text)
 
         def failed(exc: BaseException) -> None:
+            if generation != self._write_generation:
+                return
             self.write_in_progress = False
             if isinstance(exc, TranslationCancelled):
                 self.write_error = None
@@ -1066,6 +1221,8 @@ class AppController(QObject):
             event.set()
         self._auto_timer.stop()
         self._detect_timer.stop()
+        self._probe_timer.stop()
+        self._discard_file_tempdir()
         try:
             self.pool.waitForDone(timeout_ms)
         except Exception:  # noqa: BLE001 - shutdown must never raise
@@ -1085,14 +1242,19 @@ class AppController(QObject):
         on_done: Callable[[Any], None],
         on_error: Callable[[BaseException], None],
         on_progress: Callable[[int, int], None] | None = None,
+        on_state: Callable[[str], None] | None = None,
     ) -> _JobSignals:
-        # Parenting the signal holder to the controller keeps the QObject alive
-        # for the whole job: a Python-only reference would be collected while the
-        # worker thread is still running and the queued signals would be lost.
-        signals = _JobSignals(self)
-        signals.finished.connect(on_done)
-        signals.failed.connect(on_error)
-        if on_progress is not None:
-            signals.progress.connect(on_progress)
+        # A strong reference keeps the QObject alive for the whole job: a
+        # Python-only reference would be collected while the worker still emits,
+        # and the queued events would be dropped.
+        signals = _JobSignals()
+        signals.on_finished = on_done
+        signals.on_failed = on_error
+        signals.on_progress = on_progress
+        signals.on_state = on_state
+        self._jobs.add(signals)
+
+        signals.finished.connect(lambda _value: self._jobs.discard(signals))
+        signals.failed.connect(lambda _value: self._jobs.discard(signals))
         self.pool.start(_Job(fn, signals))
         return signals

@@ -50,3 +50,6 @@ windows/__pycache__/
 __pycache__/
 *.py[cod]
 windows/tools/app.ico
+
+# Local review transcripts and scratch
+.tmp/

@@ -54,9 +54,9 @@ def test_translation_journey(qapp, tmp_path):
         assert _pump(lambda: bool(controller.translated_text)), "translation never arrived"
         assert "Antwort" in controller.translated_text
 
-        result_view = translate_view.findChild(MarkdownView)
-        assert result_view is not None, "the result pane is missing a MarkdownView"
-        assert _pump(lambda: "Antwort" in result_view.markdown())
+        views = translate_view.findChildren(MarkdownView)
+        assert views, "the panes have no MarkdownView"
+        assert _pump(lambda: any("Antwort" in view.markdown() for view in views))
 
         controller.copy_translation()
         assert "Antwort" in QGuiApplication.clipboard().text()

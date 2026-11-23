@@ -26,9 +26,62 @@ log = logging.getLogger(__name__)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="DeepL-oFM", description="DeepL-oFM for Windows")
-    parser.add_argument("--prefill", metavar="TEXT", default="", help="start with this source text")
-    parser.add_argument("--tab", choices=["translate", "files", "write", "history"], default=None)
+    parser = argparse.ArgumentParser(
+        prog="DeepL-oFM",
+        description="DeepL-oFM for Windows",
+        epilog=(
+            "Startup actions run once the window and event loop are ready: "
+            "--open-file/--translate-file, --write-text, --translate-clipboard, "
+            "--connect, --catalog and --load-fallback-models."
+        ),
+    )
+    parser.add_argument(
+        "--prefill", metavar="TEXT", default="", help="start with this source text"
+    )
+    parser.add_argument(
+        "--tab",
+        choices=["translate", "files", "write", "history"],
+        default=None,
+        help="open this tab on startup",
+    )
+    parser.add_argument(
+        "--open-file",
+        metavar="PATH",
+        default=None,
+        help="open the Files tab and translate this document",
+    )
+    parser.add_argument(
+        "--translate-file",
+        metavar="PATH",
+        default=None,
+        help="alias of --open-file",
+    )
+    parser.add_argument(
+        "--write-text",
+        metavar="TEXT",
+        default=None,
+        help="open the Write tab and put this text in its editor",
+    )
+    parser.add_argument(
+        "--translate-clipboard",
+        action="store_true",
+        help="translate the clipboard once the window is ready",
+    )
+    parser.add_argument(
+        "--connect",
+        action="store_true",
+        help="connect to the provider and refresh the model list",
+    )
+    parser.add_argument(
+        "--catalog",
+        action="store_true",
+        help="open the model catalog after the window appears",
+    )
+    parser.add_argument(
+        "--load-fallback-models",
+        action="store_true",
+        help="probe the fallback provider and load its model list",
+    )
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {__version__}")
     parser.add_argument("--debug", action="store_true", help="verbose logging")
     parser.add_argument(
@@ -189,6 +242,47 @@ class _Hotkeys:
             self.manager.unregister_all()
 
 
+def _open_file(window, controller: AppController, path: str) -> None:
+    """Show the Files tab and start translating *path*."""
+    window.select_tab("files")
+    controller.start_file_translation(Path(path))
+
+
+def _write_text(window, text: str) -> None:
+    """Show the Write tab and put *text* into its editor."""
+    window.select_tab("write")
+    view = window.pages.get("write")
+    if view is None:
+        return
+    setter = getattr(view, "set_source_text", None)
+    if callable(setter):
+        setter(text)
+        return
+    # Older builds only expose the editor; keep the flag working with them.
+    editor = getattr(view, "editor", None)
+    if editor is not None:
+        editor.setPlainText(text)
+
+
+def _schedule_startup_actions(window, controller: AppController, args) -> None:
+    """Queue command-line actions that need the window and a running event loop."""
+    from PySide6.QtCore import QTimer
+
+    file_path = args.open_file or args.translate_file
+    if file_path:
+        QTimer.singleShot(0, lambda: _open_file(window, controller, file_path))
+    if args.write_text:
+        QTimer.singleShot(0, lambda: _write_text(window, args.write_text))
+    if args.translate_clipboard:
+        QTimer.singleShot(0, controller.translate_clipboard)
+    if args.connect:
+        QTimer.singleShot(0, controller.connect_and_load_models)
+    if args.catalog:
+        QTimer.singleShot(0, window.open_catalog)
+    if args.load_fallback_models:
+        QTimer.singleShot(0, controller.load_fallback_models)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     _configure_logging(args.debug)
@@ -253,6 +347,7 @@ def main(argv: list[str] | None = None) -> int:
     window.show()
     window.focus_translate()
     controller.bootstrap()
+    _schedule_startup_actions(window, controller, args)
     if args.self_test:
         from PySide6.QtCore import QTimer
 

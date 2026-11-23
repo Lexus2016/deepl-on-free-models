@@ -178,7 +178,7 @@ def test_pick_file_filters_and_starts_translation(qapp, view, controller, monkey
     monkeypatch.setattr(
         controller,
         "start_file_translation",
-        lambda path: calls.append(Path(path)),
+        lambda path, code=None: calls.append((Path(path), code)),
     )
 
     def fake_open(parent, caption, directory, filter_text):
@@ -189,7 +189,7 @@ def test_pick_file_filters_and_starts_translation(qapp, view, controller, monkey
 
     view.pick_file()
 
-    assert calls == [source]
+    assert calls and calls[0][0] == source
     assert len(filters) == 1
     for extension in (".txt", ".md", ".markdown", ".pdf", ".docx"):
         assert f"*{extension}" in filters[0]
@@ -270,7 +270,9 @@ def test_drop_event_starts_supported_file(qapp, view, controller, monkeypatch, t
     source.write_text("# Source", encoding="utf-8")
     calls: list[Path] = []
     monkeypatch.setattr(
-        controller, "start_file_translation", lambda path: calls.append(Path(path))
+        controller,
+        "start_file_translation",
+        lambda path, code=None: calls.append((Path(path), code)),
     )
 
     mime = QMimeData()
@@ -290,14 +292,16 @@ def test_drop_event_starts_supported_file(qapp, view, controller, monkeypatch, t
     QApplication.sendEvent(view, drop)
 
     assert drop.isAccepted()
-    assert calls == [source]
+    assert calls and calls[0][0] == source
     assert not view.drop_zone._active
 
 
 def test_unsupported_drop_reports_an_error(qapp, view, controller, monkeypatch, tmp_path):
     calls: list[Path] = []
     monkeypatch.setattr(
-        controller, "start_file_translation", lambda path: calls.append(Path(path))
+        controller,
+        "start_file_translation",
+        lambda path, code=None: calls.append((Path(path), code)),
     )
     mime = QMimeData()
     mime.setUrls([QUrl.fromLocalFile(str(tmp_path / "photo.png"))])

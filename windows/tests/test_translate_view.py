@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QMimeData, Qt
 from PySide6.QtTest import QTest
 
 from deepl_ofm.controller import AppController
@@ -158,7 +158,7 @@ def test_error_shows_message_and_retry(qapp, view, controller):
     view.set_source_text("Hello")
     message = "Server unavailable. Check the model and try again."
     controller.error_message = message
-    controller.errorRaised.emit(message)
+    controller.translationFailed.emit(message)
     qapp.processEvents()
 
     assert view._stack.currentWidget() is view._error_page
@@ -171,7 +171,7 @@ def test_error_keeps_existing_result_visible(qapp, view, controller):
     controller.translated_text = "Hello"
     controller.translatedTextChanged.emit("Hello")
     controller.error_message = "Some paragraphs are still in the original language (2)."
-    controller.errorRaised.emit(controller.error_message)
+    controller.translationFailed.emit(controller.error_message)
     qapp.processEvents()
 
     assert view._stack.currentWidget() is view._result_view
@@ -313,3 +313,77 @@ def test_long_interface_language_collapses_earlier_than_1040(qapp, view, control
     view.resize(1180, 760)
     qapp.processEvents()
     assert view._chips_group.isVisibleTo(view)
+
+
+# ---------------------------------------------------------------------------
+# Source Markdown preview
+
+
+def test_source_preview_toggle_and_focus_source(qapp, view, controller):
+    source = "# Heading\n\nSome **bold** text."
+    view.set_source_text(source)
+    qapp.processEvents()
+
+    assert view._source_stack.currentWidget() is view._editor
+    assert view._preview_button.icon_name() == "eye"
+    assert view._preview_button.toolTip() == t("Show rendered Markdown")
+
+    view._preview_button.click()
+    qapp.processEvents()
+
+    assert view._source_previewing
+    assert view._source_stack.currentWidget() is view._source_preview
+    assert view._source_preview.mode() == "preview"
+    assert view._source_preview.markdown() == source
+    assert view._editor.isReadOnly()
+    assert view._preview_button.icon_name() == "code"
+    assert view._preview_button.toolTip() == t("Show Markdown source")
+    assert "Heading" in view._source_preview.plain_text()
+    assert str(len(source)) in view._source_counter.text()
+
+    controller.set_source_text("# Replaced")
+    qapp.processEvents()
+    assert view._source_preview.markdown() == "# Replaced"
+
+    view.focus_source()
+    qapp.processEvents()
+    assert view._source_stack.currentWidget() is view._editor
+    assert not view._editor.isReadOnly()
+    assert view._editor.hasFocus()
+    assert view._preview_button.toolTip() == t("Show rendered Markdown")
+
+
+def test_source_actions_keep_working_in_preview(
+    qapp, view, controller, monkeypatch
+):
+    view.set_source_text("Hello")
+    view._preview_button.click()
+    qapp.processEvents()
+    assert view._source_stack.currentWidget() is view._source_preview
+
+    calls: list[bool] = []
+    monkeypatch.setattr(controller, "copy_source", lambda: calls.append(True))
+    view._copy_source_button.click()
+    qapp.processEvents()
+    assert calls == [True]
+
+    view._clear_button.click()
+    qapp.processEvents()
+    assert controller.source_text == ""
+    assert not view._source_previewing
+    assert view._source_stack.currentWidget() is view._editor
+    assert view._editor.toPlainText() == ""
+
+
+def test_rich_paste_switches_to_preview(qapp, view):
+    mime = QMimeData()
+    mime.setHtml("<h2>Title</h2><p>Hello <b>world</b></p>")
+    mime.setText("Title\nHello world")
+
+    view._editor.insertFromMimeData(mime)
+    qapp.processEvents()
+
+    assert view._source_previewing
+    assert view._source_stack.currentWidget() is view._source_preview
+    assert "Title" in view._source_preview.markdown()
+    assert "**world**" in view._source_preview.markdown()

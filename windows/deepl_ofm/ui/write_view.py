@@ -410,6 +410,11 @@ class WriteView(QWidget):
         self.improve_button.setEnabled(bool(text.strip()) and not self._busy)
 
     # -- commands -----------------------------------------------------------
+    def set_source_text(self, text: str) -> None:
+        """Prefill the editor (``--write-text`` and history restore)."""
+        self.editor.setPlainText(text or "")
+        self.editor.setFocus()
+
     def _on_source_edited(self) -> None:
         """Editing the draft cancels the request and drops the stale result."""
         if self._suppress_edit:

@@ -8,7 +8,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import QApplication, QDialog
 
@@ -16,7 +16,7 @@ from deepl_ofm.controller import AppController
 from deepl_ofm.core.languages import AppLanguage
 from deepl_ofm.core.providers import Provider
 from deepl_ofm.core.settings import AppSettings
-from deepl_ofm.i18n import set_language
+from deepl_ofm.i18n import set_language, t, tf
 from deepl_ofm.services.history import HistoryStore
 from deepl_ofm.ui.settings_view import SettingsView
 from deepl_ofm.ui.theme import Theme
@@ -219,4 +219,166 @@ def test_fallback_fields_follow_the_provider(
     qapp.processEvents()
     assert view.fallback_base_edit.text() == Provider.OPEN_ROUTER.base_url
     assert view.fallback_key_field.key_link.isVisible()
+    view.close()
+
+
+def test_connect_without_a_key_shows_the_required_hint(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    view = _show(controller)
+    index = view.provider_combo.findData(Provider.GROQ.value)
+    view.provider_combo.setCurrentIndex(index)
+    view.api_key_field.set_value("")
+
+    calls: list[bool] = []
+    monkeypatch.setattr(
+        controller, "connect_and_load_models", lambda: calls.append(True)
+    )
+
+    view.connect_button.click()
+    qapp.processEvents()
+
+    assert calls == []
+    assert view.connect_status.text() == tf(
+        "Enter the API key for %@ in Settings first.", Provider.GROQ.title
+    )
+    assert view.connect_status._role == "danger"
+    assert view.connect_button.isEnabled()
+    view.close()
+
+
+def test_connect_with_a_key_probes_the_provider(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    view = _show(controller)
+    index = view.provider_combo.findData(Provider.GROQ.value)
+    view.provider_combo.setCurrentIndex(index)
+    view.api_key_field.set_value("gsk-test")
+
+    calls: list[bool] = []
+    monkeypatch.setattr(
+        controller, "connect_and_load_models", lambda: calls.append(True)
+    )
+
+    view.connect_button.click()
+    qapp.processEvents()
+
+    assert calls == [True]
+    assert view.connect_status.text() != tf(
+        "Enter the API key for %@ in Settings first.", Provider.GROQ.title
+    )
+    view.close()
+
+
+def test_missing_model_shows_the_install_command(
+    qapp, controller: AppController
+) -> None:
+    controller.settings.provider = Provider.OLLAMA
+    controller.settings.model = "hy-mt2:7b"
+    view = _show(controller)
+    assert not view.install_row.isVisible()
+
+    controller.provider_models = ["qwen3:8b"]
+    controller.modelsChanged.emit(list(controller.provider_models))
+    controller.modelsErrorChanged.emit(
+        tf(
+            "Server responds, but model “%@” is missing. Available: %@.",
+            "hy-mt2:7b",
+            "qwen3:8b",
+        )
+    )
+    qapp.processEvents()
+
+    assert view.install_row.isVisible()
+    assert view.install_command_label.text().startswith("ollama pull")
+    assert view.install_copy_button.text() == t("Copy install command")
+
+    view.install_copy_button.click()
+    qapp.processEvents()
+    assert qapp.clipboard().text() == view.install_command_label.text()
+
+    controller.modelsErrorChanged.emit("")
+    qapp.processEvents()
+    assert not view.install_row.isVisible()
+    view.close()
+
+
+def test_install_command_is_hidden_for_an_unknown_model(
+    qapp, controller: AppController
+) -> None:
+    controller.settings.provider = Provider.OLLAMA
+    controller.settings.model = "private-model:latest"
+    view = _show(controller)
+
+    controller.modelsErrorChanged.emit(
+        tf(
+            "Server responds, but model “%@” is missing. Available: %@.",
+            "private-model:latest",
+            "qwen3:8b",
+        )
+    )
+    qapp.processEvents()
+
+    assert not view.install_row.isVisible()
+    view.close()
+
+
+def test_models_section_is_tall_and_refreshable(
+    qapp, controller: AppController, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    view = _show(controller)
+    assert view.models_list.minimumHeight() >= 210
+
+    calls: list[bool] = []
+    monkeypatch.setattr(
+        controller, "connect_and_load_models", lambda: calls.append(True)
+    )
+
+    view.models_refresh.click()
+    qapp.processEvents()
+    assert calls == [True]
+
+    controller.modelsLoadingChanged.emit(True)
+    qapp.processEvents()
+    assert not view.models_refresh.isEnabled()
+    assert not view.connect_button.isEnabled()
+
+    controller.modelsLoadingChanged.emit(False)
+    qapp.processEvents()
+    assert view.models_refresh.isEnabled()
+    view.close()
+
+
+def test_hotkey_caption_prompts_and_then_shows_the_combo(
+    qapp, controller: AppController
+) -> None:
+    view = _show(controller)
+    view.activateWindow()
+    view.hotkey_edit.setFocus(Qt.FocusReason.OtherFocusReason)
+    qapp.processEvents()
+
+    assert view.hotkey_edit.hasFocus()
+    assert view.hotkey_caption.text() == t("Press a combination…")
+
+    view.hotkey_edit.setKeySequence(QKeySequence("T"))
+    qapp.processEvents()
+    assert view.hotkey_row.hint()
+    assert view.hotkey_caption.text() == t("Press a combination…")
+
+    view.hotkey_edit.clearFocus()
+    qapp.processEvents()
+    assert view.hotkey_caption.text() == "T"
+    assert view.hotkey_row.hint()
+
+    view.hotkey_edit.setKeySequence(QKeySequence("Ctrl+Alt+T"))
+    qapp.processEvents()
+    assert view.hotkey_row.hint() == ""
+    assert view.hotkey_caption.text() == "Ctrl+Alt+T"
+
+    view.hotkey_edit.setKeySequence(QKeySequence("Ctrl+Shift+X"))
+    qapp.processEvents()
+    assert view.hotkey_caption.text() == "Ctrl+Shift+X"
+    view.hotkey_reset.click()
+    qapp.processEvents()
+    assert view.hotkey_caption.text() == "Ctrl+Alt+T"
     view.close()
