@@ -31,7 +31,7 @@ from deepl_ofm.i18n._parse import (
 LANGUAGE_CODES = ("uk", "ru", "de", "fr", "es", "pl", "pt", "it")
 
 #: Number of English keys in the eight dictionaries of Localization.swift.
-EXPECTED_KEYS = 302
+EXPECTED_KEYS = 305
 
 #: Values copied from Sources/HyMT/Support/Localization.swift (verified by the
 #: round-trip test below as well).

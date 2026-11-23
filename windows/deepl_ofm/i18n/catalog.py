@@ -14,7 +14,7 @@ translation used for that language.
 table so callers can select one at runtime.  There is deliberately no ``"en"``
 entry: :func:`deepl_ofm.i18n.t` falls back to the key for English.
 
-302 English keys; per language: uk=302, ru=302, de=302, fr=302, es=302, pl=302, pt=302, it=302.
+305 English keys; per language: uk=305, ru=305, de=305, fr=305, es=305, pl=305, pt=305, it=305.
 """
 
 from __future__ import annotations
@@ -304,6 +304,11 @@ UKRAINIAN: dict[str, str] = {
     'Translate automatically while typing': 'Перекладати автоматично під час введення',
     'Delay': 'Затримка',
     'Keep translation history': 'Зберігати історію перекладів',
+    'Open at login': 'Запускати під час входу в macOS',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Дозвольте автозапуск DeepL-oFM у системних налаштуваннях.'
+    ),
+    'Could not change Open at login. %@': 'Не вдалося змінити налаштування автозапуску. %@',
     'Menu bar icon': 'Іконка в меню-барі',
     'Interface language': 'Мова інтерфейсу',
     'System': 'Системна',
@@ -782,6 +787,11 @@ RUSSIAN: dict[str, str] = {
     'Translate automatically while typing': 'Переводить автоматически во время ввода',
     'Delay': 'Задержка',
     'Keep translation history': 'Сохранять историю переводов',
+    'Open at login': 'Запускать при входе в macOS',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Разрешите автозапуск DeepL-oFM в системных настройках.'
+    ),
+    'Could not change Open at login. %@': 'Не удалось изменить настройку автозапуска. %@',
     'Menu bar icon': 'Иконка в меню-баре',
     'Interface language': 'Язык интерфейса',
     'System': 'Системная',
@@ -1270,6 +1280,13 @@ GERMAN: dict[str, str] = {
     'Translate automatically while typing': 'Während des Tippens automatisch übersetzen',
     'Delay': 'Verzögerung',
     'Keep translation history': 'Übersetzungshistorie behalten',
+    'Open at login': 'Bei der Anmeldung öffnen',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Erlaube DeepL-oFM in den Systemeinstellungen, bei der Anmeldung zu starten.'
+    ),
+    'Could not change Open at login. %@': (
+        'Die Einstellung für den Start bei der Anmeldung konnte nicht geändert werden. %@'
+    ),
     'Menu bar icon': 'Menüleistensymbol',
     'Interface language': 'Oberflächensprache',
     'System': 'System',
@@ -1760,6 +1777,13 @@ FRENCH: dict[str, str] = {
     'Translate automatically while typing': 'Traduire automatiquement pendant la saisie',
     'Delay': 'Délai',
     'Keep translation history': "Conserver l'historique des traductions",
+    'Open at login': 'Ouvrir à l’ouverture de session',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Autorisez DeepL-oFM à s’ouvrir à l’ouverture de session dans les réglages système.'
+    ),
+    'Could not change Open at login. %@': (
+        'Impossible de modifier le réglage d’ouverture à l’ouverture de session. %@'
+    ),
     'Menu bar icon': 'Icône de la barre de menus',
     'Interface language': "Langue de l'interface",
     'System': 'Système',
@@ -2248,6 +2272,13 @@ SPANISH: dict[str, str] = {
     'Translate automatically while typing': 'Traducir automáticamente mientras se escribe',
     'Delay': 'Retardo',
     'Keep translation history': 'Mantener historial de traducciones',
+    'Open at login': 'Abrir al iniciar sesión',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Permite que DeepL-oFM se abra al iniciar sesión en Configuración del Sistema.'
+    ),
+    'Could not change Open at login. %@': (
+        'No se pudo cambiar el ajuste de apertura al iniciar sesión. %@'
+    ),
     'Menu bar icon': 'Icono de la barra de menús',
     'Interface language': 'Idioma de la interfaz',
     'System': 'Sistema',
@@ -2728,6 +2759,13 @@ POLISH: dict[str, str] = {
     'Translate automatically while typing': 'Tłumacz automatycznie podczas pisania',
     'Delay': 'Opóźnienie',
     'Keep translation history': 'Zachowuj historię tłumaczeń',
+    'Open at login': 'Otwieraj przy logowaniu',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Zezwól na otwieranie DeepL-oFM przy logowaniu w Ustawieniach systemowych.'
+    ),
+    'Could not change Open at login. %@': (
+        'Nie udało się zmienić ustawienia otwierania przy logowaniu. %@'
+    ),
     'Menu bar icon': 'Ikona paska menu',
     'Interface language': 'Język interfejsu',
     'System': 'System',
@@ -3206,6 +3244,13 @@ PORTUGUESE: dict[str, str] = {
     'Translate automatically while typing': 'Traduzir automaticamente enquanto digita',
     'Delay': 'Atraso',
     'Keep translation history': 'Manter histórico de traduções',
+    'Open at login': 'Abrir ao iniciar sessão',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Permita que o DeepL-oFM abra ao iniciar sessão nas Definições do Sistema.'
+    ),
+    'Could not change Open at login. %@': (
+        'Não foi possível alterar a opção de abrir ao iniciar sessão. %@'
+    ),
     'Menu bar icon': 'Ícone da barra de menus',
     'Interface language': 'Idioma da interface',
     'System': 'Sistema',
@@ -3690,6 +3735,13 @@ ITALIAN: dict[str, str] = {
     'Translate automatically while typing': 'Traduci automaticamente durante la digitazione',
     'Delay': 'Ritardo',
     'Keep translation history': 'Mantieni cronologia traduzioni',
+    'Open at login': 'Apri al login',
+    'Allow DeepL-oFM to open at login in System Settings.': (
+        'Consenti a DeepL-oFM di aprirsi al login nelle Impostazioni di Sistema.'
+    ),
+    'Could not change Open at login. %@': (
+        'Impossibile modificare l’impostazione di apertura al login. %@'
+    ),
     'Menu bar icon': 'Icona barra dei menu',
     'Interface language': "Lingua dell'interfaccia",
     'System': 'Sistema',
