@@ -1,13 +1,15 @@
 """Translation prompts and their UI metadata.
 
-Port of ``Sources/HyMT/Models/Prompt.swift``.  The instruction strings are
-byte-for-byte identical to the macOS app because Hy-MT2 was trained on this
-exact wording; do not "fix" the grammar or the spacing.
+The Hy-MT2 instructions mirror ``Sources/HyMT/Models/Prompt.swift`` because
+Hy-MT2 was trained on this exact wording. TranslateGemma uses its published
+Ollama template.
 """
 
 from __future__ import annotations
 
 from enum import Enum
+
+from deepl_ofm.core.languages import Language
 
 MARKDOWN_CLAUSE = (
     "Preserve Markdown syntax exactly (headings, lists, bold, italic, links, "
@@ -68,7 +70,7 @@ class TranslationTone(str, Enum):
 
 
 class PromptBuilder:
-    """Builds the exact instruction Hy-MT2 was trained on.
+    """Builds translation instructions for Hy-MT2 and TranslateGemma.
 
     The instruction and the source text travel in a single user message: the
     model has no default system prompt (see the model card).
@@ -191,6 +193,20 @@ class PromptBuilder:
     def plain_prompt(text: str, target_language: str) -> str:
         """Plain instruction + blank line + ``text``."""
         return PromptBuilder.plain_instruction(target_language) + "\n\n" + text
+
+    @staticmethod
+    def translate_gemma_prompt(text: str, source: Language, target: Language) -> str:
+        """Ollama's published TranslateGemma template, with two blank lines."""
+        return (
+            f"You are a professional {source.english_name} ({source.code}) to "
+            f"{target.english_name} ({target.code}) translator. Your goal is to "
+            f"accurately convey the meaning and nuances of the original {source.english_name} "
+            f"text while adhering to {target.english_name} grammar, vocabulary, and "
+            "cultural sensitivities.\n"
+            f"Produce only the {target.english_name} translation, without any additional "
+            f"explanations or commentary. Please translate the following {source.english_name} "
+            f"text into {target.english_name}:\n\n\n{text}"
+        )
 
     @staticmethod
     def preview(

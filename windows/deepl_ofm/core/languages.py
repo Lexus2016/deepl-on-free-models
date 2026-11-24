@@ -383,6 +383,8 @@ class LanguageTable:
     def detect(
         text: str,
         preferred: AppLanguage | str = AppLanguage.SYSTEM,
+        *,
+        for_prompt: bool = False,
     ) -> Language | None:
         """Guess the language of *text*, mirroring ``Language.detect`` in Swift."""
         if not isinstance(text, str) or not text:
@@ -408,9 +410,10 @@ class LanguageTable:
         if has(((0x0590, 0x05FF),)):
             return LanguageTable.get("he")
         if has(((0x0600, 0x06FF), (0x0750, 0x077F))):
-            return LanguageTable.get("ar")
+            return _detect_arabic_script(sample)
         if has(((0x0900, 0x097F),)):
-            return LanguageTable.get("hi")
+            # Hindi is a UI guess for Devanagari, which Marathi also uses.
+            return None if for_prompt else LanguageTable.get("hi")
         if has(((0x0980, 0x09FF),)):
             return LanguageTable.get("bn")
         if has(((0x0B80, 0x0BFF),)):
@@ -441,6 +444,19 @@ class LanguageTable:
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 _UNIQUE_WEIGHT = 3
 _LATIN_MIN_SCORE = 3
+
+
+def _detect_arabic_script(sample: str) -> Language | None:
+    """Identify languages with distinct evidence in the shared script."""
+    if any(letter in sample for letter in "ٹڈڑںھہے"):
+        return LanguageTable.get("ur")
+
+    words = set(_WORD_RE.findall(sample))
+    persian = bool(words & {"است", "هست", "بود", "برای", "این", "بفرستید"})
+    arabic = bool(words & {"هذا", "هذه", "ذلك", "الذي", "التي", "إلى"})
+    if persian == arabic:
+        return None
+    return LanguageTable.get("fa" if persian else "ar")
 
 
 def _detect_cyrillic(sample: str, preferred: AppLanguage | str) -> Language | None:

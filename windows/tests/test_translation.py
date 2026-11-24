@@ -737,9 +737,9 @@ def test_markdown_heading_keeps_the_heading_prompt():
     )
 
     prompt = _first_prompt(session)
-    assert prompt.startswith("Translate this heading into German.")
+    assert prompt.startswith("Please translate this heading into German.")
     assert prompt.endswith("\n\nReport")
-    assert "literal, word for word" not in prompt
+    assert "[literal, word for word; formal and professional]" in prompt
 
 
 def test_short_title_without_terminal_punctuation_is_a_heading():
@@ -756,7 +756,9 @@ def test_short_title_without_terminal_punctuation_is_a_heading():
         source_explicit=False,
     )
 
-    assert _first_prompt(session).startswith("Translate this heading into German.")
+    prompt = _first_prompt(session)
+    assert prompt.startswith("Please translate this heading into German.")
+    assert "[literal, word for word; formal and professional]" in prompt
 
 
 def test_explicit_source_language_is_asserted_to_the_model():

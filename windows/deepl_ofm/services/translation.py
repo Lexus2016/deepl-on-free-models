@@ -22,7 +22,7 @@ from urllib.parse import urlsplit
 import requests
 
 from deepl_ofm.core.chunker import TextChunker
-from deepl_ofm.core.languages import AppLanguage, Language
+from deepl_ofm.core.languages import AppLanguage, Language, LanguageTable
 from deepl_ofm.core.prompts import PromptBuilder, TranslationStyle, TranslationTone
 from deepl_ofm.core.providers import BackendConfig, BackendKind
 from deepl_ofm.core.sanitizer import OutputSanitizer
@@ -335,35 +335,39 @@ def _markdown_structure(text: str) -> list[str]:
     return structure
 
 
-def _with_source_language(
-    prompt: str, source: Language | None, explicit: bool = True
-) -> str:
-    """Port of ``TranslationService.withSourceLanguage``.
-
-    The hint is only appended for a language the user picked themselves.  A
-    script-based guess (Arabic for Persian, for example) must not be asserted
-    to the model as a fact.
-    """
-    if not explicit or source is None or getattr(source, "is_auto", False):
+def _with_source_language(prompt: str, source: Language | None) -> str:
+    """Prefix an ordinary prompt with the source language the user picked."""
+    if source is None or source.is_auto:
         return prompt
     return f"The source language is {source.english_name}. " + prompt
 
 
-def _is_structural_heading(text: str, is_heading: bool) -> bool:
-    """True when a block is a heading, not merely short.
+def _gemma_source(
+    text: str, model: str, explicit_source: Language | None = None
+) -> Language | None:
+    """Resolve the source required by TranslateGemma's published prompt."""
+    name = model.strip().rsplit("/", 1)[-1].lower()
+    if not name.startswith("translategemma"):
+        return None
+    if explicit_source is not None and not explicit_source.is_auto:
+        return explicit_source
+    return LanguageTable.detect(text, for_prompt=True)
 
-    The chunker already flags Markdown ``#`` headings.  A short line without
-    terminal punctuation is a title/list fragment and keeps the heading prompt;
-    a short sentence (``Could you send me the report?``) must use the normal
-    style and tone ladder, because style and register matter there too.
-    """
+
+def _is_structural_heading(text: str, is_heading: bool) -> bool:
+    """Recognise Markdown headings and short, title-case labels."""
     if is_heading:
         return True
     body = text.strip()
     if len(body) > _SHORT_BLOCK_LIMIT:
         return False
     tail = body.rstrip().rstrip(_TRAILING_CLOSERS).rstrip()
-    return bool(tail) and tail[-1] not in _TERMINAL_PUNCTUATION
+    if not tail or tail[-1] in _TERMINAL_PUNCTUATION:
+        return False
+    initials = [next((char for char in word if char.isalpha()), "") for word in tail.split()]
+    return any(char.isupper() for char in initials) and not any(
+        char.islower() for char in initials
+    )
 
 
 def _watch_cancel(cancel: threading.Event, response: object, done: threading.Event) -> None:
@@ -549,31 +553,36 @@ class Translator:
     ) -> tuple[str, bool]:
         """Buffered single-block translation (port of ``translateBlock``)."""
         preserve = _contains_markdown(text)
-        standard_prompt = PromptBuilder.prompt(
-            text,
-            style,
-            tone,
-            target.english_name,
-            preserve_markdown=preserve,
-        )
-        concise_prompt = (
-            f"Translate into {target.english_name}."
-            + (" Preserve Markdown syntax and keep line breaks." if preserve else "")
-            + "\n\n"
-            + text
-        )
-        auto = style == TranslationStyle.AUTO and tone == TranslationTone.STANDARD
-        prompts = [
-            concise_prompt if auto else standard_prompt,
-            standard_prompt if auto else concise_prompt,
-            PromptBuilder.plain_prompt(text, target.english_name),
-        ]
+        gemma_source = _gemma_source(text, config.model)
+        if gemma_source is not None:
+            prompts = [PromptBuilder.translate_gemma_prompt(text, gemma_source, target)]
+        else:
+            standard_prompt = PromptBuilder.prompt(
+                text,
+                style,
+                tone,
+                target.english_name,
+                preserve_markdown=preserve,
+            )
+            concise_prompt = (
+                f"Translate into {target.english_name}."
+                + (" Preserve Markdown syntax and keep line breaks." if preserve else "")
+                + "\n\n"
+                + text
+            )
+            auto = style == TranslationStyle.AUTO and tone == TranslationTone.STANDARD
+            prompts = [
+                concise_prompt if auto else standard_prompt,
+                standard_prompt if auto else concise_prompt,
+                PromptBuilder.plain_prompt(text, target.english_name),
+            ]
         result = self._buffered_translation(
             prompts,
             text,
             target,
             config,
             cancel,
+            gemma_source=gemma_source,
             preserve_line_breaks=True,
             requires_markdown_structure=preserve,
         )
@@ -652,6 +661,8 @@ class Translator:
         if not chunks:
             return _JobResult(text=text, warnings=0, tokens=0, seconds=0.0)
 
+        explicit_source = source if source_explicit else None
+        gemma_source = _gemma_source(text, config.model, explicit_source)
         total = len(chunks)
         self._report(on_progress, 0, total)
         translated: list[str] = []
@@ -686,8 +697,8 @@ class Translator:
                     style=style,
                     tone=tone,
                     config=config,
-                    source=source,
-                    source_explicit=source_explicit,
+                    source_language=explicit_source if gemma_source is None else None,
+                    gemma_source=gemma_source,
                     cancel=cancel,
                     preserve_markdown=_contains_markdown(line),
                     is_heading=chunk.is_heading,
@@ -741,25 +752,27 @@ class Translator:
         style: TranslationStyle,
         tone: TranslationTone,
         config: BackendConfig,
-        source: Language | None,
-        source_explicit: bool,
+        source_language: Language | None,
+        gemma_source: Language | None,
         cancel: threading.Event | None,
         preserve_markdown: bool,
         is_heading: bool = False,
     ) -> _BlockResult:
         """Choose the prompt ladder for one line and translate it."""
         body = text.strip()
-        plain_fallback = PromptBuilder.plain_prompt(body, target.english_name)
-        if _is_structural_heading(body, is_heading):
-            neutral_heading = PromptBuilder.heading_prompt(
+        if gemma_source is not None:
+            prompts = [PromptBuilder.translate_gemma_prompt(body, gemma_source, target)]
+        elif _is_structural_heading(body, is_heading):
+            heading = PromptBuilder.heading_prompt(
                 body,
-                TranslationStyle.AUTO,
-                TranslationTone.STANDARD,
+                style,
+                tone,
                 target.english_name,
                 preserve_markdown=False,
             )
-            prompts = [neutral_heading, plain_fallback]
+            prompts = [heading, PromptBuilder.plain_prompt(body, target.english_name)]
         else:
+            plain_fallback = PromptBuilder.plain_prompt(body, target.english_name)
             styled = PromptBuilder.prompt(
                 body, style, tone, target.english_name, preserve_markdown
             )
@@ -789,8 +802,8 @@ class Translator:
             target,
             config,
             cancel,
-            source_language=source,
-            source_explicit=source_explicit,
+            source_language=source_language,
+            gemma_source=gemma_source,
             preserve_line_breaks=False,
             requires_markdown_structure=False,
         )
@@ -804,7 +817,7 @@ class Translator:
         cancel: threading.Event | None,
         *,
         source_language: Language | None = None,
-        source_explicit: bool = True,
+        gemma_source: Language | None = None,
         preserve_line_breaks: bool = False,
         requires_markdown_structure: bool = False,
     ) -> _BlockResult:
@@ -822,7 +835,7 @@ class Translator:
                         config, temperature=min(config.temperature, 0.3)
                     )
                 raw = self._collect_candidate(
-                    _with_source_language(prompt, source_language, source_explicit),
+                    _with_source_language(prompt, source_language),
                     retry_config,
                     max_bytes,
                     cancel,
@@ -860,7 +873,7 @@ class Translator:
                 config,
                 cancel,
                 source_language=source_language,
-                source_explicit=source_explicit,
+                gemma_source=gemma_source,
             )
             if segmented is not None:
                 return segmented
@@ -874,7 +887,7 @@ class Translator:
         cancel: threading.Event | None,
         *,
         source_language: Language | None,
-        source_explicit: bool = True,
+        gemma_source: Language | None,
     ) -> _BlockResult | None:
         """Translate sentence by sentence when the whole block keeps failing."""
         if "http" in source or "](" in source or "`" in source:
@@ -889,21 +902,24 @@ class Translator:
         seconds = 0.0
         for piece in pieces:
             self._raise_if_cancelled(cancel)
-            prompts = [
-                PromptBuilder.plain_prompt(piece, target.english_name),
-                PromptBuilder.prompt(
-                    piece,
-                    TranslationStyle.NATURAL,
-                    TranslationTone.STANDARD,
-                    target.english_name,
-                ),
-                PromptBuilder.prompt(
-                    piece,
-                    TranslationStyle.LITERAL,
-                    TranslationTone.STANDARD,
-                    target.english_name,
-                ),
-            ]
+            if gemma_source is not None:
+                prompts = [PromptBuilder.translate_gemma_prompt(piece, gemma_source, target)]
+            else:
+                prompts = [
+                    PromptBuilder.plain_prompt(piece, target.english_name),
+                    PromptBuilder.prompt(
+                        piece,
+                        TranslationStyle.NATURAL,
+                        TranslationTone.STANDARD,
+                        target.english_name,
+                    ),
+                    PromptBuilder.prompt(
+                        piece,
+                        TranslationStyle.LITERAL,
+                        TranslationTone.STANDARD,
+                        target.english_name,
+                    ),
+                ]
             success: str | None = None
             for prompt in prompts:
                 retry_config = replace(
@@ -911,7 +927,7 @@ class Translator:
                 )
                 max_bytes = max(200, len(piece) * 4 + 100) * 4
                 raw = self._collect_candidate(
-                    _with_source_language(prompt, source_language, source_explicit),
+                    _with_source_language(prompt, source_language),
                     retry_config,
                     max_bytes,
                     cancel,

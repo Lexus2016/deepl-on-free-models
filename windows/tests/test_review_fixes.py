@@ -339,15 +339,14 @@ def test_explicit_source_language_is_forwarded(qapp, tmp_path, monkeypatch):
     assert calls[0] == ("en", True)
 
 
-def test_auto_detected_persian_is_not_asserted_as_arabic(qapp, tmp_path, monkeypatch):
-    """Script detection says Arabic for Persian: that guess is not a fact."""
+def test_auto_detected_persian_remains_an_implicit_source(qapp, tmp_path, monkeypatch):
     controller = _controller(tmp_path)
     controller.set_source_language("auto")
     controller.set_target_language("en")
-    calls: list[tuple[str, bool]] = []
+    calls: list[tuple[str, str, bool]] = []
 
     def fake(text, **kwargs):
-        calls.append((kwargs["source"].code, kwargs["source_explicit"]))
+        calls.append((kwargs["source"].code, kwargs["target"].code, kwargs["source_explicit"]))
         return TranslationOutput(text="This is a report.", duration_ms=3)
 
     monkeypatch.setattr(controller.translator, "translate", fake)
@@ -355,7 +354,7 @@ def test_auto_detected_persian_is_not_asserted_as_arabic(qapp, tmp_path, monkeyp
     controller.translate(force=True)
 
     assert wait_until(lambda: bool(calls))
-    assert calls[0] == ("ar", False)  # detected as Arabic, but not taught as fact
+    assert calls[0] == ("fa", "en", False)
 
 
 # ---------------------------------------------------------------------------

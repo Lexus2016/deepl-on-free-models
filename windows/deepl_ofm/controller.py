@@ -503,16 +503,13 @@ class AppController(QObject):
             self._detect_timer.stop()
             self.detected_language = detected
             self.detectedLanguageChanged.emit(detected.code if detected else "")
-            source = detected or get_language("en")
+            source = detected or LanguageTable.AUTO
         else:
             source = self.source_language
         # The target is exactly what the user picked.  Auto-detection must never
         # silently redirect the translation to a different language.
         target = self.target_language
         config = self.settings.snapshot()
-        if not config.model:
-            self._emit_error(t("Choose a model in Settings."))
-            return
 
         key = (text, source.code, target.code, self.style.value, self.tone.value, config.model)
         if not force and key == self._last_completed_key and self.translated_text:
@@ -521,10 +518,9 @@ class AppController(QObject):
         self._cancel.set()
         self._generation += 1
         generation = self._generation
-        self._cancel = threading.Event()
-        cancel = self._cancel
-        self.is_translating = True
-        self.translatingChanged.emit(True)
+        self._last_completed_key = None
+        self.translated_text = ""
+        self.translatedTextChanged.emit("")
         if self.error_message is not None:
             self.error_message = None
             self.errorRaised.emit("")
@@ -535,6 +531,14 @@ class AppController(QObject):
         self.using_fallback = False
         self._last_partial_at = 0.0
 
+        if not config.model:
+            self._fail_translation(TranslationError("model"))
+            return
+
+        self._cancel = threading.Event()
+        cancel = self._cancel
+        self.is_translating = True
+        self.translatingChanged.emit(True)
         style, tone = self.style, self.tone
         fallback = self.settings.fallback_config()
         if fallback is not None and fallback.uses_same_endpoint(config):
