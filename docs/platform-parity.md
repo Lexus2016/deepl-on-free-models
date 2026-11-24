@@ -4,7 +4,7 @@ DeepL-oFM uses the same product flows on desktop and mobile. Native menus, permi
 
 DeepL-oFM використовує однакові сценарії на комп’ютерах і мобільних пристроях. Системні меню, дозволи та поширення відповідають можливостям ОС. Linux заплановано на наступний етап.
 
-| Flow / Сценарій | macOS | Windows | iPhone |
+| Flow / Сценарій | macOS | Windows | iPhone / iPad |
 | --- | --- | --- | --- |
 | Text / Текст | Swift translation, Markdown, language swap / Переклад, Markdown, обмін мов | Rust translation, Markdown, language swap / Переклад, Markdown, обмін мов | Shared Swift translation and mobile controls / Спільний переклад Swift і мобільні елементи керування |
 | Documents / Документи | Select a file, choose languages, translate, save / Вибір файла й мов, переклад, збереження | The same sequence, with PDF and DOCX notices / Та сама послідовність і повідомлення щодо PDF та DOCX | File import, translation and export still need implementation / Імпорт, переклад і експорт ще потрібно реалізувати |
@@ -16,9 +16,9 @@ DeepL-oFM використовує однакові сценарії на ком
 
 ## Next parity checks / Наступні перевірки узгодженості
 
-- Align provider setup and fallback behavior, one-request translation, searchable language choices, file format warnings and keyboard behavior across desktop. Check equivalent actions on iPhone while preserving its native layout.
-- Узгодити налаштування сервісів і резервування, переклад одним запитом, пошук мов, попередження про формати файлів та керування клавішами на комп’ютері. Перевірити відповідні дії на iPhone з урахуванням мобільного інтерфейсу.
+- Align provider setup and fallback behavior, one-request translation, searchable language choices, file format warnings and keyboard behavior across desktop. Check equivalent actions on iPhone and iPad in their native layouts.
+- Узгодити налаштування сервісів і резервування, переклад одним запитом, пошук мов, попередження про формати файлів та керування клавішами на комп’ютері. Перевірити відповідні дії на iPhone та iPad з урахуванням мобільного інтерфейсу.
 - Verify the macOS Services action in Safari and other apps that expose Services. Windows browser context menu support requires a browser extension and a tested handoff of the selection.
 - Перевірити службу macOS у Safari та інших програмах із підтримкою «Служб». Для меню браузера Windows потрібні розширення і перевірене передавання виділеного тексту.
-- Verify Windows release signing and the installed upgrade from one version to the next. For iPhone, verify the App Store or TestFlight build and system translation on a physical device.
-- Перевірити цифровий підпис випуску Windows і оновлення встановленої програми. Для iPhone перевірити збірку App Store або TestFlight і системний переклад на фізичному пристрої.
+- Verify Windows release signing and the installed upgrade from one version to the next. For iPhone and iPad, verify the App Store or TestFlight build and system translation on a physical device.
+- Перевірити цифровий підпис випуску Windows і оновлення встановленої програми. Для iPhone та iPad перевірити збірку App Store або TestFlight і системний переклад на фізичному пристрої.

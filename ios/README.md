@@ -1,4 +1,4 @@
-# DeepL-oFM for iPhone
+# DeepL-oFM for iPhone and iPad
 
 Translate text with a cloud provider or an OpenAI-compatible server on your
 network. Read the result as formatted text, plain text or Markdown. You can
@@ -13,7 +13,7 @@ copy or share it from the result panel.
 To use a server that runs on your Mac, choose **Custom**. Enter the Mac’s
 address and port, for example `http://mac.local:11434/v1`, and the model name.
 Connect both devices to the same Wi-Fi network and allow Local Network access
-when iOS asks. Addresses starting with `127.0.0.1` point to the iPhone itself.
+when iOS asks. Addresses starting with `127.0.0.1` point to the iPhone or iPad itself.
 Use HTTPS for a server outside your local network.
 
 ## Use DeepL-oFM as the default translator
@@ -48,7 +48,7 @@ cd ios
 open DeepL-oFM.xcodeproj
 ```
 
-Select **DeepL-oFM** and an iPhone simulator. Run `xcodegen generate` from
+Select **DeepL-oFM** and an iPhone or iPad simulator. Run `xcodegen generate` from
 `ios/` after changing `project.yml`.
 
 ```bash
@@ -56,11 +56,11 @@ xcodebuild -project DeepL-oFM.xcodeproj -scheme DeepL-oFM \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-## Install on a physical iPhone
+## Install on an iPhone or iPad
 
-1. Connect and unlock the iPhone. If iOS asks whether to trust this Mac,
-   confirm on the phone. Enable **Settings → Privacy & Security → Developer Mode**
-   and confirm it after restarting the phone.
+1. Connect and unlock your iPhone or iPad. If iOS asks whether to trust this Mac,
+   confirm on the device. Enable **Settings → Privacy & Security → Developer Mode**
+   and confirm it after restarting the device.
 2. On the Mac, sign in under **Xcode → Settings → Apple Accounts** with an
    account that belongs to the Apple Developer team for this project.
 3. Open `ios/DeepL-oFM.xcodeproj`. Under **Signing & Capabilities**, select the
@@ -70,7 +70,7 @@ xcodebuild -project DeepL-oFM.xcodeproj -scheme DeepL-oFM \
    `ua.admin.hymt.ios.share-translation` for `ShareTranslation`. The main app
    needs the **Translation** capability. All three targets use **Keychain
    Sharing** with group `ua.admin.hymt.ios.translation` under the same team prefix.
-4. Choose the **DeepL-oFM** scheme and the connected iPhone in Xcode. Press
+4. Choose the **DeepL-oFM** scheme and the connected device in Xcode. Press
    **Run** (`⌘R`) and register the device if Xcode asks. After the app opens,
    configure a provider and try [the system translation flow](#use-deepl-ofm-as-the-default-translator).
 
@@ -99,7 +99,7 @@ use the same App ID prefix.
    Connect → Upload**. Build with an SDK Apple currently accepts.
    [Upload requirements](https://developer.apple.com/news/upcoming-requirements/) · [Distribution in Xcode](https://developer.apple.com/documentation/xcode/distributing-your-app-for-beta-testing-and-releases)
 4. **Test the uploaded build.** Use internal TestFlight testing to verify
-   installation on an iPhone, provider setup, and selecting DeepL-oFM as the
+   installation on an iPhone and iPad, provider setup, and selecting DeepL-oFM as the
    default translator. Test translating, copying, and replacing selected text
    in another app. Test the **Share** action with text in Safari and WhatsApp.
    External testing requires Apple to review the first build.
@@ -115,11 +115,11 @@ use the same App ID prefix.
 
 ## Українською
 
-### Встановлення на iPhone через Xcode
+### Встановлення на iPhone та iPad через Xcode
 
-1. Під’єднайте й розблокуйте iPhone. Якщо телефон попросить довіряти Mac,
+1. Під’єднайте й розблокуйте iPhone або iPad. Якщо пристрій попросить довіряти Mac,
    підтвердьте. Увімкніть **Параметри → Приватність і безпека → Режим розробника**
-   та підтвердьте його після перезапуску телефона.
+   та підтвердьте його після перезапуску пристрою.
 2. На Mac відкрийте **Xcode → Settings → Apple Accounts** і увійдіть у
    свій обліковий запис Apple Developer. Відкрийте `ios/DeepL-oFM.xcodeproj`.
 3. У розділі **Signing & Capabilities** виберіть ту саму команду для
@@ -128,8 +128,8 @@ use the same App ID prefix.
    можливість **Translation**. Усі три цілі
    використовують **Keychain Sharing** із групою `ua.admin.hymt.ios.translation`
    та однаковим префіксом команди.
-4. У верхній панелі Xcode виберіть схему **DeepL-oFM** і підключений iPhone.
-   Натисніть **Run** (`⌘R`). Якщо Xcode запропонує зареєструвати iPhone,
+4. У верхній панелі Xcode виберіть схему **DeepL-oFM** і підключений iPhone або iPad.
+   Натисніть **Run** (`⌘R`). Якщо Xcode запропонує зареєструвати пристрій,
    підтвердьте. За помилок `No Accounts` чи `No profiles` перевірте обліковий
    запис і команду в Xcode. Якщо підписані групи Keychain різняться, перевірте,
    чи обидва профілі мають однаковий префікс ідентифікатора.
@@ -169,7 +169,7 @@ DeepL-oFM.
    виконайте **Product → Archive**. В Organizer виберіть **Distribute App →
    App Store Connect → Upload**. Використовуйте версію Xcode та набір засобів
    розробки iOS, які зараз приймає Apple.
-4. **TestFlight.** Встановіть завантажену збірку на реальний iPhone. Перевірте
+4. **TestFlight.** Встановіть завантажену збірку на iPhone та iPad. Перевірте
    налаштування провайдера, вибір типового перекладача, переклад, копіювання
    та заміну виділеного тексту. Перевірте дію «Поділитися» з текстом у Safari
    та WhatsApp. Для зовнішніх тестувальників першу збірку
@@ -184,7 +184,7 @@ DeepL-oFM.
 
 ## UI tests
 
-Run the shared scheme on an iPhone simulator to check Settings. To also test
+Run the shared scheme on an iPhone or iPad simulator to check Settings. To also test
 translation and cancellation, set `DEEPL_TEST_SERVER` to a local
 OpenAI-compatible fixture. The fixture should accept model `test`, translate
 `Bonjour.` as `Good morning.`, and wait several seconds before translating

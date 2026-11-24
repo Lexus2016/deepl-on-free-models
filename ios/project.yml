@@ -50,7 +50,7 @@ targets:
         INFOPLIST_FILE: DeepL-oFM/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: NO
         MARKETING_VERSION: "2.0.4"
         CURRENT_PROJECT_VERSION: "17"
@@ -84,7 +84,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: TranslationProvider/TranslationProvider.entitlements
         INFOPLIST_FILE: TranslationProvider/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         SUPPORTS_MACCATALYST: NO
@@ -118,7 +118,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: TranslationProvider/TranslationProvider.entitlements
         INFOPLIST_FILE: ShareTranslation/Info.plist
         GENERATE_INFOPLIST_FILE: NO
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         SUPPORTS_MACCATALYST: NO

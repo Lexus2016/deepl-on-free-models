@@ -83,8 +83,8 @@ final class TranslationUITests: XCTestCase {
         XCTAssertTrue(entry.waitForExistence(timeout: 5))
         app.buttons.matching(identifier: "history-entry").firstMatch.tap()
         XCTAssertTrue(app.buttons["Copy translation"].waitForExistence(timeout: 5))
-        app.navigationBars.buttons["History"].firstMatch.tap()
-        app.buttons["Done"].tap()
+        app.navigationBars["Translation"].buttons["History"].tap()
+        app.navigationBars["History"].buttons["Done"].tap()
 
         app.swipeDown()
         app.buttons["Clear"].tap()
