@@ -936,6 +936,12 @@ struct SettingsView: View {
                 }
                 .font(.system(size: 11.5))
                 .foregroundStyle(Theme.accent)
+
+                Link(destination: URL(string: "https://buymeacoffee.com/tiberiy201y")!) {
+                    Label(L10n.t("Buy the developer a coffee", language), systemImage: "cup.and.saucer")
+                }
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(Theme.accent)
             }
         }
     }

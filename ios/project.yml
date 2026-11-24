@@ -24,6 +24,8 @@ targets:
       - path: ../Sources/HyMT/Models/Prompt.swift
       - path: ../Sources/HyMT/Models/Provider.swift
       - path: ../Sources/HyMT/Services/TranslationService.swift
+      - path: ../Sources/HyMT/Services/HistoryStore.swift
+      - path: ../Sources/HyMT/Services/WriteStore.swift
       - path: ../Sources/HyMT/Support/Keychain.swift
       - path: ../Sources/HyMT/Support/Localization.swift
       - path: ../Sources/HyMT/Support/TokenRestorer.swift
@@ -37,6 +39,9 @@ targets:
         copy:
           destination: wrapper
           subpath: Extensions
+      - target: ShareTranslation
+        embed: true
+        link: false
     settings:
       base:
         PRODUCT_NAME: DeepL-oFM
@@ -47,8 +52,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
-        MARKETING_VERSION: "2.0.1"
-        CURRENT_PROJECT_VERSION: "14"
+        MARKETING_VERSION: "2.0.4"
+        CURRENT_PROJECT_VERSION: "17"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
   TranslationProvider:
@@ -83,8 +88,42 @@ targets:
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         SUPPORTS_MACCATALYST: NO
-        MARKETING_VERSION: "2.0.1"
-        CURRENT_PROJECT_VERSION: "14"
+        MARKETING_VERSION: "2.0.4"
+        CURRENT_PROJECT_VERSION: "17"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+  ShareTranslation:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareTranslation
+        excludes:
+          - Info.plist
+      - path: Shared
+      - path: DeepL-oFM/TranslationModel.swift
+      - path: DeepL-oFM/IOSMarkdown.swift
+      - path: ../Sources/HyMT/Models/BackendConfig.swift
+      - path: ../Sources/HyMT/Models/Language.swift
+      - path: ../Sources/HyMT/Models/Prompt.swift
+      - path: ../Sources/HyMT/Models/Provider.swift
+      - path: ../Sources/HyMT/Services/TranslationService.swift
+      - path: ../Sources/HyMT/Support/Localization.swift
+      - path: ../Sources/HyMT/Support/TokenRestorer.swift
+      - path: ../Sources/HyMT/Support/OutputSanitizer.swift
+      - path: ../Sources/HyMT/Support/MarkdownDetector.swift
+    settings:
+      base:
+        PRODUCT_NAME: ShareTranslation
+        PRODUCT_BUNDLE_IDENTIFIER: ua.admin.hymt.ios.share-translation
+        CODE_SIGN_ENTITLEMENTS: TranslationProvider/TranslationProvider.entitlements
+        INFOPLIST_FILE: ShareTranslation/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+        SUPPORTS_MACCATALYST: NO
+        MARKETING_VERSION: "2.0.4"
+        CURRENT_PROJECT_VERSION: "17"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ""
   DeepL-oFMUITests:

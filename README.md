@@ -43,6 +43,10 @@ Translate from a Mac window or use a shortcut from another app. Ollama can
 run on your Mac without an internet connection. You can also connect a cloud
 provider with your own key.
 
+### Translate selected text from other apps
+
+On macOS, select text and choose **Services → Translate with DeepL-oFM** in an app that supports system services. If the item is hidden, check **System Settings → Keyboard → Keyboard Shortcuts → Services**. [Platform parity](docs/platform-parity.md).
+
 ## Features
 
 - Read the original and translation side by side. A progress indicator shows
@@ -463,6 +467,10 @@ required for notarization. The script also embeds and signs
 `Sparkle.framework` from SwiftPM, adds the `@executable_path/../Frameworks`
 rpath, and verifies the whole bundle.
 
+The drag-and-drop installer uses `create-dmg` to save the Finder layout.
+Install it once with `brew install create-dmg` and run the script in a macOS
+desktop session so Finder can save the window layout.
+
 ```bash
 ./build.sh
 ditto -c -k --keepParent build/DeepL-oFM.app build/DeepL-oFM.zip
@@ -471,14 +479,8 @@ xcrun notarytool submit build/DeepL-oFM.zip \
   --keychain-profile "your-notary-profile" --wait
 xcrun stapler staple build/DeepL-oFM.app
 
-# DMG with an Applications shortcut for drag-and-drop install
-STAGE=build/dmg-stage
-rm -rf "$STAGE"
-mkdir -p "$STAGE"
-ditto build/DeepL-oFM.app "$STAGE/DeepL-oFM.app"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "DeepL-oFM" -srcfolder "$STAGE" \
-  -ov -format UDZO build/DeepL-oFM.dmg
+# Branded drag-and-drop installer
+./Scripts/build-dmg.sh
 
 codesign --force --timestamp --sign "Developer ID Application: …" build/DeepL-oFM.dmg
 xcrun notarytool submit build/DeepL-oFM.dmg \

@@ -57,7 +57,11 @@ final class TranslationModel: ObservableObject {
         warningCount = 0
     }
 
-    func translate(configuration: IOSTranslationConfiguration, sourceCode: String) {
+    func translate(
+        configuration: IOSTranslationConfiguration,
+        sourceCode: String,
+        onSuccess: ((String, Int, String) -> Void)? = nil
+    ) {
         let text = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         let language = configuration.interfaceLanguage
@@ -72,6 +76,7 @@ final class TranslationModel: ObservableObject {
         isTranslating = true
         let source = Language.with(code: sourceCode)
         detected = source ?? Language.detect(text, preferred: language)
+        let detectedCode = detected?.code ?? Language.auto.code
 
         let target = configuration.target
         let style = configuration.style
@@ -112,7 +117,9 @@ final class TranslationModel: ObservableObject {
                 self.renderedText = display.rendered
                 self.translatedText = text
                 self.isTranslating = false
-                self.durationMs = Int(Date().timeIntervalSince(started) * 1000)
+                let duration = Int(Date().timeIntervalSince(started) * 1000)
+                self.durationMs = duration
+                onSuccess?(text, duration, detectedCode)
                 if self.warningCount > 0 {
                     self.errorMessage = L10n.format(
                         "Some lines could not be translated (%d); they are left in the source language.",

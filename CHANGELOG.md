@@ -4,6 +4,27 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.4] (2026-11-24)
+
+### macOS
+
+- Translate selected text from the system Services menu in compatible apps.
+- Install by dragging DeepL-oFM to Applications in the new disk image.
+- Open Buy Me a Coffee from the About section in Settings.
+
+### iPhone source
+
+- Translate shared text directly in the iOS share sheet.
+- Search local translation history and improve writing in the app.
+- Open Buy Me a Coffee from the About section in Settings.
+
+### Українською
+
+- На Mac перекладайте виділений текст через системне меню «Служби».
+- Новий образ диска показує, куди перетягнути застосунок для встановлення.
+- На iPhone додано переклад із меню «Поділитися», історію та покращення тексту.
+- У розділі «Про програму» на Mac та iPhone можна купити розробнику каву.
+
 ## [2.0.3] (2026-11-23)
 
 ### macOS

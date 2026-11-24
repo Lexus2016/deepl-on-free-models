@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class WriteStore: ObservableObject {
@@ -40,15 +41,20 @@ final class WriteStore: ObservableObject {
         languageCode = UserDefaults.standard.string(forKey: "hymt.lastTarget") ?? "en"
     }
 
+    #if os(macOS)
     func improve(settings: AppSettings, interfaceLanguage: AppLanguage) {
+        improve(primary: settings.snapshot, fallback: settings.fallbackConfig, interfaceLanguage: interfaceLanguage)
+    }
+    #endif
+
+    func improve(primary: BackendConfig, fallback: BackendConfig? = nil, interfaceLanguage: AppLanguage) {
         let text = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         let detected = languageWasChosen ? nil : Language.detect(text)
         guard !text.isEmpty, let language = detected ?? Language.with(code: languageCode) else {
             return
         }
 
-        let primary = settings.snapshot
-        let fallback = settings.fallbackConfig.flatMap { primary.usesSameEndpoint(as: $0) ? nil : $0 }
+        let fallback = fallback.flatMap { primary.usesSameEndpoint(as: $0) ? nil : $0 }
 
         task?.cancel()
         isWorking = true

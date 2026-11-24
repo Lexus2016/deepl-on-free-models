@@ -150,6 +150,7 @@ final class AppState: NSObject, ObservableObject {
     private var suppressRetranslation = false
     private var didBootstrap = false
     private var didActivateWindow = false
+    private var selectionService: SelectionTranslationService?
 
     override init() {
         let settings = AppSettings()
@@ -175,6 +176,12 @@ final class AppState: NSObject, ObservableObject {
             self?.speaking = nil
         }
         configureBindings()
+        let service = SelectionTranslationService { [weak self] text in
+            self?.translateReceivedText(text)
+        }
+        selectionService = service
+        NSApp.servicesProvider = service
+        NSUpdateDynamicServices()
         NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)
             .sink { [history] _ in history.flush() }
             .store(in: &cancellables)
@@ -639,15 +646,24 @@ extension AppState {
         // Markdown, so headings, lists and links survive translation.
         let clipboard = (RichTextPasteboard.markdown() ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        showWindow()
-        guard !clipboard.isEmpty else { return }
+        guard !clipboard.isEmpty else {
+            showWindow()
+            return
+        }
+        translateReceivedText(clipboard)
+    }
 
+    private func translateReceivedText(_ text: String) {
+        showWindow()
         tab = .translate
         suppressRetranslation = true
-        sourceText = clipboard
+        sourceText = text
         translatedText = ""
+        errorMessage = nil
+        lastDurationMs = nil
+        tokensPerSecond = nil
         suppressRetranslation = false
-        detectedLanguage = sourceLanguage == .auto ? Language.detect(clipboard, preferred: settings.interfaceLanguage) : nil
+        detectedLanguage = sourceLanguage == .auto ? Language.detect(text, preferred: settings.interfaceLanguage) : nil
         translate(force: true)
     }
 
@@ -963,8 +979,8 @@ extension AppState {
                 }
             }
 
-            self.showWindow()
             guard let text = captured else {
+                self.showWindow()
                 self.errorMessage = L10n.t(
                     "Could not copy the selected text. Check Accessibility access.",
                     self.settings.interfaceLanguage
@@ -972,16 +988,7 @@ extension AppState {
                 return
             }
 
-            self.tab = .translate
-            self.suppressRetranslation = true
-            self.sourceText = text
-            self.translatedText = ""
-            self.errorMessage = nil
-            self.lastDurationMs = nil
-            self.tokensPerSecond = nil
-            self.suppressRetranslation = false
-            self.detectedLanguage = self.sourceLanguage == .auto ? Language.detect(text, preferred: settings.interfaceLanguage) : nil
-            self.translate(force: true)
+            self.translateReceivedText(text)
         }
     }
 
