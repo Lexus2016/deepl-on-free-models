@@ -1020,24 +1020,6 @@ extension AppState {
     // MARK: - Hot key and menu bar
 
     private func configureBindings() {
-        settings.$hotKey
-            .dropFirst()
-            .removeDuplicates()
-            .sink { [weak self] combo in
-                // @Published fires in willSet: use the emitted value, not the
-                // stored property, or the status text and registration stay old.
-                self?.registerHotKeys(clipboardCombo: combo)
-            }
-            .store(in: &cancellables)
-
-        settings.$selectionHotKey
-            .dropFirst()
-            .removeDuplicates()
-            .sink { [weak self] combo in
-                self?.registerHotKeys(selectionCombo: combo)
-            }
-            .store(in: &cancellables)
-
         settings.$interfaceLanguage
             .dropFirst()
             .sink { [weak self] _ in
@@ -1128,31 +1110,45 @@ extension AppState {
             .store(in: &cancellables)
     }
 
-    private func registerHotKeys(
-        clipboardCombo: KeyCombo? = nil,
-        selectionCombo: KeyCombo? = nil
-    ) {
-        let language = settings.interfaceLanguage
-        let clipboardCombo = clipboardCombo ?? settings.hotKey
-        let selectionCombo = selectionCombo ?? settings.selectionHotKey
-
-        let clipboardOK = hotKeys.register(clipboardCombo, id: 1) { [weak self] in
-            Task { @MainActor in self?.translateClipboard() }
+    func setHotKey(_ combo: KeyCombo, forSelection: Bool) {
+        guard registerHotKey(combo, forSelection: forSelection) else { return }
+        if forSelection {
+            settings.selectionHotKey = combo
+        } else {
+            settings.hotKey = combo
         }
-        let selectionOK = hotKeys.register(selectionCombo, id: 2) { [weak self] in
-            Task { @MainActor in self?.translateSelection() }
-        }
-
-        debugLog("hotkey register \(clipboardCombo.displayString(language)): \(clipboardOK); selection \(selectionCombo.displayString(language)): \(selectionOK)")
-        hotKeyActive = clipboardOK
-        selectionHotKeyActive = selectionOK
-        hotKeyMessage = clipboardOK
-            ? L10n.format("%@ — active", language, clipboardCombo.displayString(language))
-            : L10n.format("Could not register %@. The shortcut may be taken.", language, clipboardCombo.displayString(language))
-        selectionHotKeyMessage = selectionOK
-            ? L10n.format("%@ — active", language, selectionCombo.displayString(language))
-            : L10n.format("Could not register %@. The shortcut may be taken.", language, selectionCombo.displayString(language))
         updateStatusMenu()
+    }
+
+    private func registerHotKeys() {
+        _ = registerHotKey(settings.hotKey, forSelection: false)
+        _ = registerHotKey(settings.selectionHotKey, forSelection: true)
+        updateStatusMenu()
+    }
+
+    private func registerHotKey(_ combo: KeyCombo, forSelection: Bool) -> Bool {
+        let language = settings.interfaceLanguage
+        let registered = hotKeys.register(combo, id: forSelection ? 2 : 1) { [weak self] in
+            Task { @MainActor in
+                if forSelection {
+                    self?.translateSelection()
+                } else {
+                    self?.translateClipboard()
+                }
+            }
+        }
+        let display = combo.displayString(language)
+        let message = registered
+            ? L10n.format("%@ — active", language, display)
+            : L10n.format("Could not register %@. The shortcut may be taken.", language, display)
+        if forSelection {
+            selectionHotKeyActive = registered
+            selectionHotKeyMessage = message
+        } else {
+            hotKeyActive = registered
+            hotKeyMessage = message
+        }
+        return registered
     }
 
     private func installStatusItem() {
