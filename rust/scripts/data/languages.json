@@ -1,0 +1,671 @@
+{
+  "registry": [
+    [
+      "zh",
+      "Chinese",
+      "китайська",
+      "zh-CN"
+    ],
+    [
+      "en",
+      "English",
+      "англійська",
+      "en-US"
+    ],
+    [
+      "fr",
+      "French",
+      "французька",
+      "fr-FR"
+    ],
+    [
+      "pt",
+      "Portuguese",
+      "португальська",
+      "pt-PT"
+    ],
+    [
+      "es",
+      "Spanish",
+      "іспанська",
+      "es-ES"
+    ],
+    [
+      "ja",
+      "Japanese",
+      "японська",
+      "ja-JP"
+    ],
+    [
+      "tr",
+      "Turkish",
+      "турецька",
+      "tr-TR"
+    ],
+    [
+      "ru",
+      "Russian",
+      "російська",
+      "ru-RU"
+    ],
+    [
+      "ar",
+      "Arabic",
+      "арабська",
+      "ar-SA"
+    ],
+    [
+      "ko",
+      "Korean",
+      "корейська",
+      "ko-KR"
+    ],
+    [
+      "th",
+      "Thai",
+      "тайська",
+      "th-TH"
+    ],
+    [
+      "it",
+      "Italian",
+      "італійська",
+      "it-IT"
+    ],
+    [
+      "de",
+      "German",
+      "німецька",
+      "de-DE"
+    ],
+    [
+      "vi",
+      "Vietnamese",
+      "в'єтнамська",
+      "vi-VN"
+    ],
+    [
+      "ms",
+      "Malay",
+      "малайська",
+      "ms-MY"
+    ],
+    [
+      "id",
+      "Indonesian",
+      "індонезійська",
+      "id-ID"
+    ],
+    [
+      "tl",
+      "Filipino",
+      "філіппінська",
+      "fil-PH"
+    ],
+    [
+      "hi",
+      "Hindi",
+      "гінді",
+      "hi-IN"
+    ],
+    [
+      "zh-Hant",
+      "Traditional Chinese",
+      "китайська (традиційна)",
+      "zh-TW"
+    ],
+    [
+      "pl",
+      "Polish",
+      "польська",
+      "pl-PL"
+    ],
+    [
+      "cs",
+      "Czech",
+      "чеська",
+      "cs-CZ"
+    ],
+    [
+      "nl",
+      "Dutch",
+      "нідерландська",
+      "nl-NL"
+    ],
+    [
+      "km",
+      "Khmer",
+      "кхмерська",
+      "km-KH"
+    ],
+    [
+      "my",
+      "Burmese",
+      "бірманська",
+      "my-MM"
+    ],
+    [
+      "fa",
+      "Persian",
+      "перська",
+      "fa-IR"
+    ],
+    [
+      "gu",
+      "Gujarati",
+      "гуджараті",
+      "gu-IN"
+    ],
+    [
+      "ur",
+      "Urdu",
+      "урду",
+      "ur-PK"
+    ],
+    [
+      "te",
+      "Telugu",
+      "телугу",
+      "te-IN"
+    ],
+    [
+      "mr",
+      "Marathi",
+      "маратхі",
+      "mr-IN"
+    ],
+    [
+      "he",
+      "Hebrew",
+      "іврит",
+      "he-IL"
+    ],
+    [
+      "bn",
+      "Bengali",
+      "бенгальська",
+      "bn-BD"
+    ],
+    [
+      "ta",
+      "Tamil",
+      "тамільська",
+      "ta-IN"
+    ],
+    [
+      "uk",
+      "Ukrainian",
+      "українська",
+      "uk-UA"
+    ],
+    [
+      "bo",
+      "Tibetan",
+      "тибетська",
+      "bo-CN"
+    ],
+    [
+      "kk",
+      "Kazakh",
+      "казахська",
+      "kk-KZ"
+    ],
+    [
+      "mn",
+      "Mongolian",
+      "монгольська",
+      "mn-MN"
+    ],
+    [
+      "ug",
+      "Uyghur",
+      "уйгурська",
+      "ug-CN"
+    ],
+    [
+      "yue",
+      "Cantonese",
+      "кантонська",
+      "yue-HK"
+    ]
+  ],
+  "names": {
+    "zh": {
+      "ru": "китайский",
+      "de": "Chinesisch",
+      "fr": "chinois",
+      "es": "chino",
+      "pl": "chiński",
+      "pt": "chinês",
+      "it": "cinese"
+    },
+    "en": {
+      "ru": "английский",
+      "de": "Englisch",
+      "fr": "anglais",
+      "es": "inglés",
+      "pl": "angielski",
+      "pt": "inglês",
+      "it": "inglese"
+    },
+    "fr": {
+      "ru": "французский",
+      "de": "Französisch",
+      "fr": "français",
+      "es": "francés",
+      "pl": "francuski",
+      "pt": "francês",
+      "it": "francese"
+    },
+    "pt": {
+      "ru": "португальский",
+      "de": "Portugiesisch",
+      "fr": "portugais",
+      "es": "portugués",
+      "pl": "portugalski",
+      "pt": "português",
+      "it": "portoghese"
+    },
+    "es": {
+      "ru": "испанский",
+      "de": "Spanisch",
+      "fr": "espagnol",
+      "es": "español",
+      "pl": "hiszpański",
+      "pt": "espanhol",
+      "it": "spagnolo"
+    },
+    "ja": {
+      "ru": "японский",
+      "de": "Japanisch",
+      "fr": "japonais",
+      "es": "japonés",
+      "pl": "japoński",
+      "pt": "japonês",
+      "it": "giapponese"
+    },
+    "tr": {
+      "ru": "турецкий",
+      "de": "Türkisch",
+      "fr": "turc",
+      "es": "turco",
+      "pl": "turecki",
+      "pt": "turco",
+      "it": "turco"
+    },
+    "ru": {
+      "ru": "русский",
+      "de": "Russisch",
+      "fr": "russe",
+      "es": "ruso",
+      "pl": "rosyjski",
+      "pt": "russo",
+      "it": "russo"
+    },
+    "ar": {
+      "ru": "арабский",
+      "de": "Arabisch",
+      "fr": "arabe",
+      "es": "árabe",
+      "pl": "arabski",
+      "pt": "árabe",
+      "it": "arabo"
+    },
+    "ko": {
+      "ru": "корейский",
+      "de": "Koreanisch",
+      "fr": "coréen",
+      "es": "coreano",
+      "pl": "koreański",
+      "pt": "coreano",
+      "it": "coreano"
+    },
+    "th": {
+      "ru": "тайский",
+      "de": "Thailändisch",
+      "fr": "thaï",
+      "es": "tailandés",
+      "pl": "tajski",
+      "pt": "tailandês",
+      "it": "thailandese"
+    },
+    "it": {
+      "ru": "итальянский",
+      "de": "Italienisch",
+      "fr": "italien",
+      "es": "italiano",
+      "pl": "włoski",
+      "pt": "italiano",
+      "it": "italiano"
+    },
+    "de": {
+      "ru": "немецкий",
+      "de": "Deutsch",
+      "fr": "allemand",
+      "es": "alemán",
+      "pl": "niemiecki",
+      "pt": "alemão",
+      "it": "tedesco"
+    },
+    "vi": {
+      "ru": "вьетнамский",
+      "de": "Vietnamesisch",
+      "fr": "vietnamien",
+      "es": "vietnamita",
+      "pl": "wietnamski",
+      "pt": "vietnamita",
+      "it": "vietnamita"
+    },
+    "ms": {
+      "ru": "малайский",
+      "de": "Malaiisch",
+      "fr": "malais",
+      "es": "malayo",
+      "pl": "malajski",
+      "pt": "malaio",
+      "it": "malese"
+    },
+    "id": {
+      "ru": "индонезийский",
+      "de": "Indonesisch",
+      "fr": "indonésien",
+      "es": "indonesio",
+      "pl": "indonezyjski",
+      "pt": "indonésio",
+      "it": "indonesiano"
+    },
+    "tl": {
+      "ru": "филиппинский",
+      "de": "Filipino",
+      "fr": "philippin",
+      "es": "filipino",
+      "pl": "filipiński",
+      "pt": "filipino",
+      "it": "filippino"
+    },
+    "hi": {
+      "ru": "хинди",
+      "de": "Hindi",
+      "fr": "hindi",
+      "es": "hindi",
+      "pl": "hindi",
+      "pt": "híndi",
+      "it": "hindi"
+    },
+    "zh-Hant": {
+      "ru": "китайский (традиционный)",
+      "de": "Chinesisch (traditionell)",
+      "fr": "chinois traditionnel",
+      "es": "chino tradicional",
+      "pl": "chiński tradycyjny",
+      "pt": "chinês tradicional",
+      "it": "cinese tradizionale"
+    },
+    "pl": {
+      "ru": "польский",
+      "de": "Polnisch",
+      "fr": "polonais",
+      "es": "polaco",
+      "pl": "polski",
+      "pt": "polaco",
+      "it": "polacco"
+    },
+    "cs": {
+      "ru": "чешский",
+      "de": "Tschechisch",
+      "fr": "tchèque",
+      "es": "checo",
+      "pl": "czeski",
+      "pt": "checo",
+      "it": "ceco"
+    },
+    "nl": {
+      "ru": "нидерландский",
+      "de": "Niederländisch",
+      "fr": "néerlandais",
+      "es": "neerlandés",
+      "pl": "niderlandzki",
+      "pt": "neerlandês",
+      "it": "olandese"
+    },
+    "km": {
+      "ru": "кхмерский",
+      "de": "Khmer",
+      "fr": "khmer",
+      "es": "jemer",
+      "pl": "khmerski",
+      "pt": "khmer",
+      "it": "khmer"
+    },
+    "my": {
+      "ru": "бирманский",
+      "de": "Birmanisch",
+      "fr": "birman",
+      "es": "birmano",
+      "pl": "birmański",
+      "pt": "birmanês",
+      "it": "birmano"
+    },
+    "fa": {
+      "ru": "персидский",
+      "de": "Persisch",
+      "fr": "persan",
+      "es": "persa",
+      "pl": "perski",
+      "pt": "persa",
+      "it": "persiano"
+    },
+    "gu": {
+      "ru": "гуджарати",
+      "de": "Gujarati",
+      "fr": "gujarati",
+      "es": "guyaratí",
+      "pl": "gudżarati",
+      "pt": "guzerate",
+      "it": "gujarati"
+    },
+    "ur": {
+      "ru": "урду",
+      "de": "Urdu",
+      "fr": "ourdou",
+      "es": "urdu",
+      "pl": "urdu",
+      "pt": "urdu",
+      "it": "urdu"
+    },
+    "te": {
+      "ru": "телугу",
+      "de": "Telugu",
+      "fr": "télougou",
+      "es": "telugu",
+      "pl": "telugu",
+      "pt": "telugu",
+      "it": "telugu"
+    },
+    "mr": {
+      "ru": "маратхи",
+      "de": "Marathi",
+      "fr": "marathi",
+      "es": "maratí",
+      "pl": "marathi",
+      "pt": "marata",
+      "it": "marathi"
+    },
+    "he": {
+      "ru": "иврит",
+      "de": "Hebräisch",
+      "fr": "hébreu",
+      "es": "hebreo",
+      "pl": "hebrajski",
+      "pt": "hebraico",
+      "it": "ebraico"
+    },
+    "bn": {
+      "ru": "бенгальский",
+      "de": "Bengalisch",
+      "fr": "bengali",
+      "es": "bengalí",
+      "pl": "bengalski",
+      "pt": "bengali",
+      "it": "bengalese"
+    },
+    "ta": {
+      "ru": "тамильский",
+      "de": "Tamil",
+      "fr": "tamoul",
+      "es": "tamil",
+      "pl": "tamilski",
+      "pt": "tâmil",
+      "it": "tamil"
+    },
+    "uk": {
+      "ru": "украинский",
+      "de": "Ukrainisch",
+      "fr": "ukrainien",
+      "es": "ucraniano",
+      "pl": "ukraiński",
+      "pt": "ucraniano",
+      "it": "ucraino"
+    },
+    "bo": {
+      "ru": "тибетский",
+      "de": "Tibetisch",
+      "fr": "tibétain",
+      "es": "tibetano",
+      "pl": "tybetański",
+      "pt": "tibetano",
+      "it": "tibetano"
+    },
+    "kk": {
+      "ru": "казахский",
+      "de": "Kasachisch",
+      "fr": "kazakh",
+      "es": "kazajo",
+      "pl": "kazachski",
+      "pt": "cazaque",
+      "it": "kazako"
+    },
+    "mn": {
+      "ru": "монгольский",
+      "de": "Mongolisch",
+      "fr": "mongol",
+      "es": "mongol",
+      "pl": "mongolski",
+      "pt": "mongol",
+      "it": "mongolo"
+    },
+    "ug": {
+      "ru": "уйгурский",
+      "de": "Uigurisch",
+      "fr": "ouïghour",
+      "es": "uigur",
+      "pl": "ujgurski",
+      "pt": "uigure",
+      "it": "uiguro"
+    },
+    "yue": {
+      "ru": "кантонский",
+      "de": "Kantonesisch",
+      "fr": "cantonais",
+      "es": "cantonés",
+      "pl": "kantoński",
+      "pt": "cantonês",
+      "it": "cantonese"
+    }
+  },
+  "order": [
+    "en",
+    "fr",
+    "de",
+    "es",
+    "pt",
+    "it",
+    "pl",
+    "nl",
+    "tr",
+    "vi",
+    "id",
+    "ms"
+  ],
+  "stops": {
+    "en": "\n        the and is are was were this that these those with you your for of to it\n        in on at by or but not have has had be been being from they them their we\n        our will would can could should there what when which who whom how why\n        about into than then just also very more most some any all no if so do\n        does did my me he she his her its as up out one two because while between\n        through during before after above below here where both each few other\n        such only own same too again once please thanks hello\n    ",
+    "fr": "\n        le la les des du de et est une un que qui dans pour avec sur pas ce cette\n        ces au aux en il elle nous vous ils elles sont être avoir plus mais ou où\n        comme tout tous toute toutes votre notre je tu mon ma mes ton ta tes son\n        sa ses leur leurs par sans sous entre aussi très déjà encore toujours\n        jamais bien faire fait dit bonjour merci salut oui non comment pourquoi\n        quand quel quelle quels quelles ceci cela celui celle dont donc alors\n        ainsi chez vers depuis pendant avant après à était étaient sera seront\n        peut peuvent dois doit veut veux\n    ",
+    "de": "\n        der die das den dem des ein eine einer eines einem einen und ist sind\n        nicht mit für auf aus bei nach von zu zum zur im in ich du er sie es wir\n        ihr sich auch aber oder wenn wie dass werden wird wurde worden haben hat\n        hatte sein war waren mehr sehr noch nur kann können müssen muss über unter\n        zwischen durch gegen ohne um als so dann dort hier was wer wo warum weil\n        diese dieser dieses diesem diesen mein meine dein deine seine ihre unsere\n        euer guten tag hallo danke bitte ja nein\n    ",
+    "es": "\n        el la los las un una unos unas de del y o que en es son está están este\n        esta estos estas ese esa esos esas por para con sin sobre entre no sí se\n        su sus mi mis tu tus nuestro nuestra al lo le les me te nos os como cuando\n        donde porque pero más muy también ya hay ha han he fue ser estar tiene\n        tienen puede pueden todo todos toda todas otro otra otros otras hacer hace\n        dice dijo bien mal gracias hola buenos días servicio\n    ",
+    "pt": "\n        o os as um uma uns umas de do da dos das e ou que em no na nos nas é são\n        está estão este esta estes estas esse essa por para com sem sobre entre\n        não sim se seu sua seus suas meu minha nosso nossa ao lhe me te vos como\n        quando onde porque mas mais muito também já há foi ser estar tem têm pode\n        podem todo todos toda todas fazer faz diz disse obrigado olá bom dia não\n        não você vocês isso isto aquilo pelo pela pelos pelas dos das nas aos às num\n        numa serviço tradução funciona\n    ",
+    "it": "\n        il lo la i gli le un uno una di del della dei delle che nel nella è sono\n        questo questa questi queste quello quella per con senza su tra fra non sì\n        si suo sua suoi sue mio mia nostro nostra al alla allo ai alle come quando\n        dove perché ma più molto anche già ha hanno ho fu essere stare stato può\n        possono tutto tutti tutta tutte fare fa dice detto bene male grazie ciao\n        buongiorno è\n    ",
+    "pl": "\n        i w z na do nie że się jest są to ten ta te tego tej tych za od po przez\n        przy o jak ale albo lub czy tak bardzo jeszcze już tylko może można mieć\n        ma mają był była było były oraz dla bez pod nad między który która które\n        których tym tego nie ma dziękuję cześć dzień dobry\n    ",
+    "nl": "\n        de het een en van in op te dat die dit deze is zijn was waren niet met voor\n        aan bij uit naar door over onder tussen tegen zonder om als maar of ook\n        nog al heel zeer kan kunnen moet moeten hebben heeft had ik jij je hij zij\n        ze wij we jullie u mijn jouw haar ons hun dit dank je hallo goedemorgen\n    ",
+    "tr": "\n        ve bir bu şu o da de ile için olan olarak var yok çok daha en gibi ama\n        fakat veya ya ki ne nasıl neden çünkü her bazı tüm ben sen biz siz onlar\n        benim senin onun bizim sizin onların değil mi mı mu mü teşekkür merhaba\n    ",
+    "vi": "\n        và là của có không được trong cho một những các với để này đó khi như\n        nhưng hoặc thì mà tôi bạn anh chị em chúng họ người việc rất cũng đã sẽ\n        đang về từ đến theo trên dưới xin chào cảm ơn\n    ",
+    "id": "\n        dan yang di ke dari untuk dengan ini itu tidak ada adalah akan sudah telah\n        pada dalam oleh juga bisa dapat karena tetapi atau jika ketika setelah\n        sebelum saya kamu dia kami kita mereka sangat lebih semua banyak terima\n        kasih selamat pagi sebuah terjemahan tes baik satu buku orang dunia\n        bahasa\n    ",
+    "ms": "\n        dan yang di ke dari untuk dengan ini itu tidak tiada akan telah pada\n        dalam oleh juga boleh dapat kerana tetapi atau jika apabila selepas\n        sebelum saya kamu dia kami kita mereka sangat lebih semua banyak terima\n        kasih selamat pagi ialah anda awak terjemahan baik satu ujian bahasa\n    "
+  },
+  "ukrainian": [
+    "що",
+    "цей",
+    "ця",
+    "ці",
+    "після",
+    "або",
+    "також",
+    "вже",
+    "ще",
+    "рядок",
+    "рядки",
+    "мова",
+    "переклад",
+    "можна",
+    "потрібно",
+    "який",
+    "яка",
+    "які",
+    "було",
+    "цього",
+    "мене",
+    "тебе",
+    "його",
+    "її",
+    "вони",
+    "ми",
+    "ви",
+    "безкоштовно",
+    "локальні",
+    "хмарні",
+    "провайдери"
+  ],
+  "russian": [
+    "что",
+    "это",
+    "этот",
+    "эта",
+    "эти",
+    "после",
+    "или",
+    "также",
+    "ещё",
+    "еще",
+    "строка",
+    "строки",
+    "язык",
+    "перевод",
+    "можно",
+    "нужно",
+    "который",
+    "которая",
+    "которые",
+    "было",
+    "этого",
+    "меня",
+    "тебя",
+    "его",
+    "её",
+    "они",
+    "мы",
+    "вы",
+    "бесплатно",
+    "локальные",
+    "облачные",
+    "провайдеры"
+  ]
+}

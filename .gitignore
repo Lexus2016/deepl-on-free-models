@@ -48,3 +48,9 @@ ios/**/*.xcuserstate
 
 # HyperFrames check output
 .hyperframes/
+
+# Windows Rust builds
+rust/target/
+rust/dist/
+rust/crates/desktop/gen/
+.cargo-home/

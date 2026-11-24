@@ -1,0 +1,101 @@
+name: Windows Rust
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rust/**"
+      - "Sources/HyMT/Support/Localization.swift"
+      - ".github/workflows/rust.yml"
+  pull_request:
+    paths:
+      - "rust/**"
+      - "Sources/HyMT/Support/Localization.swift"
+      - ".github/workflows/rust.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: Format, lint and test
+        working-directory: rust
+        run: |
+          cargo fmt --all --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked
+      - name: Check localization and the desktop bridge
+        if: runner.os == 'Linux'
+        run: |
+          python3 rust/scripts/gen_i18n.py --check
+          python3 rust/scripts/check_i18n_keys.py
+          python3 rust/scripts/check_shell_contract.py
+
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the x64 installer
+        shell: pwsh
+        run: ./rust/packaging/windows/build.ps1
+      - name: Install, open the WebView and uninstall
+        shell: pwsh
+        run: ./rust/packaging/windows/smoke.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-x64-test-installer
+          path: rust/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Windows-installer-diagnostics
+          path: ${{ runner.temp }}/deepl-smoke/**/DeepL-oFM/deepl-ofm.log
+          if-no-files-found: ignore
+
+  updater:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: updater
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject tampered updates and install the next signed version
+        shell: pwsh
+        run: ./rust/packaging/windows/smoke-update.ps1
