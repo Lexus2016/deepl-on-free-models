@@ -50,4 +50,4 @@ def wait_until(predicate, timeout: float = 3.0, step: float = 0.01) -> bool:
             return True
         QApplication.processEvents()
         time.sleep(step)
-    return predicate()
+    return bool(predicate())

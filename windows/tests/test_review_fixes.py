@@ -32,7 +32,7 @@ def wait_until(predicate, timeout: float = 3.0, step: float = 0.01) -> bool:
             return True
         QApplication.processEvents()
         time.sleep(step)
-    return predicate()
+    return bool(predicate())
 
 
 def _controller(tmp_path: Path, *, auto_translate: bool = False) -> AppController:
@@ -460,10 +460,18 @@ def test_second_launch_applies_its_actions(qapp, tmp_path, monkeypatch):
             ]
         )
         assert app_module._notify_running_instance(app_module._action_payload(args))
-        assert wait_until(
-            lambda: controller.files and controller.clipboard and window.catalog_opened,
-            timeout=3.0,
+        # Wait for each effect separately so a failure names the effect that did
+        # not arrive instead of reporting an opaque `assert []`.  The window is
+        # slow on CI runners, hence the generous timeout.
+        assert wait_until(lambda: bool(window.prefills), timeout=10.0), "prefill"
+        assert wait_until(lambda: bool(controller.files), timeout=10.0), "open file"
+        assert wait_until(lambda: bool(controller.clipboard), timeout=10.0), "clipboard"
+        assert wait_until(lambda: bool(controller.connected), timeout=10.0), "connect"
+        assert wait_until(lambda: bool(controller.fallback_loaded), timeout=10.0), (
+            "fallback models"
         )
+        assert wait_until(lambda: bool(window.catalog_opened), timeout=10.0), "catalog"
+        assert wait_until(lambda: bool(write_view.texts), timeout=10.0), "write text"
 
         assert window.presented >= 1
         assert window.prefills == [("Bonjour", True)]

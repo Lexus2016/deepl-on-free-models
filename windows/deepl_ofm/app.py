@@ -175,7 +175,12 @@ def _notify_running_instance(payload: dict[str, object]) -> bool:
     message = json.dumps({"show": True, **payload}, ensure_ascii=False)
     socket.write(message.encode("utf-8") + b"\n")
     socket.flush()
-    socket.waitForBytesWritten(250)
+    if socket.waitForBytesWritten(1000):
+        # Wait for the acknowledgement so the actions are applied before this
+        # process exits.  Closing a named-pipe handle discards bytes that the
+        # other side has not read yet, which silently dropped the second
+        # launch's arguments on Windows.
+        socket.waitForReadyRead(2000)
     socket.disconnectFromServer()
     return True
 
@@ -230,6 +235,12 @@ def _install_instance_server(window, controller: AppController) -> QLocalServer:
                 line, data = data.split(b"\n", 1)
                 if line.strip():
                     _handle_instance_message(window, controller, line)
+                    # Acknowledge only after the actions were applied: on
+                    # Windows the client's pipe handle is closed by
+                    # `disconnectFromServer`, and unread bytes are discarded
+                    # with it, so the second launch must wait for this.
+                    connection.write(b"ack\n")
+                    connection.flush()
             buffers[key] = data
 
         def closed() -> None:
