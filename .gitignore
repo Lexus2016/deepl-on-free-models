@@ -37,6 +37,14 @@ docs/.local*
 # Playwright MCP artifacts
 .playwright-mcp/
 
+# Motion-graphics project caches and local renders
+videos/**/node_modules/
+videos/**/.hyperframes/
+videos/**/renders/
+
 # Xcode user data
 ios/**/xcuserdata/
 ios/**/*.xcuserstate
+
+# HyperFrames check output
+.hyperframes/

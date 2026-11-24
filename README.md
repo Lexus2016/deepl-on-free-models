@@ -5,10 +5,10 @@
 <h1 align="center">DeepL-oFM</h1>
 
 <p align="center">
-  <b>A native macOS translator for local and cloud models.</b><br>
-  Keep paragraphs, lists and Markdown intact. Run Hy-MT2 7B offline through
-  Ollama, or use OpenRouter, Groq and Cerebras with your own key. Free, private
-  and signed for macOS on Apple silicon.
+  <b>Your text can stay on the Mac.</b><br>
+  A native window: Hy-MT2 7B offline through Ollama, or OpenRouter, Groq and
+  Cerebras with your own key. Paragraphs, lists and Markdown stay intact.
+  Free, private, and signed for macOS on Apple silicon.
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?style=flat-square&amp;color=2f6bff"></a>
+  <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Lexus2016/deepl-on-free-models?style=flat-square&amp;color=ff4d3a"></a>
   <img alt="Platform: macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-111827?style=flat-square&amp;logo=apple&amp;logoColor=white">
   <img alt="Built with SwiftUI" src="https://img.shields.io/badge/SwiftUI-native-2ee6ff?style=flat-square&amp;logo=swift&amp;logoColor=white">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square">
@@ -28,6 +28,10 @@
 </p>
 
 <p align="center"><sub>Not affiliated with DeepL SE. “DeepL-oFM” describes the interface style (“on Free Models”).</sub></p>
+
+<p align="center">
+  <img src="docs/hello-flap.gif" width="920" alt="Split-flap board: Привіт, Hello, こんにちは, Bonjour, then the DeepL-oFM card">
+</p>
 
 <p align="center">
   <img src="docs/demo-framed.gif" width="900" alt="DeepL-oFM demo: three result views, PDF and DOCX translation, nine interface languages">

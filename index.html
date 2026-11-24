@@ -2,185 +2,605 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DeepL-oFM | Translate text and documents on Mac</title>
-<meta name="description" content="Translate text, Markdown and documents on your Mac. Run Hy-MT2 with Ollama or connect your own cloud provider.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepL-oFM — a hello you can flip</title>
+<meta name="description" content="A native Mac app that translates text, Markdown, Word and PDF. Hy-MT2 can run on the machine through Ollama. Free, signed, no account.">
 <link rel="canonical" href="https://lexus2016.github.io/deepl-on-free-models/">
-<meta name="theme-color" content="#0b0d12">
+<link rel="icon" href="docs/app-icon.png">
+<meta name="theme-color" content="#fff4e8">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DeepL-oFM">
-<meta property="og:title" content="DeepL-oFM — native macOS translator for local and free models">
-<meta property="og:description" content="Translate on your Mac with Ollama, OpenRouter, Groq or Cerebras. Work with text, Markdown, Word and PDF files.">
+<meta property="og:title" content="DeepL-oFM — a hello you can flip">
+<meta property="og:description" content="Translate on your Mac. The model can stay on the machine. Watch a hello change language, then download the app.">
 <meta property="og:url" content="https://lexus2016.github.io/deepl-on-free-models/">
-<meta property="og:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-preview.png">
+<meta property="og:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-card.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="DeepL-oFM — native macOS translator for local and free models">
-<meta name="twitter:description" content="Translate on your Mac with local or cloud models.">
-<meta name="twitter:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-preview.png">
+<meta name="twitter:title" content="DeepL-oFM — a hello you can flip">
+<meta name="twitter:description" content="A native Mac translator. Local model or your own cloud key. Free.">
+<meta name="twitter:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-card.png">
 <style>
-:root{--bg:#0b0d12;--panel:#121722;--panel2:#171d2a;--line:#252d3c;--text:#f2f4f8;--muted:#9aa5b8;--dim:#6f7b90;--accent:#2f6bff;--accent2:#11b8c7;--radius:16px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}
-body{margin:0;background:radial-gradient(900px 500px at 15% -10%,rgba(47,107,255,.22),transparent 70%),radial-gradient(700px 400px at 95% 0%,rgba(17,184,199,.16),transparent 70%),var(--bg);color:var(--text);font:16px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
-.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
-header{position:sticky;top:0;z-index:10;background:rgba(11,13,18,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.nav{display:flex;align-items:center;gap:18px;height:64px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text);font-size:17px}
-.brand img{width:30px;height:30px;border-radius:8px}
-.nav .links{display:flex;gap:18px;margin-left:auto;align-items:center;font-size:14px}
-.nav .links a{color:var(--muted)}.nav .links a:hover{color:var(--text)}
-.lang{color:var(--dim);font-size:13px;margin-left:8px}
-.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:72px 0 48px}
-.eyebrow{color:var(--accent2);font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
-h1{font-size:clamp(36px,4.6vw,56px);line-height:1.08;letter-spacing:-.03em;margin:14px 0 18px;font-weight:700}
-h1 span{background:linear-gradient(100deg,#fff 20%,#b9c8ff 60%,#7de7ee 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lead{font-size:19px;color:var(--muted);max-width:540px;margin:0 0 26px}
-.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-.btn{display:inline-flex;align-items:center;gap:9px;border-radius:10px;padding:12px 18px;font-weight:600;font-size:15px;border:1px solid transparent;transition:transform .12s ease,background .12s ease}
-.btn:hover{text-decoration:none;transform:translateY(-1px)}
-.btn.primary{background:linear-gradient(135deg,var(--accent),#4e8cff);color:#fff;box-shadow:0 8px 26px rgba(47,107,255,.35)}
-.btn.secondary{background:var(--panel2);border-color:var(--line);color:var(--text)}
-.note{margin-top:14px;color:var(--dim);font-size:13px}
-.hero-shot{position:relative}
-.hero-shot img{width:100%;border-radius:14px;border:1px solid #2c3546;box-shadow:0 30px 80px rgba(0,0,0,.55);display:block}
-.hero-shot:before{content:"";position:absolute;inset:-20px;background:radial-gradient(circle at 60% 40%,rgba(47,107,255,.2),transparent 65%);filter:blur(20px);z-index:-1}
-.demo-shot{margin-top:26px}
-.demo-shot img{width:100%;max-width:1000px;display:block;margin:0 auto;border-radius:16px;border:1px solid #2c3546;box-shadow:0 30px 80px rgba(0,0,0,.5)}
-.stats{display:flex;gap:26px;flex-wrap:wrap;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:20px 0;margin:20px 0 0}
-.stat b{display:block;font-size:20px;color:var(--text)}.stat span{font-size:13px;color:var(--dim)}
-section{padding:58px 0}
-h2{font-size:30px;letter-spacing:-.02em;margin:0 0 10px}
-.sub{color:var(--muted);margin:0 0 28px;max-width:720px}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)),var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
-.card h3{margin:0 0 7px;font-size:16px}.card p{margin:0;color:var(--muted);font-size:14px}
-.card .ico{font-size:20px;background:var(--panel2);border:1px solid var(--line);width:38px;height:38px;display:grid;place-items:center;border-radius:10px;margin-bottom:12px}
-.shots{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.shots img{width:100%;border-radius:12px;border:1px solid var(--line);display:block}
-.shots figure{margin:0}.shots figcaption{color:var(--dim);font-size:12.5px;margin-top:7px}
-.install{display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:start}
-.steps{counter-reset:s;display:grid;gap:14px}
-.step{display:flex;gap:14px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
-.step:before{counter-increment:s;content:counter(s);flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
-.step b{display:block;margin-bottom:3px}.step p{margin:0;color:var(--muted);font-size:14px}
-pre{background:#0d1119;border:1px solid var(--line);border-radius:10px;padding:13px 15px;overflow:auto;color:#c9d6f5;font:13px/1.5 "SF Mono",Menlo,monospace}
-.langs{display:flex;gap:10px;flex-wrap:wrap}.langs a{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:8px 14px;color:var(--muted);font-size:14px}
-.langs a:hover{color:var(--text);text-decoration:none;border-color:#3a465c}
-footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);font-size:13.5px}
-.foot{display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-.foot a{color:var(--muted)}.foot a:hover{color:var(--text)}
-@media(max-width:900px){.hero,.install{grid-template-columns:1fr}.hero{padding-top:46px}.grid{grid-template-columns:1fr 1fr}.hero-shot{order:-1}.nav .links .hide-sm{display:none}}
-@media(max-width:600px){.grid,.shots{grid-template-columns:1fr}.nav .links{gap:12px}.wrap{padding:0 18px}.stats{gap:16px}}
+@font-face{font-family:Unbounded;font-style:normal;font-weight:700;font-display:swap;src:url("docs/fonts/unbounded-cyrillic-700.woff2") format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Unbounded;font-style:normal;font-weight:700;font-display:swap;src:url("docs/fonts/unbounded-latin-ext-700.woff2") format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Unbounded;font-style:normal;font-weight:700;font-display:swap;src:url("docs/fonts/unbounded-latin-700.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Literata;font-style:normal;font-weight:400;font-display:swap;src:url("docs/fonts/literata-cyrillic-400.woff2") format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Literata;font-style:normal;font-weight:400;font-display:swap;src:url("docs/fonts/literata-latin-ext-400.woff2") format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Literata;font-style:normal;font-weight:400;font-display:swap;src:url("docs/fonts/literata-latin-400.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Literata;font-style:normal;font-weight:600;font-display:swap;src:url("docs/fonts/literata-cyrillic-600.woff2") format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:Literata;font-style:normal;font-weight:600;font-display:swap;src:url("docs/fonts/literata-latin-ext-600.woff2") format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Literata;font-style:normal;font-weight:600;font-display:swap;src:url("docs/fonts/literata-latin-600.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{color-scheme:light;--paper:#fff4e8;--ink:#1c140e;--board:#241c16;--cream:#fff6e4;--gold:#f0d7a2;--lemon:#ffe14a;--muted:#5c4d3e}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:19px/1.5 Literata, "Iowan Old Style", Palatino, serif;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit}
+button,summary{font:inherit}
+::selection{background:var(--lemon);color:var(--ink)}
+.skip{position:absolute;left:12px;top:-48px;background:var(--lemon);color:var(--ink);padding:8px 12px;z-index:30;border-radius:8px}
+.skip:focus{top:12px}
+.wrap{width:min(1120px,calc(100% - 32px));margin-inline:auto}
+header{position:sticky;top:0;z-index:20;background:rgba(255,244,232,.9);backdrop-filter:blur(12px);border-bottom:2px solid var(--ink)}
+.bar{display:flex;align-items:center;gap:14px;min-height:68px}
+.brand{display:flex;align-items:center;gap:10px;font-family:Unbounded,sans-serif;font-weight:700;font-size:16px;text-decoration:none;margin-right:auto;white-space:nowrap}
+.brand img{width:34px;height:34px;border-radius:9px}
+.links{display:flex;gap:16px}
+.links a{text-decoration:none;font-weight:600}
+.links a:hover{text-decoration:underline}
+.langpick{display:flex;flex:0 0 auto;border:2px solid var(--ink);border-radius:999px;overflow:hidden}
+.langpick button{background:transparent;border:0;min-width:44px;min-height:36px;padding:0 10px;cursor:pointer;font-family:Unbounded,sans-serif;font-size:12px;font-weight:700}
+.langpick button[aria-pressed="true"]{background:var(--ink);color:var(--lemon)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 18px;border-radius:999px;text-decoration:none;border:2px solid var(--ink);cursor:pointer;font-family:Unbounded,sans-serif;font-weight:700;font-size:14px;line-height:1}
+.btn-go{background:var(--ink);color:var(--lemon)}
+.btn-go:hover{background:#000}
+.btn-ghost{background:transparent;color:var(--ink)}
+.btn-ghost:hover{background:#fff}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.menu{display:none;position:relative}
+.menu summary{list-style:none;min-width:44px;min-height:44px;display:grid;place-items:center;cursor:pointer;border:2px solid var(--ink);border-radius:12px;font-family:Unbounded,sans-serif;font-size:12px;font-weight:700;padding:0 10px}
+.menu summary::-webkit-details-marker{display:none}
+.menu a{display:block;padding:12px 14px;text-decoration:none;font-weight:600}
+.menu-panel{position:absolute;right:0;top:calc(100% + 8px);background:#fff;border:2px solid var(--ink);border-radius:14px;min-width:200px;padding:6px;z-index:25}
+h1,h2{font-family:Unbounded,sans-serif;font-weight:700;letter-spacing:-0.04em;line-height:1.05;text-wrap:balance}
+h1{font-size:clamp(36px,4.6vw,60px);margin:0 0 14px}
+h2{font-size:clamp(28px,3.4vw,42px);margin:0 0 12px}
+p{text-wrap:pretty}
+.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:36px;align-items:center;padding:36px 0 18px;position:relative}
+.blobs{position:absolute;inset:-20px 0 auto;height:280px;pointer-events:none;z-index:0;overflow:hidden}
+.blob{position:absolute;width:240px;height:240px;border-radius:50%;filter:blur(28px);opacity:.55;animation:floaty 14s ease-in-out infinite}
+.b1{background:#ff5a36;left:-40px;top:-30px}
+.b2{background:#ffe14a;right:20%;top:-50px;animation-delay:-4s}
+.b3{background:#2ec4b6;right:-30px;top:20px;animation-delay:-8s}
+@keyframes floaty{50%{transform:translate(24px,18px)}}
+.board,.pitch{position:relative;z-index:1}
+.board{background:var(--board);color:var(--cream);border-radius:28px;padding:22px 18px 16px;box-shadow:0 24px 50px rgba(40,18,8,.16)}
+.stripes{display:flex;height:14px;border-radius:8px;overflow:hidden;margin:-8px 0 16px}
+.stripes i{flex:1}
+.row{min-height:92px;display:flex;justify-content:center;align-items:center;gap:6px;perspective:800px}
+.tile{display:grid;place-items:center;flex:1 1 0;min-width:0;max-width:76px;height:96px;padding:0 2px;border-radius:12px;background:linear-gradient(#3a3128,#2a231c);color:var(--cream);font-family:Unbounded,"Hiragino Sans","PingFang SC","Apple SD Gothic Neo","Geeza Pro","Kohinoor Devanagari",sans-serif;font-weight:700;font-size:clamp(26px,6vw,58px);position:relative;transform-origin:center;animation:flap .46s both}
+.tile::before,.tile::after{content:"";position:absolute;top:50%;width:7px;height:2px;background:rgba(0,0,0,.5)}
+.tile::before{left:4px}
+.tile::after{right:4px}
+.tile.slab{flex:0 1 auto;max-width:100%;width:auto;min-width:0;padding:0 22px;font-size:clamp(28px,4vw,52px)}
+@keyframes flap{from{transform:rotateX(-90deg)}to{transform:rotateX(0)}}
+.line{margin:12px 0 0;text-align:center;color:var(--gold);font-weight:600;font-size:clamp(16px,2vw,22px);min-height:2.4em}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
+.chip{border:0;background:#3a3128;color:var(--cream);border-radius:999px;min-height:36px;padding:6px 10px;cursor:pointer;font-family:Literata,sans-serif;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--lemon);color:var(--ink)}
+.board-foot{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-top:12px}
+.hint{margin:0;color:#ffe3b0;font-size:13px;line-height:1.35;flex:1}
+.play{align-self:flex-end;background:transparent;color:var(--lemon);border:2px solid var(--lemon);border-radius:999px;min-height:40px;padding:0 12px;cursor:pointer;font-family:Unbounded,sans-serif;font-size:12px;font-weight:700}
+.lead{font-size:20px;margin:0 0 18px}
+.note{color:var(--muted);font-size:15px;margin:12px 0 0}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.ribbon{background:var(--ink);color:var(--cream);overflow:hidden;padding:12px 0;margin-top:28px}
+.ribbon + .ribbon{padding-top:0}
+.track{display:flex;gap:0;width:max-content;animation:drift 46s linear infinite}
+.track.back{animation-duration:58s;animation-direction:reverse}
+.track span{font-family:Unbounded,sans-serif;font-weight:700;font-size:15px;padding:0 8px}
+.track b{color:var(--lemon);font-weight:700}
+@keyframes drift{to{transform:translateX(-50%)}}
+.ribbon:hover .track{animation-play-state:paused}
+section{padding:64px 0}
+.spread{display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center}
+.window{background:#2a2a2e;border-radius:18px;padding:12px;box-shadow:0 22px 50px rgba(40,18,8,.16)}
+.dots{display:flex;gap:6px;padding:2px 4px 10px}
+.dots i{width:11px;height:11px;border-radius:50%;display:block}
+.dots i:nth-child(1){background:#ff5f57}
+.dots i:nth-child(2){background:#febc2e}
+.dots i:nth-child(3){background:#28c840}
+.window img{border-radius:8px}
+.facts{display:grid;gap:16px}
+.facts article{background:#fff;border:2px solid var(--ink);border-radius:18px;padding:16px 16px 14px}
+.facts h3{font-family:Unbounded,sans-serif;font-size:18px;margin:0 0 6px;letter-spacing:-0.03em}
+.facts p,.prose p{margin:0;color:#3a2e22}
+.keys{display:flex;gap:8px;margin-bottom:8px}
+kbd{font-family:sans-serif;font-weight:700;background:var(--ink);color:var(--lemon);border-radius:10px;min-width:42px;height:42px;display:grid;place-items:center;font-size:18px}
+.reel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px}
+.reel figure{margin:0;flex:0 0 min(78vw,460px);scroll-snap-align:start}
+.reel img{border-radius:14px;border:2px solid var(--ink);background:#fff}
+.reel figcaption{font-size:14px;margin-top:6px;color:var(--muted)}
+.stage{border:2px solid var(--ink);border-radius:24px;overflow:hidden;background:#111}
+.stage video,.stage img{width:100%;height:auto}
+.film-note{font-size:14px;color:var(--muted);margin-top:8px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.step{background:#fff;border:2px solid var(--ink);border-radius:18px;padding:16px}
+.step b{font-family:Unbounded,sans-serif;display:block;font-size:28px;margin-bottom:6px}
+.cmd{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:18px}
+pre{margin:0;flex:1;background:var(--ink);color:var(--lemon);border-radius:14px;padding:14px 16px;overflow:auto;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+.skipbox{background:var(--lemon);border-radius:22px;padding:22px;border:2px solid var(--ink)}
+.langs{display:flex;flex-wrap:wrap;gap:8px}
+.langs a{background:#fff;border:2px solid var(--ink);border-radius:999px;padding:8px 12px;text-decoration:none;font-weight:600;font-size:15px}
+.langs a:hover{background:var(--lemon)}
+details.faq{border-top:2px solid var(--ink);padding:12px 0}
+details.faq summary{cursor:pointer;font-family:Unbounded,sans-serif;font-size:18px;min-height:44px;display:flex;align-items:center}
+details.faq p{margin:8px 0 4px}
+footer{border-top:2px solid var(--ink);padding:26px 0 40px}
+.foot{display:flex;flex-wrap:wrap;gap:12px 22px;justify-content:space-between;font-size:15px}
+.foot a{font-weight:600}
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+@media (max-width:900px){
+  .hero,.spread,.steps{grid-template-columns:1fr}
+  .pitch{order:-1}
+  .links,.bar .btn-go{display:none}
+  .menu{display:block}
+}
+@media (max-width:420px){
+  .wrap{width:min(1120px,calc(100% - 20px))}
+  .bar{gap:8px}
+  .brand{font-size:14px;gap:6px}
+  .brand img{width:28px;height:28px;border-radius:8px}
+  .langpick button{min-width:40px;padding:0 8px}
+  .menu summary{width:44px;padding:0;font-size:0}
+  .menu summary::before{content:"";width:16px;height:2px;background:currentColor;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .blob,.track,.tile{animation:none}
+  .tile{transform:none}
+}
 </style>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"A Mac app for translating text and documents with local or cloud models.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.3","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"A Mac app for translating text and documents with a local model or your own cloud key.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.3","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
 </script>
 </head>
 <body>
-<header><div class="wrap nav">
-  <a class="brand" href="./"><img src="docs/app-icon.png" alt="">DeepL-oFM</a>
-  <nav class="links">
-    <a class="hide-sm" href="#features">Features</a>
-    <a class="hide-sm" href="#screens">Screenshots</a>
-    <a class="hide-sm" href="#install">Install</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models">GitHub</a>
-    <span class="lang"><a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.md">EN</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.uk.md">UK</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.ru.md">RU</a></span>
-  </nav>
-</div></header>
-
-<main class="wrap">
-<div class="hero">
-  <div>
-    <div class="eyebrow">For macOS</div>
-    <h1><span>Translate text and documents on your Mac</span></h1>
-    <p class="lead">Run Hy-MT2 7B locally with Ollama or choose a cloud provider. Edit the original and read the translation side by side.</p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg">Download for macOS</a>
-      <a class="btn secondary" href="https://github.com/Lexus2016/deepl-on-free-models">View on GitHub</a>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap bar">
+    <a class="brand" href="./"><img src="docs/app-icon.png" alt="">DeepL-oFM</a>
+    <nav class="links" aria-label="Sections">
+      <a href="#look" data-i="nav_how">How it feels</a>
+      <a href="#watch" data-i="nav_watch">Watch</a>
+      <a href="#install" data-i="nav_get">Install</a>
+    </nav>
+    <div class="langpick" role="group" aria-label="Language">
+      <button type="button" data-setlang="en" aria-pressed="true">EN</button>
+      <button type="button" data-setlang="uk" aria-pressed="false">UK</button>
     </div>
-    <div class="note">Free and open source. Requires macOS 14 or later and an Apple silicon Mac.</div>
+    <a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download_short">Download</a>
+    <details class="menu">
+      <summary data-i="menu">Menu</summary>
+      <div class="menu-panel">
+        <a href="#look" data-i="nav_how">How it feels</a>
+        <a href="#watch" data-i="nav_watch">Watch</a>
+        <a href="#install" data-i="nav_get">Install</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download_short">Download</a>
+      </div>
+    </details>
   </div>
-  <div class="hero-shot">
-    <img src="docs/screenshots/en/translation.png" alt="DeepL-oFM translating a Ukrainian paragraph into English">
-  </div>
-</div>
+</header>
 
-<section id="demo">
-  <h2>Watch the demo</h2>
-  <p class="sub">See how to translate a file and switch between the three views of a result.</p>
-  <div class="demo-shot"><img src="docs/demo-framed.gif" alt="DeepL-oFM demo: Markdown view, plain text, Markdown source, PDF translation and settings"></div>
-</section>
-
-<section id="features">
-  <h2>What you can do</h2>
-  <div class="grid">
-    <div class="card"><div class="ico">⌂</div><h3>Local or cloud</h3><p>Use Hy-MT2 7B through Ollama offline. To use OpenRouter, Groq or Cerebras, add your API key in Settings.</p></div>
-    <div class="card"><div class="ico">¶</div><h3>Text and file formats</h3><p>Translate plain text, Markdown, Word or PDF files. Scanned PDFs need text recognition first.</p></div>
-    <div class="card"><div class="ico">⌘</div><h3>Copy the result</h3><p>Choose a preview, plain text or Markdown. Copy uses the view you select.</p></div>
-    <div class="card"><div class="ico">↻</div><h3>App updates</h3><p>The app checks for signed updates. You can choose to install them automatically.</p></div>
-    <div class="card"><div class="ico">◐</div><h3>Privacy</h3><p>The app has no account or analytics. When you use a cloud provider, it receives the text you translate. macOS Keychain stores your keys.</p></div>
-    <div class="card"><div class="ico">⌥</div><h3>Keyboard shortcuts</h3><p>Translate clipboard contents or selected text from another app. The selection shortcut needs Accessibility permission to copy the text.</p></div>
-  </div>
-</section>
-
-<section id="screens">
-  <h2>Screenshots</h2>
-  <p class="sub">See the translator and provider settings. The guides below have screenshots in more languages.</p>
-  <div class="shots">
-    <figure><a href="docs/screenshots/en/translation.png" target="_blank" rel="noopener"><img src="docs/screenshots/en/translation.png" alt="Translation pane"></a><figcaption>Original text and translation side by side.</figcaption></figure>
-    <figure><a href="docs/screenshots/en/settings.png" target="_blank" rel="noopener"><img src="docs/screenshots/en/settings.png" alt="Provider settings"></a><figcaption>Choose a provider, load its models and set a fallback.</figcaption></figure>
-  </div>
-</section>
-
-<section id="install">
-  <h2>Install on Mac</h2>
-  <p class="sub">Open the downloaded disk image and drag DeepL-oFM into Applications.</p>
-  <div class="install">
-    <div class="steps">
-      <div class="step"><div><b>Download the DMG</b><p><a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg">DeepL-oFM.dmg</a></p></div></div>
-      <div class="step"><div><b>Drag to Applications</b><p>Open the disk image and drag DeepL-oFM onto the Applications folder in the same window.</p></div></div>
-      <div class="step"><div><b>Choose a model</b><p>Choose Ollama or a cloud provider in Settings. Select Connect to see the available models.</p></div></div>
+<main id="main">
+  <div class="wrap hero">
+    <div class="blobs" aria-hidden="true"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
+    <div class="board">
+      <div class="stripes" aria-hidden="true">
+        <i style="background:#ff4d3a"></i><i style="background:#ffe14a"></i><i style="background:#14b8a6"></i><i style="background:#2f5bff"></i>
+        <i style="background:#ff4d3a"></i><i style="background:#ffe14a"></i><i style="background:#14b8a6"></i><i style="background:#2f5bff"></i>
+      </div>
+      <div class="row" id="row" aria-hidden="true">
+        <span class="tile">П</span><span class="tile">р</span><span class="tile">и</span><span class="tile">в</span><span class="tile">і</span><span class="tile">т</span>
+      </div>
+      <p class="line" id="line" lang="uk">Текст лишається на твоєму Mac.</p>
+      <div class="chips" id="chips"></div>
+      <div class="board-foot">
+        <p class="hint" id="hint" data-i="board_hint">Prepared lines, so the flap is instant. The app translates what you paste.</p>
+        <button type="button" class="play" id="play" aria-pressed="true" data-i="pause">Pause</button>
+      </div>
+      <p class="vh" id="live"></p>
     </div>
-    <div>
-      <p class="sub" style="margin-bottom:8px">Base model:</p>
-      <pre>ollama pull maternion/hy-mt2:7b
+    <div class="pitch">
+      <h1 data-i="h1">A hello you can flip.</h1>
+      <p class="lead" data-i="lead">DeepL-oFM is a native Mac app. The original stays on the left, the translation on the right. Hy-MT2 can run on the machine through Ollama, with the network off. A cloud model is there when you want one, with your own key.</p>
+      <div class="cta">
+        <a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download">Download for Mac</a>
+        <a class="btn btn-ghost" href="https://github.com/Lexus2016/deepl-on-free-models" data-i="github">Source</a>
+      </div>
+      <p class="note" data-i="note">Free. Signed. macOS 14 or later, Apple silicon. No account.</p>
+    </div>
+  </div>
+
+  <div class="ribbon" aria-hidden="true">
+    <div class="track" id="track"></div>
+  </div>
+
+  <section id="look">
+    <div class="wrap spread">
+      <figure class="window">
+        <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <img src="docs/screenshots/en/translation.png" alt="DeepL-oFM with a Ukrainian paragraph on the left and the English translation on the right">
+      </figure>
+      <div>
+        <h2 data-i="proof_h">The window you actually use</h2>
+        <p class="prose" data-i="proof_p">Two panes, a percentage while it works, and Copy when it is done. Settings pick the provider and keep a fallback if the first one fails.</p>
+        <div class="facts" style="margin-top:16px">
+          <article>
+            <h3 data-i="m1h">Offline, when you choose Ollama</h3>
+            <p data-i="m1p">Hy-MT2 7B is about 4.6 GB. After it is on the Mac, a translation does not have to leave.</p>
+          </article>
+          <article>
+            <h3 data-i="m2h">Word and PDF keep the layout</h3>
+            <p data-i="m2p">DOCX updates the text inside the original package. PDF draws the translation on the same pages. A scan still needs text recognition first.</p>
+          </article>
+          <article>
+            <div class="keys" aria-hidden="true"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></div>
+            <h3 data-i="m3h">From whatever app you are in</h3>
+            <p data-i="m3p">⌥⌘T translates the clipboard. ⌥⌘C copies the selection in the app you are using, then opens DeepL-oFM. The selection shortcut needs Accessibility.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+    <div class="wrap" style="margin-top:28px">
+      <div class="reel" tabindex="0">
+        <figure><img src="docs/demo/text.png" alt="Text translation"><figcaption data-i="c_text">Text</figcaption></figure>
+        <figure><img src="docs/demo/markdown.png" alt="Markdown result"><figcaption>Markdown</figcaption></figure>
+        <figure><img src="docs/demo/preview.png" alt="Rendered preview"><figcaption data-i="c_preview">Preview</figcaption></figure>
+        <figure><img src="docs/demo/write.png" alt="Rewrite view"><figcaption data-i="c_write">Rewrite</figcaption></figure>
+        <figure><img src="docs/demo/files.png" alt="File translation"><figcaption data-i="c_files">Files</figcaption></figure>
+        <figure><img src="docs/demo/pdf.png" alt="PDF translation"><figcaption>PDF</figcaption></figure>
+        <figure><img src="docs/screenshots/en/settings.png" alt="Provider settings"><figcaption data-i="c_settings">Settings</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="watch">
+    <div class="wrap">
+      <h2 data-i="watch_h">The app, in motion</h2>
+      <p class="lead" data-i="watch_p">Markdown, plain text, the source, a PDF, and settings. This is a recording of the real window.</p>
+      <div class="stage"><img src="docs/demo-framed.gif" alt="DeepL-oFM demo: result views, PDF translation and settings"></div>
+      <h2 style="margin-top:48px" data-i="film_h">Ten seconds, just the hello</h2>
+      <p class="lead" data-i="film_p">The same flap, with sound off. Pause it whenever you like.</p>
+      <div class="stage">
+        <video id="film" controls playsinline muted loop preload="metadata" poster="docs/hello-poster.jpg">
+          <source src="docs/hello-flap.mp4" type="video/mp4">
+        </video>
+      </div>
+      <p class="film-note" data-i="film_note">Silent on purpose. The greetings in the film are the same prepared lines as the board above.</p>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <h2 data-i="install_h">On the Mac in three moves</h2>
+      <div class="steps">
+        <article class="step"><b>1</b><span data-i="step1">Download the disk image.</span></article>
+        <article class="step"><b>2</b><span data-i="step2">Drag DeepL-oFM onto Applications.</span></article>
+        <article class="step"><b>3</b><span data-i="step3">Open Settings, choose Ollama or a cloud provider, press Connect.</span></article>
+      </div>
+      <p class="note" data-i="model_label">The usual local model</p>
+      <div class="cmd">
+        <pre id="cmd">ollama pull maternion/hy-mt2:7b
 ollama cp maternion/hy-mt2:7b hy-mt2:7b</pre>
-      <p class="sub" style="margin:18px 0 8px">Build from source:</p>
-      <pre>git clone https://github.com/Lexus2016/deepl-on-free-models.git
-cd deepl-on-free-models
-./setup.sh
-open build/DeepL-oFM.app</pre>
+        <button type="button" class="btn btn-ghost" id="copycmd" data-i="copy">Copy</button>
+      </div>
+      <p class="note" data-ih="iphone">An <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md">iPhone project</a> is in the repository. The download button is the Mac app.</p>
+      <p style="margin-top:22px"><a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download">Download for Mac</a></p>
     </div>
-  </div>
-</section>
+  </section>
 
-<section>
-  <h2>User guides</h2>
-  <p class="sub">Setup instructions, model notes and screenshots in nine languages.</p>
-  <div class="langs">
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.md">English</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.uk.md">Українська</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.ru.md">Русский</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.de.md">Deutsch</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.fr.md">Français</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.es.md">Español</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pl.md">Polski</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pt.md">Português</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.it.md">Italiano</a>
-    <a href="privacy.html">Privacy policy</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/CHANGELOG.md">Changelog</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/CONTRIBUTING.md">Contributing</a>
-    <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/SECURITY.md">Security</a>
-  </div>
-</section>
+  <section>
+    <div class="wrap skipbox">
+      <h2 data-i="skip_h">It is not for every translator</h2>
+      <p data-i="skip_p">Skip it if you need a company glossary, a CAT tool, or a translator your whole team already pays for. Stay if you want a Mac window, a local model, and no account.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 data-i="guides_h">The long version, in nine languages</h2>
+      <div class="langs">
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.md">English</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.uk.md">Українська</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.ru.md">Русский</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.de.md">Deutsch</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.fr.md">Français</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.es.md">Español</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pl.md">Polski</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pt.md">Português</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.it.md">Italiano</a>
+        <a href="privacy.html" data-i="privacy">Privacy policy</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/SECURITY.md">Security</a>
+      </div>
+      <h2 style="margin-top:36px" data-i="faq_h">Before you download</h2>
+      <details class="faq"><summary data-i="q1">Does the project see what I translate?</summary><p data-i="a1">No account and no analytics. A cloud provider receives the text only when you select that provider. Keys sit in the macOS Keychain.</p></details>
+      <details class="faq"><summary data-i="q2">Will a scanned PDF translate?</summary><p data-i="a2">Not by itself. Run text recognition first, then translate. Digital PDFs and Word files keep their layout.</p></details>
+      <details class="faq"><summary data-i="q3">Is this DeepL?</summary><p data-i="a3">No. DeepL-oFM is an independent app. The name describes a side-by-side window (“on Free Models”). It is not affiliated with DeepL SE.</p></details>
+    </div>
+  </section>
 </main>
 
-<footer><div class="wrap foot">
-  <div>DeepL-oFM · MIT · Not affiliated with DeepL SE</div>
-  <div><a href="https://github.com/Lexus2016/deepl-on-free-models/releases">Releases</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models">GitHub</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE">License</a></div>
-  <div style="flex-basis:100%;margin-top:6px">Docs: <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.md">English</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.uk.md">Українська</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.ru.md">Русский</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.de.md">Deutsch</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.fr.md">Français</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.es.md">Español</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pl.md">Polski</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pt.md">Português</a> · <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.it.md">Italiano</a></div>
-</div></footer>
+<footer>
+  <div class="wrap foot">
+    <div data-i="foot">MIT license. Not affiliated with DeepL SE.</div>
+    <div>
+      <a href="https://github.com/Lexus2016/deepl-on-free-models">GitHub</a>
+      · <a href="https://github.com/Lexus2016/deepl-on-free-models/releases">Releases</a>
+      · <a href="privacy.html" data-i="privacy">Privacy policy</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const I18N = {
+  en: {
+    title: "DeepL-oFM — a hello you can flip",
+    nav_how: "How it feels", nav_watch: "Watch", nav_get: "Install", menu: "Menu",
+    download_short: "Download", download: "Download for Mac", github: "Source",
+    h1: "A hello you can flip.",
+    lead: "DeepL-oFM is a native Mac app. The original stays on the left, the translation on the right. Hy-MT2 can run on the machine through Ollama, with the network off. A cloud model is there when you want one, with your own key.",
+    note: "Free. Signed. macOS 14 or later, Apple silicon. No account.",
+    board_hint: "Prepared lines, so the flap is instant. The app translates what you paste.",
+    play: "Play", pause: "Pause",
+    proof_h: "The window you actually use",
+    proof_p: "Two panes, a percentage while it works, and Copy when it is done. Settings pick the provider and keep a fallback if the first one fails.",
+    m1h: "Offline, when you choose Ollama",
+    m1p: "Hy-MT2 7B is about 4.6 GB. After it is on the Mac, a translation does not have to leave.",
+    m2h: "Word and PDF keep the layout",
+    m2p: "DOCX updates the text inside the original package. PDF draws the translation on the same pages. A scan still needs text recognition first.",
+    m3h: "From whatever app you are in",
+    m3p: "⌥⌘T translates the clipboard. ⌥⌘C copies the selection in the app you are using, then opens DeepL-oFM. The selection shortcut needs Accessibility.",
+    c_text: "Text", c_preview: "Preview", c_write: "Rewrite", c_files: "Files", c_settings: "Settings",
+    watch_h: "The app, in motion",
+    watch_p: "Markdown, plain text, the source, a PDF, and settings. This is a recording of the real window.",
+    film_h: "Ten seconds, just the hello",
+    film_p: "The same flap, with sound off. Pause it whenever you like.",
+    film_note: "Silent on purpose. The greetings in the film are the same prepared lines as the board above.",
+    install_h: "On the Mac in three moves",
+    step1: "Download the disk image.",
+    step2: "Drag DeepL-oFM onto Applications.",
+    step3: "Open Settings, choose Ollama or a cloud provider, press Connect.",
+    model_label: "The usual local model",
+    copy: "Copy", copied: "Copied", copyfail: "Select the lines",
+    iphone: "An <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone project</a> is in the repository. The download button is the Mac app.",
+    skip_h: "It is not for every translator",
+    skip_p: "Skip it if you need a company glossary, a CAT tool, or a translator your whole team already pays for. Stay if you want a Mac window, a local model, and no account.",
+    guides_h: "The long version, in nine languages",
+    privacy: "Privacy policy",
+    faq_h: "Before you download",
+    q1: "Does the project see what I translate?",
+    a1: "No account and no analytics. A cloud provider receives the text only when you select that provider. Keys sit in the macOS Keychain.",
+    q2: "Will a scanned PDF translate?",
+    a2: "Not by itself. Run text recognition first, then translate. Digital PDFs and Word files keep their layout.",
+    q3: "Is this DeepL?",
+    a3: "No. DeepL-oFM is an independent app. The name describes a side-by-side window (“on Free Models”). It is not affiliated with DeepL SE.",
+    foot: "MIT license. Not affiliated with DeepL SE."
+  },
+  uk: {
+    title: "DeepL-oFM — привітання, яке можна перегортати",
+    nav_how: "Як це виглядає", nav_watch: "Дивитися", nav_get: "Встановлення", menu: "Меню",
+    download_short: "Завантажити", download: "Завантажити для Mac", github: "Код",
+    h1: "Привітання, яке можна перегортати.",
+    lead: "DeepL-oFM — нативний застосунок для Mac. Оригінал лишається ліворуч, переклад — праворуч. Hy-MT2 може працювати на машині через Ollama, навіть без мережі. Хмарна модель є, коли вона потрібна, з вашим ключем.",
+    note: "Безкоштовно. Підписано. macOS 14 або новіша, Apple silicon. Без акаунта.",
+    board_hint: "Це заготовлені рядки, тому табло миттєве. Застосунок перекладає те, що ви вставляєте.",
+    play: "Пустити", pause: "Пауза",
+    proof_h: "Вікно, у якому працюєте",
+    proof_p: "Дві панелі, відсоток, поки переклад іде, і кнопка Copy, коли готово. У налаштуваннях обираєте провайдера і запасний варіант, якщо перший не відповідає.",
+    m1h: "Офлайн, якщо обрали Ollama",
+    m1p: "Hy-MT2 7B важить близько 4,6 ГБ. Коли модель уже на Mac, переклад може не виходити з машини.",
+    m2h: "Word і PDF зберігають вигляд",
+    m2p: "DOCX змінює текст усередині оригінального файла. PDF малює переклад на тих самих сторінках. Скан спочатку потребує розпізнавання.",
+    m3h: "З будь-якого застосунку",
+    m3p: "⌥⌘T перекладає буфер обміну. ⌥⌘C копіює виділене там, де ви зараз, і відкриває DeepL-oFM. Для виділення потрібен дозвіл Accessibility.",
+    c_text: "Текст", c_preview: "Перегляд", c_write: "Перепис", c_files: "Файли", c_settings: "Налаштування",
+    watch_h: "Сам застосунок у русі",
+    watch_p: "Markdown, звичайний текст, джерело, PDF і налаштування. Це запис справжнього вікна.",
+    film_h: "Десять секунд, саме привітання",
+    film_p: "Те саме табло, без звуку. Поставте на паузу, коли захочете.",
+    film_note: "Без звуку навмисно. Привітання у ролику ті самі заготовлені рядки, що й на табло вище.",
+    install_h: "На Mac за три кроки",
+    step1: "Завантажте образ диска.",
+    step2: "Перетягніть DeepL-oFM у Applications.",
+    step3: "Відкрийте Settings, оберіть Ollama або хмару, натисніть Connect.",
+    model_label: "Звична локальна модель",
+    copy: "Копіювати", copied: "Скопійовано", copyfail: "Виділіть рядки",
+    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Проєкт для iPhone</a> лежить у репозиторії. Кнопка завантаження — це застосунок для Mac.",
+    skip_h: "Це не кожен перекладач",
+    skip_p: "Пропустіть, якщо потрібні корпоративний глосарій, CAT-інструмент або перекладач, за який уже платить уся команда. Лишайтеся, якщо хочете вікно на Mac, локальну модель і жодного акаунта.",
+    guides_h: "Довга версія дев’ятьма мовами",
+    privacy: "Політика приватності",
+    faq_h: "Перед завантаженням",
+    q1: "Чи бачить проєкт, що я перекладаю?",
+    a1: "Немає акаунта й аналітики. Хмарний провайдер отримує текст лише тоді, коли ви його обрали. Ключі лежать у В’язці ключів macOS.",
+    q2: "Чи перекладе сканований PDF?",
+    a2: "Сам не перекладе. Спочатку розпізнайте текст, потім перекладайте. Звичайні PDF і Word зберігають верстку.",
+    q3: "Це DeepL?",
+    a3: "Ні. DeepL-oFM — окремий застосунок. Назва описує вікно з двома панелями («on Free Models»). Із DeepL SE він не пов’язаний.",
+    foot: "Ліцензія MIT. Не пов’язаний із DeepL SE."
+  }
+};
+
+const LINES = [
+  { id:"uk", name:"Українська", word:"Привіт", line:"Текст лишається на твоєму Mac." },
+  { id:"en", name:"English", word:"Hello", line:"Your text stays on your Mac." },
+  { id:"de", name:"Deutsch", word:"Hallo", line:"Dein Text bleibt auf dem Mac." },
+  { id:"fr", name:"Français", word:"Bonjour", line:"Ton texte reste sur le Mac." },
+  { id:"es", name:"Español", word:"Hola", line:"Tu texto se queda en el Mac." },
+  { id:"it", name:"Italiano", word:"Ciao", line:"Il testo resta sul Mac." },
+  { id:"pl", name:"Polski", word:"Cześć", line:"Tekst zostaje na twoim Macu." },
+  { id:"pt", name:"Português", word:"Olá", line:"O texto fica no teu Mac." },
+  { id:"ru", name:"Русский", word:"Привет", line:"Текст остаётся на твоём Mac." },
+  { id:"ja", name:"日本語", word:"こんにちは", line:"文章はMacの中に残る。" },
+  { id:"zh", name:"中文", word:"你好", line:"文字留在你的 Mac 上。" },
+  { id:"ko", name:"한국어", word:"안녕하세요", line:"글은 Mac 안에 남아요." },
+  { id:"ar", name:"العربية", word:"مرحبا", line:"نصك يبقى على جهاز Mac.", dir:"rtl" },
+  { id:"tr", name:"Türkçe", word:"Merhaba", line:"Metnin Mac'inde kalır." },
+  { id:"hi", name:"हिन्दी", word:"नमस्ते", line:"आपका पाठ Mac पर रहता है।" }
+];
+
+const NAMES = ["Українська","English","Français","Deutsch","Español","Italiano","Polski","Português","Русский","日本語","中文","한국어","العربية","Türkçe","हिन्दी","ไทย","Tiếng Việt","Nederlands","Čeština","Bahasa Indonesia","Қазақша","עברית"];
+
+let lang = "en";
+let cursor = 0;
+let timer = null;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let playing = !reduce;
+
+function apply(next) {
+  lang = I18N[next] ? next : "en";
+  const pack = I18N[lang];
+  document.documentElement.lang = lang === "uk" ? "uk" : "en";
+  document.title = pack.title;
+  document.querySelectorAll("[data-i]").forEach((el) => {
+    const value = pack[el.dataset.i];
+    if (value) el.textContent = value;
+  });
+  document.querySelectorAll("[data-ih]").forEach((el) => {
+    const value = pack[el.dataset.ih];
+    if (value) el.innerHTML = value;
+  });
+  document.querySelectorAll("[data-setlang]").forEach((btn) => {
+    btn.setAttribute("aria-pressed", btn.dataset.setlang === lang ? "true" : "false");
+  });
+  const play = document.getElementById("play");
+  play.textContent = playing ? pack.pause : pack.play;
+  try { localStorage.setItem("deepl-ofm-lang", lang); } catch (err) {}
+}
+
+function glyphsOf(word) {
+  if (/^[\p{Script=Latin}\p{Script=Cyrillic}]+$/u.test(word)) return Array.from(word);
+  return [word];
+}
+
+function paint(index, animate, fromUser) {
+  const item = LINES[index];
+  cursor = index;
+  const row = document.getElementById("row");
+  row.replaceChildren();
+  glyphsOf(item.word).forEach((glyph, n) => {
+    const tile = document.createElement("span");
+    tile.className = "tile" + (glyphsOf(item.word).length === 1 ? " slab" : "");
+    tile.textContent = glyph;
+    if (item.dir) tile.dir = item.dir;
+    if (!animate || reduce) tile.style.animation = "none";
+    else tile.style.animationDelay = (n * 42) + "ms";
+    row.appendChild(tile);
+  });
+  const line = document.getElementById("line");
+  line.textContent = item.line;
+  line.lang = item.id;
+  if (item.dir) line.dir = item.dir; else line.dir = "ltr";
+  document.querySelectorAll(".chip").forEach((btn) => {
+    btn.setAttribute("aria-pressed", btn.dataset.id === item.id ? "true" : "false");
+  });
+  const live = document.getElementById("live");
+  live.setAttribute("aria-live", fromUser ? "polite" : "off");
+  if (fromUser) live.textContent = item.name + ". " + item.word + ". " + item.line;
+}
+
+function stop() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  playing = false;
+  const play = document.getElementById("play");
+  play.setAttribute("aria-pressed", "false");
+  play.textContent = I18N[lang].play;
+}
+
+function playRow() {
+  stop();
+  playing = true;
+  const play = document.getElementById("play");
+  play.setAttribute("aria-pressed", "true");
+  play.textContent = I18N[lang].pause;
+  timer = setInterval(() => paint((cursor + 1) % LINES.length, true, false), 2300);
+}
+
+function buildChips() {
+  const host = document.getElementById("chips");
+  LINES.forEach((item) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip";
+    btn.dataset.id = item.id;
+    btn.textContent = item.name;
+    btn.setAttribute("aria-pressed", "false");
+    btn.addEventListener("click", () => {
+      stop();
+      paint(LINES.findIndex((row) => row.id === item.id), true, true);
+    });
+    host.appendChild(btn);
+  });
+}
+
+function buildRibbon() {
+  const track = document.getElementById("track");
+  const once = NAMES.map((name) => "<span>" + name + "</span><b> ✶ </b>").join("");
+  track.innerHTML = once + once;
+}
+
+document.getElementById("play").addEventListener("click", () => {
+  if (playing) stop();
+  else playRow();
+});
+
+document.getElementById("copycmd").addEventListener("click", async () => {
+  const btn = document.getElementById("copycmd");
+  const text = document.getElementById("cmd").textContent.trim();
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = I18N[lang].copied;
+  } catch (err) {
+    btn.textContent = I18N[lang].copyfail;
+  }
+  setTimeout(() => { btn.textContent = I18N[lang].copy; }, 1600);
+});
+
+document.querySelectorAll("[data-setlang]").forEach((btn) => {
+  btn.addEventListener("click", () => apply(btn.dataset.setlang));
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (timer) { clearInterval(timer); timer = null; }
+  } else if (playing && !reduce) {
+    playRow();
+  }
+});
+
+const film = document.getElementById("film");
+if (reduce) {
+  film.removeAttribute("autoplay");
+  film.pause();
+} else {
+  film.autoplay = true;
+}
+
+buildChips();
+buildRibbon();
+let start = "en";
+try {
+  const saved = localStorage.getItem("deepl-ofm-lang");
+  const query = new URLSearchParams(location.search).get("lang");
+  start = query || saved || (navigator.language || "").slice(0, 2);
+} catch (err) {}
+apply(start === "uk" ? "uk" : "en");
+paint(0, false, false);
+if (!reduce) playRow();
+</script>
 </body>
 </html>
