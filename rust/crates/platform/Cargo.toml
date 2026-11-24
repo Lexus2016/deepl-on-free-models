@@ -12,8 +12,8 @@ arboard = { version = "3.7.0", default-features = false }
 encoding_rs = "0.8.44"
 global-hotkey = "0.10.0"
 log = { workspace = true, features = ["std"] }
-ofm-config = { version = "2.0.4", path = "../config" }
-ofm-i18n = { version = "2.0.4", path = "../i18n" }
+ofm-config = { version = "2.0.5", path = "../config" }
+ofm-i18n = { version = "2.0.5", path = "../i18n" }
 serde.workspace = true
 thiserror.workspace = true
 

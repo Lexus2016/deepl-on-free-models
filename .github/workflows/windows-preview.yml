@@ -1,4 +1,4 @@
-name: Windows preview package
+name: Windows release package
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Build the updater-signed preview
+      - name: Build the updater-signed package
         shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -36,14 +36,14 @@ jobs:
             throw 'Expected one installer and its update signature.'
           }
           if ((Get-AuthenticodeSignature $installer.FullName).Status -ne 'NotSigned') {
-            throw 'The preview disclosure expects an unsigned Windows publisher identity.'
+            throw 'The release disclosure expects an unsigned Windows publisher identity.'
           }
       - name: Install, start and uninstall on Windows
         shell: pwsh
         run: ./rust/packaging/windows/smoke.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: DeepL-oFM-Windows-preview
+          name: DeepL-oFM-Windows-package
           path: |
             rust/target/release/bundle/nsis/*-setup.exe
             rust/target/release/bundle/nsis/*-setup.exe.sig

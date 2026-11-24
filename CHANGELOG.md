@@ -4,6 +4,19 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.5] (2026-11-24)
+
+- Publish macOS and Windows packages from the same main branch revision.
+- Graduate the Windows preview to the regular Windows release channel. Windows
+  installers have no publisher signature yet. The updater verifies each
+  package's separate signature.
+
+### Українською
+
+- Пакети macOS і Windows зібрано з одного коміту гілки main.
+- Windows переходить із попереднього випуску до звичайного каналу. Інсталятор
+  поки без підпису видавця. Застосунок перевіряє окремий підпис оновлення.
+
 ## [2.0.4] (2026-11-24)
 
 ### macOS
