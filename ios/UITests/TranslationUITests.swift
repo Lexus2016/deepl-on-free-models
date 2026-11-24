@@ -19,6 +19,38 @@ final class TranslationUITests: XCTestCase {
         if !privacyLink.isHittable { app.swipeUp() }
         XCTAssertTrue(privacyLink.exists)
         XCTAssertTrue(privacyLink.isHittable)
+        let support = app.descendants(matching: .any)["support-developer"].firstMatch
+        if !support.isHittable { app.swipeUp() }
+        XCTAssertTrue(support.isHittable)
+        XCTAssertEqual(support.label, "Buy the developer a coffee")
+    }
+
+    @MainActor
+    func testWritingReturnsTextToCopyOrShare() throws {
+        guard let server = ProcessInfo.processInfo.environment["DEEPL_TEST_SERVER"],
+              URLComponents(string: server)?.host != nil else {
+            throw XCTSkip("Set DEEPL_TEST_SERVER to the local QA provider.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ios.interface", "en", "-ios.provider", "custom", "-ios.baseURL", server,
+            "-ios.model", "test"
+        ]
+        app.launch()
+
+        let writing = app.buttons["translation-write"]
+        XCTAssertTrue(writing.waitForExistence(timeout: 5))
+        writing.tap()
+        let source = app.textViews["write-editor"]
+        let action = app.buttons["write-improve"]
+        XCTAssertTrue(source.waitForExistence(timeout: 5))
+        XCTAssertFalse(action.isEnabled)
+        source.tap()
+        source.typeText("Good mornng.")
+        action.tap()
+        XCTAssertTrue(app.staticTexts["Good morning."].waitForExistence(timeout: 12))
+        XCTAssertTrue(app.buttons["Copy"].exists)
+        XCTAssertTrue(app.buttons["write-share"].exists)
     }
 
     @MainActor
@@ -30,7 +62,7 @@ final class TranslationUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = [
             "-ios.interface", "en", "-ios.provider", "custom", "-ios.baseURL", server,
-            "-ios.model", "test", "-ios.source", "auto", "-ios.target", "en"
+            "-ios.model", "test", "-ios.source", "auto", "-ios.target", "en", "-ios.keepHistory", "YES"
         ]
         app.launch()
 
@@ -44,6 +76,15 @@ final class TranslationUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Copy"].exists)
         XCTAssertTrue(app.buttons["Share"].exists)
         app.buttons["Copy"].tap()
+
+        app.buttons["translation-history"].tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        let entry = app.staticTexts["Good morning."].firstMatch
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        app.buttons.matching(identifier: "history-entry").firstMatch.tap()
+        XCTAssertTrue(app.buttons["Copy translation"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["History"].firstMatch.tap()
+        app.buttons["Done"].tap()
 
         app.swipeDown()
         app.buttons["Clear"].tap()

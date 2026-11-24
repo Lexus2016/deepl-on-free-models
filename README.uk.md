@@ -44,6 +44,10 @@
 без акаунта й телеметрії. У тому самому вікні можна підключити хмарну модель,
 коли потрібні швидкість або якість.
 
+### Переклад виділеного тексту з інших програм
+
+У macOS виділіть текст і виберіть **Служби → Translate with DeepL-oFM** у програмі, що підтримує системні служби. Якщо пункт приховано, перевірте **Системні параметри → Клавіатура → Комбінації клавіш → Служби**. [Узгодженість платформ](docs/platform-parity.md).
+
 ## Можливості
 
 - Двопанельний переклад з індикатором прогресу. Готовий текст з'являється лише
@@ -477,6 +481,10 @@ hardened runtime і захищений timestamp, потрібні для нот
 вбудовує й підписує `Sparkle.framework` зі SwiftPM, додає rpath
 `@executable_path/../Frameworks` і перевіряє підпис усього бандла.
 
+Для складання інсталятора встановіть `create-dmg` командою
+`brew install create-dmg`. Запускайте сценарій у графічному сеансі macOS,
+щоб Finder міг зберегти оформлення вікна.
+
 ```bash
 ./build.sh
 ditto -c -k --keepParent build/DeepL-oFM.app build/DeepL-oFM.zip
@@ -485,14 +493,8 @@ xcrun notarytool submit build/DeepL-oFM.zip \
   --keychain-profile "your-notary-profile" --wait
 xcrun stapler staple build/DeepL-oFM.app
 
-# DMG із ярликом Applications для перетягування
-STAGE=build/dmg-stage
-rm -rf "$STAGE"
-mkdir -p "$STAGE"
-ditto build/DeepL-oFM.app "$STAGE/DeepL-oFM.app"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "DeepL-oFM" -srcfolder "$STAGE" \
-  -ov -format UDZO build/DeepL-oFM.dmg
+# Інсталятор із фірмовим оформленням і перетягуванням
+./Scripts/build-dmg.sh
 
 codesign --force --timestamp --sign "Developer ID Application: …" build/DeepL-oFM.dmg
 xcrun notarytool submit build/DeepL-oFM.dmg \

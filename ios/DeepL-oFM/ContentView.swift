@@ -4,13 +4,17 @@ import UIKit
 struct ContentView: View {
     @StateObject private var settings = IOSSettings()
     @StateObject private var model = TranslationModel()
+    @StateObject private var history = HistoryStore()
 
     @AppStorage("ios.source") private var sourceCode = "auto"
+    @AppStorage("ios.keepHistory") private var keepHistory = true
     @FocusState private var sourceFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @State private var mode: ResultViewMode = .preview
     @State private var showSettings = false
+    @State private var showHistory = false
+    @State private var showWrite = false
     @State private var copied = false
 
     private var language: AppLanguage { settings.interfaceLanguage }
@@ -65,6 +69,28 @@ struct ContentView: View {
             .toolbarBackground(IOSTheme.chrome, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        sourceFocused = false
+                        showHistory = true
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .foregroundStyle(IOSTheme.text)
+                    }
+                    .accessibilityLabel(L10n.t("History", language))
+                    .accessibilityIdentifier("translation-history")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        sourceFocused = false
+                        showWrite = true
+                    } label: {
+                        Image(systemName: "pencil")
+                            .foregroundStyle(IOSTheme.text)
+                    }
+                    .accessibilityLabel(L10n.t("Improve text", language))
+                    .accessibilityIdentifier("translation-write")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         sourceFocused = false
@@ -80,13 +106,20 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 IOSSettingsView(settings: settings)
             }
+            .sheet(isPresented: $showHistory) {
+                IOSHistoryView(history: history, language: language)
+            }
+            .sheet(isPresented: $showWrite) {
+                IOSWriteView(settings: settings)
+            }
         }
         .tint(IOSTheme.accent)
         .onChange(of: settings.translationConfiguration, initial: true) { _, configuration in
-            if #available(iOS 18.4, *) { SystemTranslationSettings.save(configuration) }
+            SystemTranslationSettings.save(configuration)
         }
         .onChange(of: scenePhase) { _, phase in
-            if #available(iOS 18.4, *), phase == .active {
+            if phase == .background { history.flush() }
+            if phase == .active {
                 SystemTranslationSettings.save(settings.translationConfiguration)
             }
         }
@@ -96,6 +129,24 @@ struct ContentView: View {
         .onChange(of: settings.snapshot) { _, _ in model.invalidateResult() }
         .onChange(of: settings.style) { _, _ in model.invalidateResult() }
         .onChange(of: settings.tone) { _, _ in model.invalidateResult() }
+    }
+
+    private func translate() {
+        let configuration = settings.translationConfiguration
+        let original = model.sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
+        model.translate(configuration: configuration, sourceCode: sourceCode) { result, duration, source in
+            guard keepHistory else { return }
+            history.add(HistoryEntry(
+                sourceText: original,
+                translatedText: result,
+                sourceCode: source,
+                targetCode: configuration.target.code,
+                style: configuration.style,
+                tone: configuration.tone,
+                engine: configuration.provider.title + " · " + configuration.backend.model,
+                durationMs: duration
+            ))
+        }
     }
 
     // MARK: - Language bar
@@ -276,7 +327,7 @@ struct ContentView: View {
                     model.cancel()
                 } else {
                     sourceFocused = false
-                    model.translate(configuration: settings.translationConfiguration, sourceCode: sourceCode)
+                    translate()
                 }
             } label: {
                 Label(

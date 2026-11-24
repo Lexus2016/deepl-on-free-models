@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct HistoryEntry: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
@@ -24,7 +25,7 @@ final class HistoryStore: ObservableObject {
     init(directory: URL? = nil) {
         let support = directory ?? FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
-        ).first ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+        ).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
         disk = HistoryDisk(support: support)
         update { _ in false }
     }

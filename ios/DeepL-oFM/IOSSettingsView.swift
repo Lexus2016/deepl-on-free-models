@@ -3,6 +3,7 @@ import UIKit
 
 struct IOSSettingsView: View {
     @ObservedObject var settings: IOSSettings
+    @AppStorage("ios.keepHistory") private var keepHistory = true
     @Environment(\.dismiss) private var dismiss
 
     private var language: AppLanguage { settings.interfaceLanguage }
@@ -68,6 +69,7 @@ struct IOSSettingsView: View {
                             Text(L10n.t(tone.title, language)).tag(tone)
                         }
                     }
+                    Toggle(L10n.t("Keep translation history", language), isOn: $keepHistory)
                 } header: {
                     Text(L10n.t("Translation", language))
                 }
@@ -89,6 +91,10 @@ struct IOSSettingsView: View {
                     Link(destination: URL(string: "https://github.com/Lexus2016/deepl-on-free-models")!) {
                         Label("GitHub", systemImage: "arrow.up.right.square")
                     }
+                    Link(destination: URL(string: "https://buymeacoffee.com/tiberiy201y")!) {
+                        Label(L10n.t("Buy the developer a coffee", language), systemImage: "cup.and.saucer")
+                    }
+                    .accessibilityIdentifier("support-developer")
                 } header: {
                     Text(L10n.t("About", language))
                 }
