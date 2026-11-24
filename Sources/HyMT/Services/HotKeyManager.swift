@@ -28,10 +28,16 @@ private func hotKeyEventHandler(
 /// System-wide shortcuts via Carbon. Carbon only announces the keystroke; it
 /// never reads the keyboard, so registering a shortcut needs no permissions.
 final class HotKeyManager {
-    private var refs: [UInt32: EventHotKeyRef] = [:]
-    private var actions: [UInt32: () -> Void] = [:]
+    private struct Registration {
+        let combo: KeyCombo
+        let eventID: UInt32
+        let reference: EventHotKeyRef
+        var action: () -> Void
+    }
+
+    private var registrations: [UInt32: Registration] = [:]
     private var handlerRef: EventHandlerRef?
-    private var nextID: UInt32 = 10
+    private var nextEventID: UInt32 = 1
     private let signature: OSType = 0x48594D54
 
     init() {
@@ -39,41 +45,44 @@ final class HotKeyManager {
     }
 
     @discardableResult
-    func register(_ combo: KeyCombo, id: UInt32? = nil, action: @escaping () -> Void) -> Bool {
-        let identifier = id ?? nextID
-        nextID = max(nextID, identifier + 1)
-        unregister(id: identifier)
+    func register(_ combo: KeyCombo, id: UInt32, action: @escaping () -> Void) -> Bool {
         guard combo.isValid else { return false }
+        if var current = registrations[id],
+           current.combo.keyCode == combo.keyCode,
+           current.combo.carbonModifiers == combo.carbonModifiers {
+            current.action = action
+            registrations[id] = current
+            return true
+        }
         ensureHandler()
-        actions[identifier] = action
+        guard handlerRef != nil else { return false }
 
         var ref: EventHotKeyRef?
-        let hotKeyID = EventHotKeyID(signature: signature, id: identifier)
+        let eventID = nextEventID
+        nextEventID += 1
+        let hotKeyID = EventHotKeyID(signature: signature, id: eventID)
         let status = RegisterEventHotKey(
             combo.keyCode,
             combo.carbonModifiers,
             hotKeyID,
             GetApplicationEventTarget(),
-            0,
+            OptionBits(kEventHotKeyExclusive),
             &ref
         )
-        guard status == noErr, let ref else {
-            actions[identifier] = nil
-            return false
-        }
-        refs[identifier] = ref
+        guard status == noErr, let ref else { return false }
+        unregister(id: id)
+        registrations[id] = Registration(combo: combo, eventID: eventID, reference: ref, action: action)
         return true
     }
 
-    func unregister(id: UInt32) {
-        if let ref = refs.removeValue(forKey: id) {
-            UnregisterEventHotKey(ref)
+    private func unregister(id: UInt32) {
+        if let current = registrations.removeValue(forKey: id) {
+            UnregisterEventHotKey(current.reference)
         }
-        actions[id] = nil
     }
 
     func unregisterAll() {
-        for id in Array(refs.keys) {
+        for id in Array(registrations.keys) {
             unregister(id: id)
         }
         if let handler = handlerRef {
@@ -83,7 +92,7 @@ final class HotKeyManager {
     }
 
     fileprivate func fire(_ id: UInt32) {
-        actions[id]?()
+        registrations.values.first(where: { $0.eventID == id })?.action()
     }
 
     private func ensureHandler() {

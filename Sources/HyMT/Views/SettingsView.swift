@@ -720,7 +720,10 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 FieldRow(label: L10n.t("Translate clipboard", language)) {
                     HStack(spacing: 12) {
-                        HotKeyRecorder(combo: $settings.hotKey, defaultCombo: .standard, language: language)
+                        HotKeyRecorder(combo: Binding(
+                            get: { settings.hotKey },
+                            set: { app.setHotKey($0, forSelection: false) }
+                        ), defaultCombo: .standard, language: language)
                         Text(app.hotKeyMessage)
                             .font(.system(size: 11.5))
                             .foregroundStyle(app.hotKeyActive ? Theme.success : Theme.danger)
@@ -729,7 +732,10 @@ struct SettingsView: View {
 
                 FieldRow(label: L10n.t("Selected text", language)) {
                     HStack(spacing: 12) {
-                        HotKeyRecorder(combo: $settings.selectionHotKey, defaultCombo: .selection, language: language)
+                        HotKeyRecorder(combo: Binding(
+                            get: { settings.selectionHotKey },
+                            set: { app.setHotKey($0, forSelection: true) }
+                        ), defaultCombo: .selection, language: language)
                         Text(app.selectionHotKeyMessage)
                             .font(.system(size: 11.5))
                             .foregroundStyle(app.selectionHotKeyActive ? Theme.success : Theme.danger)
