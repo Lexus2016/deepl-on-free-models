@@ -218,6 +218,12 @@ ollama cp maternion/hy-mt2:7b hy-mt2:7b
 ярлик Applications, тому встановлення — звичайне перетягування. Gatekeeper
 приймає застосунок без обходу через правий клік.
 
+### Попередня версія для Windows
+
+Завантажте інсталятор Windows x64 зі [сторінки завантаження](https://lexus2016.github.io/deepl-on-free-models/#windows).
+Попередня версія поки без підпису видавця Windows, тому SmartScreen може
+попередити про нерозпізнаний застосунок. Контрольна сума SHA-256 є у випуску.
+
 ### З вихідного коду
 
 Потрібні macOS 14+, Xcode Command Line Tools і

@@ -188,7 +188,7 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
 }
 </style>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"Select text and press ⌥⌘C to translate on your Mac. DeepL-oFM is free, translates Word files and PDFs, and can work offline after setup.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.3","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+, Windows 11 (x64)","applicationCategory":"ProductivityApplication","description":"Select text and press ⌥⌘C to translate on your Mac. DeepL-oFM is free, translates Word files and PDFs, and can work offline after setup.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.4","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
 </script>
 </head>
 <body>
@@ -236,9 +236,10 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
       <p class="lead" data-i="lead2">Free to use. No app account or subscription. You can set it up to work without internet.</p>
       <div class="cta">
         <a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download">Download for Mac</a>
+        <a class="btn btn-ghost" href="#windows">Windows</a>
         <a class="btn btn-ghost" href="#look" data-i="nav_how">What it does</a>
       </div>
-      <p class="note" data-i="note">3.7 MB download · Mac with an Apple chip and macOS 14 or later.</p>
+      <p class="note" data-i="note">5.1 MB download · Mac with an Apple chip and macOS 14 or later.</p>
     </div>
     <div class="board" data-nosnippet>
       <div class="stripes" aria-hidden="true">
@@ -345,7 +346,18 @@ ollama cp maternion/hy-mt2:7b hy-mt2:7b</pre>
           <button type="button" class="btn btn-ghost" id="copycmd" data-i="copy">Copy commands</button>
         </div>
       </details>
-      <p class="note" data-ih="iphone">The <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md">iPhone app</a> is in testing. A Windows version is in development.</p>
+      <p class="note" data-ih="iphone">The <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md">iPhone app</a> is in testing.</p>
+    </div>
+  </section>
+
+  <section id="windows">
+    <div class="wrap">
+      <h2 data-i="win_title">Windows preview</h2>
+      <div class="cta">
+        <a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/download/windows-v2.0.4/DeepL-oFM_2.0.4_x64-setup.exe" data-i="win_download">Download for Windows x64</a>
+        <a class="btn btn-ghost" href="https://github.com/Lexus2016/deepl-on-free-models/releases/tag/windows-v2.0.4" data-i="win_details">Release and SHA-256</a>
+      </div>
+      <p class="note" data-i="win_warning">The installer has no Windows publisher signature yet. Microsoft Defender SmartScreen may flag it as an unrecognized app. Download it from this project’s GitHub release and check its SHA-256. If Windows Security reports a specific threat, stop and report it.</p>
     </div>
   </section>
 
@@ -390,6 +402,10 @@ ollama cp maternion/hy-mt2:7b hy-mt2:7b</pre>
 <script>
 const I18N = {
   en: {
+    win_title: "Windows preview",
+    win_download: "Download for Windows x64",
+    win_details: "Release and SHA-256",
+    win_warning: "The installer has no Windows publisher signature yet. Microsoft Defender SmartScreen may flag it as an unrecognized app. Download it from this project’s GitHub release and check its SHA-256. If Windows Security reports a specific threat, stop and report it.",
     skip_link: "Skip to content",
     sections: "Sections",
     nav_how: "What it does",
@@ -402,7 +418,7 @@ const I18N = {
     lead: "Select text in an email, on a website or in a document and press ⌥⌘C. DeepL-oFM opens and starts translating right away.",
     lead2: "Free to use. No app account or subscription. You can set it up to work without internet.",
     download: "Download for Mac",
-    note: "3.7 MB download · Mac with an Apple chip and macOS 14 or later.",
+    note: "5.1 MB download · Mac with an Apple chip and macOS 14 or later.",
     examples: "Choose an example",
     ex_message: "Message",
     ex_trip: "Travel",
@@ -456,7 +472,7 @@ const I18N = {
     q3: "Is this the official DeepL app?",
     a3: "DeepL-oFM is an independent app. It has no affiliation with DeepL SE.",
     foot: "MIT license. Not affiliated with DeepL SE.",
-    iphone: "The <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone app</a> is in testing. A Windows version is in development.",
+    iphone: "The <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone app</a> is in testing.",
     copied: "Copied",
     copyfail: "Select and copy the commands",
     phrase1: "Can we move our meeting to Friday?",
@@ -464,6 +480,10 @@ const I18N = {
     phrase3: "Please keep a copy of this receipt.",
   },
   uk: {
+    win_title: "Попередня версія для Windows",
+    win_download: "Завантажити для Windows x64",
+    win_details: "Випуск і SHA-256",
+    win_warning: "Інсталятор поки не має підпису видавця Windows. Microsoft Defender SmartScreen може попередити про нерозпізнаний застосунок. Завантажуйте файл із GitHub цього проєкту та звіряйте SHA-256. Якщо «Безпека Windows» повідомить про конкретну загрозу, не запускайте файл і повідомте про виявлення.",
     skip_link: "Перейти до вмісту",
     sections: "Розділи сторінки",
     nav_how: "Можливості",
@@ -476,7 +496,7 @@ const I18N = {
     lead: "Виділіть текст у листі, на сайті чи в документі й натисніть ⌥⌘C. DeepL-oFM відкриється й одразу почне перекладати.",
     lead2: "Безкоштовно, без реєстрації та підписки. Можна налаштувати переклад без інтернету.",
     download: "Завантажити для Mac",
-    note: "Завантаження 3,7 МБ · Mac із чипом Apple та macOS 14 або новішою.",
+    note: "Завантаження 5,1 МБ · Mac із чипом Apple та macOS 14 або новішою.",
     examples: "Виберіть приклад перекладу",
     ex_message: "Повідомлення",
     ex_trip: "Подорож",
@@ -530,7 +550,7 @@ const I18N = {
     q3: "Це офіційний застосунок DeepL?",
     a3: "DeepL-oFM — незалежний застосунок. Він не пов’язаний із компанією DeepL SE.",
     foot: "Ліцензія MIT. Без зв’язку з DeepL SE.",
-    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Застосунок для iPhone</a> тестують. Версія для Windows у розробці.",
+    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Застосунок для iPhone</a> тестують.",
     copied: "Скопійовано",
     copyfail: "Виділіть і скопіюйте команди",
     phrase1: "Можемо перенести нашу зустріч на п’ятницю?",
@@ -538,6 +558,10 @@ const I18N = {
     phrase3: "Збережіть копію цієї квитанції.",
   },
   ru: {
+    win_title: "Предварительная версия для Windows",
+    win_download: "Скачать для Windows x64",
+    win_details: "Выпуск и SHA-256",
+    win_warning: "У установщика пока нет подписи издателя Windows. Microsoft Defender SmartScreen может предупредить о неизвестном приложении. Скачивайте файл из выпуска на GitHub этого проекта и сверяйте SHA-256. Если «Безопасность Windows» обнаружит конкретную угрозу, не запускайте файл и сообщите об обнаружении.",
     skip_link: "Перейти к содержанию",
     sections: "Разделы страницы",
     nav_how: "Возможности",
@@ -550,7 +574,7 @@ const I18N = {
     lead: "Выделите текст в письме, на сайте или в документе и нажмите ⌥⌘C. DeepL-oFM откроется и сразу начнёт переводить.",
     lead2: "Бесплатно, без регистрации и подписки. Можно настроить перевод без интернета.",
     download: "Скачать для Mac",
-    note: "Загрузка 3,7 МБ · Mac с чипом Apple и macOS 14 или новее.",
+    note: "Загрузка 5,1 МБ · Mac с чипом Apple и macOS 14 или новее.",
     examples: "Выберите пример перевода",
     ex_message: "Сообщение",
     ex_trip: "Поездка",
@@ -604,7 +628,7 @@ const I18N = {
     q3: "Это официальное приложение DeepL?",
     a3: "DeepL-oFM — независимое приложение. Оно не связано с компанией DeepL SE.",
     foot: "Лицензия MIT. Независимый проект.",
-    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Приложение для iPhone</a> проходит тестирование. Версия для Windows в разработке.",
+    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Приложение для iPhone</a> проходит тестирование.",
     copied: "Скопировано",
     copyfail: "Выделите и скопируйте команды",
     phrase1: "Можем перенести встречу на пятницу?",
@@ -612,6 +636,10 @@ const I18N = {
     phrase3: "Сохраните копию этой квитанции.",
   },
   de: {
+    win_title: "Vorschau für Windows",
+    win_download: "Für Windows x64 herunterladen",
+    win_details: "Release und SHA-256",
+    win_warning: "Das Installationsprogramm hat noch keine Windows-Herausgebersignatur. Microsoft Defender SmartScreen kann vor einer unbekannten App warnen. Laden Sie die Datei aus dem GitHub-Release dieses Projekts herunter und prüfen Sie die SHA-256-Prüfsumme. Wenn Windows-Sicherheit eine konkrete Bedrohung meldet, starten Sie die Datei nicht und melden Sie den Fund.",
     skip_link: "Zum Inhalt",
     sections: "Bereiche der Seite",
     nav_how: "Funktionen",
@@ -624,7 +652,7 @@ const I18N = {
     lead: "Markiere Text in einer E-Mail, auf einer Website oder in einem Dokument und drücke ⌥⌘C. DeepL-oFM öffnet sich und beginnt sofort mit der Übersetzung.",
     lead2: "Kostenlos, ohne App-Konto und ohne Abo. Du kannst die Übersetzung auch ohne Internet nutzen, wenn du sie vorher einrichtest.",
     download: "Für Mac herunterladen",
-    note: "3,7 MB Download · Mac mit Apple-Chip und macOS 14 oder neuer.",
+    note: "5,1 MB Download · Mac mit Apple-Chip und macOS 14 oder neuer.",
     examples: "Übersetzungsbeispiel auswählen",
     ex_message: "Nachricht",
     ex_trip: "Reise",
@@ -678,7 +706,7 @@ const I18N = {
     q3: "Ist das die offizielle DeepL-App?",
     a3: "DeepL-oFM ist eine unabhängige App und steht in keiner Verbindung zu DeepL SE.",
     foot: "MIT-Lizenz. Keine Verbindung zu DeepL SE.",
-    iphone: "Die <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone-App</a> wird getestet. Eine Windows-Version ist in Arbeit.",
+    iphone: "Die <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone-App</a> wird getestet.",
     copied: "Kopiert",
     copyfail: "Befehle markieren und kopieren",
     phrase1: "Können wir unser Treffen auf Freitag verschieben?",
@@ -686,6 +714,10 @@ const I18N = {
     phrase3: "Bitte bewahren Sie eine Kopie dieser Quittung auf.",
   },
   fr: {
+    win_title: "Version d’essai pour Windows",
+    win_download: "Télécharger pour Windows x64",
+    win_details: "Version et SHA-256",
+    win_warning: "Le programme d’installation ne possède pas encore de signature d’éditeur Windows. Microsoft Defender SmartScreen peut signaler une application non reconnue. Téléchargez le fichier depuis la version GitHub de ce projet et vérifiez le SHA-256. Si Sécurité Windows signale une menace précise, ne lancez pas le fichier et signalez la détection.",
     skip_link: "Aller au contenu",
     sections: "Sections de la page",
     nav_how: "Fonctionnalités",
@@ -698,7 +730,7 @@ const I18N = {
     lead: "Sélectionnez du texte dans un e-mail, sur un site ou dans un document, puis appuyez sur ⌥⌘C. DeepL-oFM s’ouvre et lance la traduction aussitôt.",
     lead2: "L’app est gratuite, sans compte ni abonnement. Vous pouvez la configurer pour traduire sans connexion.",
     download: "Télécharger pour Mac",
-    note: "Téléchargement de 3,7 Mo · Mac avec puce Apple sous macOS 14 ou version ultérieure.",
+    note: "Téléchargement de 5,1 Mo · Mac avec puce Apple sous macOS 14 ou version ultérieure.",
     examples: "Choisir un exemple de traduction",
     ex_message: "Message",
     ex_trip: "Voyage",
@@ -752,7 +784,7 @@ const I18N = {
     q3: "Est-ce l’app officielle de DeepL ?",
     a3: "DeepL-oFM est une app indépendante, sans affiliation avec DeepL SE.",
     foot: "Licence MIT. Sans affiliation avec DeepL SE.",
-    iphone: "L’<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">app pour iPhone</a> est en cours de test. La version Windows est en préparation.",
+    iphone: "L’<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">app pour iPhone</a> est en cours de test.",
     copied: "Copié",
     copyfail: "Sélectionnez et copiez les commandes",
     phrase1: "Peut-on déplacer notre réunion à vendredi ?",
@@ -760,6 +792,10 @@ const I18N = {
     phrase3: "Veuillez conserver une copie de ce reçu.",
   },
   es: {
+    win_title: "Versión preliminar para Windows",
+    win_download: "Descargar para Windows x64",
+    win_details: "Versión y SHA-256",
+    win_warning: "El instalador aún no tiene firma de editor de Windows. Microsoft Defender SmartScreen puede avisar de que la aplicación es desconocida. Descarga el archivo desde la publicación del proyecto en GitHub y comprueba el SHA-256. Si Seguridad de Windows detecta una amenaza concreta, no abras el archivo e informa de la detección.",
     skip_link: "Ir al contenido",
     sections: "Secciones de la página",
     nav_how: "Funciones",
@@ -772,7 +808,7 @@ const I18N = {
     lead: "Selecciona texto en un correo, una web o un documento y pulsa ⌥⌘C. DeepL-oFM se abre y empieza a traducir enseguida.",
     lead2: "La aplicación es gratuita, sin cuenta ni suscripción. Puedes configurarla para traducir sin internet.",
     download: "Descargar para Mac",
-    note: "Descarga de 3,7 MB · Mac con chip de Apple y macOS 14 o posterior.",
+    note: "Descarga de 5,1 MB · Mac con chip de Apple y macOS 14 o posterior.",
     examples: "Elige un ejemplo de traducción",
     ex_message: "Mensaje",
     ex_trip: "Viaje",
@@ -826,7 +862,7 @@ const I18N = {
     q3: "¿Es la aplicación oficial de DeepL?",
     a3: "DeepL-oFM es una aplicación independiente, sin relación con DeepL SE.",
     foot: "Licencia MIT. Sin relación con DeepL SE.",
-    iphone: "La <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">aplicación para iPhone</a> está en pruebas. La versión para Windows está en desarrollo.",
+    iphone: "La <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">aplicación para iPhone</a> está en pruebas.",
     copied: "Copiados",
     copyfail: "Selecciona y copia los comandos",
     phrase1: "¿Podemos pasar la reunión al viernes?",
@@ -834,6 +870,10 @@ const I18N = {
     phrase3: "Guarda una copia de este recibo.",
   },
   pl: {
+    win_title: "Wersja testowa dla Windows",
+    win_download: "Pobierz dla Windows x64",
+    win_details: "Wydanie i SHA-256",
+    win_warning: "Instalator nie ma jeszcze podpisu wydawcy Windows. Microsoft Defender SmartScreen może wyświetlić ostrzeżenie o nierozpoznanej aplikacji. Pobierz plik z wydania tego projektu na GitHub i sprawdź SHA-256. Jeśli Zabezpieczenia Windows wykryją konkretne zagrożenie, nie uruchamiaj pliku i zgłoś wykrycie.",
     skip_link: "Przejdź do treści",
     sections: "Sekcje strony",
     nav_how: "Możliwości",
@@ -846,7 +886,7 @@ const I18N = {
     lead: "Zaznacz tekst w e-mailu, na stronie lub w dokumencie i naciśnij ⌥⌘C. DeepL-oFM otworzy się i od razu zacznie tłumaczyć.",
     lead2: "Aplikacja jest darmowa. Nie wymaga konta ani abonamentu. Możesz ją skonfigurować do tłumaczenia bez internetu.",
     download: "Pobierz na Maca",
-    note: "Plik 3,7 MB · Mac z układem Apple i systemem macOS 14 lub nowszym.",
+    note: "Plik 5,1 MB · Mac z układem Apple i systemem macOS 14 lub nowszym.",
     examples: "Wybierz przykład tłumaczenia",
     ex_message: "Wiadomość",
     ex_trip: "Podróż",
@@ -900,7 +940,7 @@ const I18N = {
     q3: "Czy to oficjalna aplikacja DeepL?",
     a3: "DeepL-oFM to niezależna aplikacja, bez powiązań z DeepL SE.",
     foot: "Licencja MIT. Brak powiązań z DeepL SE.",
-    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Aplikacja na iPhone’a</a> jest w fazie testów. Wersja dla Windows jest w przygotowaniu.",
+    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Aplikacja na iPhone’a</a> jest w fazie testów.",
     copied: "Skopiowano",
     copyfail: "Zaznacz i skopiuj polecenia",
     phrase1: "Czy możemy przełożyć nasze spotkanie na piątek?",
@@ -908,6 +948,10 @@ const I18N = {
     phrase3: "Proszę zachować kopię tego paragonu.",
   },
   pt: {
+    win_title: "Versão de teste para Windows",
+    win_download: "Descarregar para Windows x64",
+    win_details: "Versão e SHA-256",
+    win_warning: "O instalador ainda não tem assinatura de editor do Windows. O Microsoft Defender SmartScreen pode avisar que a aplicação não é reconhecida. Descarregue o ficheiro da versão deste projeto no GitHub e confirme o SHA-256. Se a Segurança do Windows detetar uma ameaça específica, não execute o ficheiro e comunique a deteção.",
     skip_link: "Ir para o conteúdo",
     sections: "Secções da página",
     nav_how: "O que faz",
@@ -920,7 +964,7 @@ const I18N = {
     lead: "Seleciona texto num e-mail, num site ou num documento e carrega em ⌥⌘C. O DeepL-oFM abre e começa logo a traduzir.",
     lead2: "A aplicação é gratuita, sem conta nem subscrição. Podes configurá-la para traduzir sem internet.",
     download: "Descarregar para Mac",
-    note: "Ficheiro de 3,7 MB · Mac com processador Apple e macOS 14 ou posterior.",
+    note: "Ficheiro de 5,1 MB · Mac com processador Apple e macOS 14 ou posterior.",
     examples: "Escolhe um exemplo de tradução",
     ex_message: "Mensagem",
     ex_trip: "Viagem",
@@ -974,7 +1018,7 @@ const I18N = {
     q3: "É a aplicação oficial do DeepL?",
     a3: "O DeepL-oFM é uma aplicação independente, sem ligação à DeepL SE.",
     foot: "Licença MIT. Sem ligação à DeepL SE.",
-    iphone: "A <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">aplicação para iPhone</a> está em testes. A versão para Windows está em desenvolvimento.",
+    iphone: "A <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">aplicação para iPhone</a> está em testes.",
     copied: "Copiado",
     copyfail: "Seleciona e copia os comandos",
     phrase1: "Podemos passar a nossa reunião para sexta-feira?",
@@ -982,6 +1026,10 @@ const I18N = {
     phrase3: "Guarda uma cópia deste recibo.",
   },
   it: {
+    win_title: "Anteprima per Windows",
+    win_download: "Scarica per Windows x64",
+    win_details: "Versione e SHA-256",
+    win_warning: "Il programma di installazione non ha ancora una firma dell’editore Windows. Microsoft Defender SmartScreen può segnalare un’app sconosciuta. Scarica il file dalla versione di questo progetto su GitHub e verifica lo SHA-256. Se Sicurezza di Windows rileva una minaccia specifica, non avviare il file e segnala il rilevamento.",
     skip_link: "Vai al contenuto",
     sections: "Sezioni della pagina",
     nav_how: "Funzioni",
@@ -994,7 +1042,7 @@ const I18N = {
     lead: "Seleziona il testo in un’e-mail, su un sito o in un documento e premi ⌥⌘C. DeepL-oFM si apre e inizia subito a tradurre.",
     lead2: "L’app è gratuita, senza account o abbonamento. Puoi configurarla per tradurre senza internet.",
     download: "Scarica per Mac",
-    note: "File da 3,7 MB · Mac con chip Apple e macOS 14 o successivo.",
+    note: "File da 5,1 MB · Mac con chip Apple e macOS 14 o successivo.",
     examples: "Scegli un esempio di traduzione",
     ex_message: "Messaggio",
     ex_trip: "Viaggio",
@@ -1048,7 +1096,7 @@ const I18N = {
     q3: "È l’app ufficiale di DeepL?",
     a3: "DeepL-oFM è un’app indipendente, senza affiliazione con DeepL SE.",
     foot: "Licenza MIT. Nessuna affiliazione con DeepL SE.",
-    iphone: "L’<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">app per iPhone</a> è in fase di test. La versione per Windows è in sviluppo.",
+    iphone: "L’<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">app per iPhone</a> è in fase di test.",
     copied: "Copiati",
     copyfail: "Seleziona e copia i comandi",
     phrase1: "Possiamo spostare la nostra riunione a venerdì?",
