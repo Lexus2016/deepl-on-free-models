@@ -15,7 +15,7 @@ log.workspace = true
 # `&'static str` message keys instead of localised text, so `ofm-store` must
 # build while `ofm-i18n` is still in flux. Enable the implicit `ofm-i18n`
 # feature when the UI layer finally needs translated strings from here.
-ofm-i18n = { version = "2.0.1", path = "../i18n", optional = true }
+ofm-i18n = { version = "2.0.4", path = "../i18n", optional = true }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

@@ -1,0 +1,51 @@
+name: Windows preview package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 35
+    environment: windows-release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the updater-signed preview
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) { throw 'Missing Windows update key.' }
+          $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = ''
+          $config = Join-Path $env:RUNNER_TEMP 'deepl-updater.json'
+          ./rust/packaging/windows/updater-config.ps1 -PublicKeyPath ./rust/packaging/windows/update.pub -OutputPath $config
+          ./rust/packaging/windows/build.ps1 -UpdaterConfig $config
+          $installer = Get-ChildItem ./rust/target/release/bundle/nsis -Filter '*-setup.exe'
+          if (@($installer).Count -ne 1 -or -not (Test-Path "$($installer.FullName).sig")) {
+            throw 'Expected one installer and its update signature.'
+          }
+          if ((Get-AuthenticodeSignature $installer.FullName).Status -ne 'NotSigned') {
+            throw 'The preview disclosure expects an unsigned Windows publisher identity.'
+          }
+      - name: Install, start and uninstall on Windows
+        shell: pwsh
+        run: ./rust/packaging/windows/smoke.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeepL-oFM-Windows-preview
+          path: |
+            rust/target/release/bundle/nsis/*-setup.exe
+            rust/target/release/bundle/nsis/*-setup.exe.sig
+          if-no-files-found: error
+          retention-days: 14

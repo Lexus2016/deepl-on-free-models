@@ -9,7 +9,7 @@ authors.workspace = true
 
 [dependencies]
 fancy-regex = "0.20.2"
-ofm-i18n = { version = "2.0.1", path = "../i18n" }
+ofm-i18n = { version = "2.0.4", path = "../i18n" }
 regex = "1.13.2"
 serde.workspace = true
 serde_json.workspace = true
