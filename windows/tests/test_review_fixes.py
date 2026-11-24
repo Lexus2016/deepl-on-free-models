@@ -75,6 +75,8 @@ def _fake_win32() -> tuple[types.SimpleNamespace, types.SimpleNamespace]:
         CloseClipboard=_FakeFunction(1),
         GetClipboardSequenceNumber=_FakeFunction(0),
         GetAsyncKeyState=_FakeFunction(0),
+        GetForegroundWindow=_FakeFunction(0),
+        GetWindowThreadProcessId=_FakeFunction(0),
         keybd_event=_FakeFunction(None),
     )
     kernel32 = types.SimpleNamespace(
@@ -107,6 +109,13 @@ def test_win32_functions_declare_pointer_sized_prototypes():
     assert user32.GetClipboardSequenceNumber.argtypes == []
     assert user32.GetAsyncKeyState.restype is wintypes.SHORT
     assert user32.GetAsyncKeyState.argtypes == [ctypes.c_int]
+    assert user32.GetForegroundWindow.restype is wintypes.HWND
+    assert user32.GetForegroundWindow.argtypes == []
+    assert user32.GetWindowThreadProcessId.restype is wintypes.DWORD
+    assert user32.GetWindowThreadProcessId.argtypes == [
+        wintypes.HWND,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
     assert user32.keybd_event.restype is None
     assert len(user32.keybd_event.argtypes) == 4
 

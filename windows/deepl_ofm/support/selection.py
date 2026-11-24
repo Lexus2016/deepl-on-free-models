@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import os
 import sys
 import time
 from ctypes import wintypes
@@ -60,6 +61,13 @@ def _install_prototypes(user32: object, kernel32: object) -> None:
     _declare(user32, "CloseClipboard", wintypes.BOOL, ())
     _declare(user32, "GetClipboardSequenceNumber", wintypes.DWORD, ())
     _declare(user32, "GetAsyncKeyState", wintypes.SHORT, (ctypes.c_int,))
+    _declare(user32, "GetForegroundWindow", wintypes.HWND, ())
+    _declare(
+        user32,
+        "GetWindowThreadProcessId",
+        wintypes.DWORD,
+        (wintypes.HWND, ctypes.POINTER(wintypes.DWORD)),
+    )
     _declare(
         user32,
         "keybd_event",
@@ -92,6 +100,11 @@ def capture_selection(*, timeout_ms: int = 700, modifier_wait_ms: int = 300) -> 
     """
     if not _WINDOWS or _USER32 is None:
         return ""
+    if _foreground_is_ours():
+        # Copying from our own window can never be what the user meant, and the
+        # synthetic Ctrl+C would otherwise land in the source box.
+        logger.info("the foreground window belongs to this process; not copying")
+        return ""
     try:
         user32 = _USER32
         before = int(user32.GetClipboardSequenceNumber())
@@ -102,15 +115,27 @@ def capture_selection(*, timeout_ms: int = 700, modifier_wait_ms: int = 300) -> 
     _send_ctrl_c()
 
     deadline = time.monotonic() + timeout_ms / 1000.0
+    changed = False
     while time.monotonic() < deadline:
         try:
             if int(user32.GetClipboardSequenceNumber()) != before:
-                time.sleep(0.02)  # let the owner publish the data
-                return _clipboard_text()
+                changed = True
+                break
         except Exception:  # pragma: no cover - defensive
             break
         time.sleep(0.01)
-    logger.info("no clipboard update after Ctrl+C; the selection was not captured")
+    if not changed:
+        logger.info("no clipboard update after Ctrl+C; the selection was not captured")
+        return ""
+
+    # Chrome, Word and Electron empty the clipboard before publishing the copied
+    # text, so the first read after the sequence change can still be empty.
+    while time.monotonic() < deadline:
+        text = _clipboard_text()
+        if text:
+            return text
+        time.sleep(0.02)
+    logger.info("the clipboard changed but no text became available")
     return ""
 
 
@@ -120,6 +145,21 @@ def capture_selection(*, timeout_ms: int = 700, modifier_wait_ms: int = 300) -> 
 def _modifier_is_down(user32: object, key: int) -> bool:
     try:
         return bool(user32.GetAsyncKeyState(key) & 0x8000)
+    except Exception:  # pragma: no cover - defensive
+        return False
+
+
+def _foreground_is_ours() -> bool:
+    """Whether this process owns the current foreground window."""
+    if _USER32 is None:
+        return False
+    try:
+        window = _USER32.GetForegroundWindow()
+        if not window:
+            return False
+        process_id = wintypes.DWORD()
+        _USER32.GetWindowThreadProcessId(window, ctypes.byref(process_id))
+        return int(process_id.value) == os.getpid()
     except Exception:  # pragma: no cover - defensive
         return False
 

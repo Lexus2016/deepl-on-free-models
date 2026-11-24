@@ -8,7 +8,7 @@ from dataclasses import dataclass
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -222,6 +222,32 @@ def test_toggle_row_signal(qapp: QApplication) -> None:
     row.set_checked(True)
     assert row.is_checked()
     assert seen == [False]
+
+
+def test_switch_toggles_from_a_click_on_the_pill(qapp: QApplication) -> None:
+    row = ui.ToggleRow("Keep history", False)
+    row.resize(320, 40)
+    row.show()
+    qapp.processEvents()
+    switch = row.check_box()
+    seen: list[bool] = []
+    row.toggled.connect(seen.append)
+
+    # The old hidden QCheckBox indicator only covered the far-left strip.
+    QTest.mouseClick(switch, Qt.MouseButton.LeftButton, pos=QPoint(19, 11))
+    qapp.processEvents()
+    assert switch.isChecked()
+    assert row.is_checked()
+    assert seen == [True]
+
+    # Click the knob on the right side of the painted pill, not the indicator.
+    QTest.mouseClick(switch, Qt.MouseButton.LeftButton, pos=QPoint(27, 11))
+    qapp.processEvents()
+    assert not switch.isChecked()
+    assert not row.is_checked()
+    assert seen == [True, False]
+    row.hide()
+    row.deleteLater()
 
 
 def test_progress_bar(qapp: QApplication) -> None:

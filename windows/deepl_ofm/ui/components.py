@@ -1721,6 +1721,10 @@ class _Switch(QCheckBox):
         self._animation.timeout.connect(self._tick)
         self.toggled.connect(self._animate)
 
+    def hitButton(self, pos: QPoint) -> bool:  # noqa: N802
+        """The whole painted pill is clickable, not just the hidden indicator."""
+        return self.rect().contains(pos)
+
     def _animate(self, checked: bool) -> None:
         self._target = 1.0 if checked else 0.0
         if abs(self._pos - self._target) < 0.01:

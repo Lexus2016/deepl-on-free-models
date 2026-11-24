@@ -250,6 +250,7 @@ class AppController(QObject):
         self._last_completed_key: tuple[str, str, str, str, str, str, bool] | None = None
         self._suppress_auto = False
         self._capturing_selection = False
+        self._selection_done_at = 0.0
         self._last_partial_at = 0.0
 
         self._detect_timer = QTimer(self)
@@ -746,6 +747,11 @@ class AppController(QObject):
         """
         if self._capturing_selection:
             return
+        # A hotkey signal that queued up behind the blocking capture is delivered
+        # only after our window became the foreground window.  Sending Ctrl+C
+        # again would target ourselves and report a bogus failure.
+        if time.monotonic() - self._selection_done_at < 1.0:
+            return
         from .support.selection import capture_selection, is_supported
 
         if not is_supported():
@@ -754,10 +760,12 @@ class AppController(QObject):
             return
 
         self._capturing_selection = True
+        text = ""
         try:
             text = capture_selection()
         finally:
             self._capturing_selection = False
+            self._selection_done_at = time.monotonic()
 
         self.set_tab("translate")
         self.windowRequested.emit()
@@ -769,6 +777,10 @@ class AppController(QObject):
                 )
             )
             return
+
+        if self.error_message is not None:
+            self.error_message = None
+            self.errorRaised.emit("")
 
         self._suppress_auto = True
         self.set_source_text(text)
