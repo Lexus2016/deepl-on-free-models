@@ -13,6 +13,8 @@ final class FileTranslationStore: ObservableObject {
 
     @Published var selectedURL: URL?
     @Published var kind: DocumentKind?
+    @Published var sourceCode = Language.auto.code
+    @Published private(set) var detectedSource: Language?
     @Published var targetCode: String
     @Published var state: State = .idle
     @Published var completed = 0
@@ -67,6 +69,8 @@ final class FileTranslationStore: ObservableObject {
             .map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) }
         selectedURL = url
         self.kind = kind
+        sourceCode = Language.auto.code
+        detectedSource = nil
         outputURL = nil
         completed = 0
         total = 0
@@ -97,6 +101,8 @@ final class FileTranslationStore: ObservableObject {
         let fallbackModel = settings.fallbackModel
         let style = settings.lastStyle
         let tone = settings.lastTone
+        let source = Language.with(code: sourceCode)
+        detectedSource = nil
 
         task = Task { [weak self] in
             guard let self else { return }
@@ -107,6 +113,11 @@ final class FileTranslationStore: ObservableObject {
                 }
                 try Task.checkCancellation()
                 self.total = units.lazy.filter(\.needsTranslation).count
+                if source == nil {
+                    let sample = units.lazy.filter(\.needsTranslation).prefix(12)
+                        .map { String($0.text.prefix(600)) }.joined(separator: "\n")
+                    self.detectedSource = Language.detect(sample, preferred: language)
+                }
 
                 var config = primary
                 var provider = primaryProvider
@@ -132,7 +143,7 @@ final class FileTranslationStore: ObservableObject {
                     do {
                         translation = try await service.translateBlock(
                             text: unit.text, style: style, tone: tone, target: target, config: config,
-                            retryRateLimit: fallback == nil || switched
+                            retryRateLimit: fallback == nil || switched, sourceLanguage: source
                         )
                     } catch {
                         try Task.checkCancellation()
@@ -155,7 +166,8 @@ final class FileTranslationStore: ObservableObject {
                         }
                         do {
                             translation = try await service.translateBlock(
-                                text: unit.text, style: style, tone: tone, target: target, config: fallback
+                                text: unit.text, style: style, tone: tone, target: target, config: fallback,
+                                sourceLanguage: source
                             )
                         } catch TranslationError.degenerateResponse {
                             translation = (unit.text, true)
@@ -300,6 +312,8 @@ final class FileTranslationStore: ObservableObject {
         task = nil
         removeTemporaryOutput()
         selectedURL = nil
+        sourceCode = Language.auto.code
+        detectedSource = nil
         formattedSize = nil
         kind = nil
         warningCount = 0

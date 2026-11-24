@@ -231,6 +231,7 @@ extension TranslationServiceTests {
         }
 
         XCTAssertEqual(store.state, .finished)
+        XCTAssertEqual(store.detectedSource?.code, "de")
         XCTAssertTrue(store.usingFallback)
         XCTAssertEqual(store.total, 2)
         XCTAssertEqual(store.completed, 2)

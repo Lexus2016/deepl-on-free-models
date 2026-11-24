@@ -326,7 +326,8 @@ final class TranslationService {
         tone: TranslationTone,
         target: Language,
         config: BackendConfig,
-        retryRateLimit: Bool = true
+        retryRateLimit: Bool = true,
+        sourceLanguage: Language? = nil
     ) async throws -> (text: String, warning: Bool) {
         let preserve = MarkdownDetector.contains(text)
         let standardPrompt = PromptBuilder.prompt(
@@ -340,7 +341,7 @@ final class TranslationService {
             style == .auto && tone == .standard ? concisePrompt : standardPrompt,
             style == .auto && tone == .standard ? standardPrompt : concisePrompt,
             PromptBuilder.plainPrompt(text: text, targetLanguage: target.englishName)
-        ]
+        ].map { Self.withSourceLanguage($0, sourceLanguage) }
         let result = try await bufferedTranslation(
             prompts: prompts,
             source: text,

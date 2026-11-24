@@ -99,6 +99,25 @@ struct FilesView: View {
             fileCard
 
             HStack(spacing: 10) {
+                Text(L10n.t("Source language", language))
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(Theme.secondary)
+
+                Picker(L10n.t("Source language", language), selection: $store.sourceCode) {
+                    let auto = Language.auto.displayName(in: language)
+                    let detected = store.detectedSource?.displayName(in: language)
+                    Text(detected.map { "\(auto) · \($0)" } ?? auto).tag(Language.auto.code)
+                    ForEach(Language.all) { item in
+                        Text(item.displayName(in: language)).tag(item.code)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(width: 230)
+                .disabled(store.isWorking || store.isSaving || store.state == .finished)
+            }
+
+            HStack(spacing: 10) {
                 Text(L10n.t("Translate to", language))
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Theme.secondary)
