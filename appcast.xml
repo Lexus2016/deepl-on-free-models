@@ -4,6 +4,18 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>2.0.6</title>
+            <pubDate>Tue, 24 Nov 2026 14:14:55 GMT</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>19</sparkle:version>
+            <sparkle:shortVersionString>2.0.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<p>Find a language as you type its name or code. The list is alphabetized in the app's language.</p>
+<p>Щоб знайти мову, почніть вводити її назву або код. Список впорядковано за абеткою мови застосунку.</p>]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v2.0.6/DeepL-oFM-2.0.6.dmg" length="5145693" type="application/octet-stream" sparkle:edSignature="iunHsAjzAmdF+15EgDNDRtGZxkSK3X/AG703c8Zj+i5tiegWfWiJNz+wa8Fu4kVFzbYLQWdx2UlWKNeyUDyeCg=="/>
+        </item>
+        <item>
             <title>2.0.5</title>
             <pubDate>Tue, 24 Nov 2026 13:16:33 GMT</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -209,6 +221,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: hjqT0e0jm2iJDxw3zDi+g2Dj4yZGI2hEQvBRd9wQ0u/LSQw+q5iJz2uA+Hkh4P4qns1G3IoACEeV6oATUxeJBA==
-length: 17524
+edSignature: 3Di8Gjdel/ZtnaHLKfr3bAZz23d0aYeqPmnSJcVGwuuY0Gf/56gQyXWMYBvE5Ze1SLVPFzHPdRKK0cl/fHW2BA==
+length: 18631
 -->

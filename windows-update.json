@@ -1,11 +1,11 @@
 {
-  "version": "2.0.5",
+  "version": "2.0.6",
   "public_key_sha256": "161461d5b228358d02ef1574195e5f84289499edf097f6cfb501fe7839187f29",
-  "installer_sha256": "50f7524122018be193b9cc883f79d1fe3a86de6e6ac4d10ed67c624053757d2c",
+  "installer_sha256": "b9163719d4a304f5df1725e4a6119321da08546cc7f30d238297ed95a95a6f9c",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRdW9PcENNTndGTzRxcmMzSjhueG9TZGlpN3JpWkQzS3NDZWlLakl6S3haN3RFamN3dURuOVF5TzVMdzRLREpCa2dOV2JaUHJQRktyUnRJdU04Mi9CVFRmdU1SRFBxOFFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1NTI2MTYzCWZpbGU6RGVlcEwtb0ZNXzIuMC41X3g2NC1zZXR1cC5leGUJdmVyc2lvbjoyLjAuNQppcVRPWFRhUVdBdmp4WWFtQ0xCU2dNTHNGdnppNDJ6di8xUkcrblR0elVtenZuUDZXb0l5YmJac09WVEI2RmVtZngxcyt0N2FxOW9LN3ErNnJTRXZEdz09Cg==",
-      "url": "https://github.com/Lexus2016/deepl-on-free-models/releases/download/windows-v2.0.5/DeepL-oFM_2.0.5_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRdW9PcENNTndGT3hqSjczZHZtd0NacUN1TkkwWTdaS1NjS1ExSnRFSDdBOUZpWEVuLzBCdFRzNysrY2dyRzAvQjJJY2FMcXFKazJsTys3N1pOQkNDc0oydlRWeDV0Q3dRPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1NTI5NzkzCWZpbGU6RGVlcEwtb0ZNXzIuMC42X3g2NC1zZXR1cC5leGUJdmVyc2lvbjoyLjAuNgp3NFBmZFFPWDJvaUh2anNtTHhxLzE2ZUtXUVhyVk5US1hveklLTnBVMzBsN20xNGc1ckhUeXR0bFJ1N1FLckZsdUhXOHdCd0xXVUxOajd5NDdTd0pEQT09Cg==",
+      "url": "https://github.com/Lexus2016/deepl-on-free-models/releases/download/windows-v2.0.6/DeepL-oFM_2.0.6_x64-setup.exe"
     }
   }
 }
