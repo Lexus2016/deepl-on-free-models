@@ -994,6 +994,7 @@
       "fileSelected",
       "fileSelectedName",
       "fileSelectedMeta",
+      "fileFormatNote",
       "removeFileBtn",
       "fileActions",
       "fileTarget",
@@ -1575,6 +1576,13 @@
     els.fileProgress.hidden = !running;
     els.fileResult.hidden = !done;
     els.fileError.hidden = !failed;
+    const formatNote = job?.kind === "pdf"
+      ? tr("The exported PDF retains the original text layer. Scanned pages require text recognition first.")
+      : job?.kind === "docx"
+        ? tr("Headers, footers, footnotes and comments stay in the original language.")
+        : "";
+    els.fileFormatNote.hidden = !formatNote;
+    els.fileFormatNote.textContent = formatNote;
 
     if (!job) return;
 
@@ -1891,6 +1899,7 @@
       els.settingsBody.classList.add("scroll-fade");
       focusDialogShell(els.settingsDialog);
       requestAnimationFrame(() => syncScrollFade(els.settingsBody));
+      void refreshLoginItem();
       void loadDiagnostics();
       void ensureCatalogEntries().then(() => renderInstallHint());
       if (state.backendStatus === "unknown") {
@@ -4484,6 +4493,11 @@
     localize();
     observeTranslateBar();
     bindEvents();
+    if (NATIVE) {
+      window.addEventListener("focus", () => {
+        if (els.settingsDialog.open) void refreshLoginItem();
+      });
+    }
     listenNativeDrop();
     await subscribe(handleEvent);
     void loadVoices();

@@ -3,7 +3,7 @@
 //! **Generated file -- do not edit.**  Regenerate it with
 //! `python3 rust/scripts/gen_i18n.py` from the checkout root.
 //!
-//! Everything here comes from `windows/deepl_ofm/core/languages.py`, the
+//! Everything here comes from `rust/scripts/data/languages.json`, the
 //! behavioural reference of the port; `language.rs` holds the algorithms
 //! that consume it.
 

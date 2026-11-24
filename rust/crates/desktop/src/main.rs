@@ -368,11 +368,7 @@ fn install_hotkeys(app: &tauri::AppHandle, controller: Arc<AppController>) {
                 manager,
                 &changes,
                 move |action| {
-                    // Capture before activating our own window.  "Translate
-                    // selection" synthesises Ctrl+C into whatever is focused, so
-                    // showing and focusing DeepL-oFM first would make the
-                    // capture copy our own UI (or nothing).  The window is
-                    // brought forward afterwards so the result is visible.
+                    // Read the foreground selection before activating our window.
                     match action {
                         "clipboard" => dispatch_controller.translate_clipboard(),
                         "selection" => dispatch_controller.translate_selection(),

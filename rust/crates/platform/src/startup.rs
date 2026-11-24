@@ -200,9 +200,9 @@ mod windows {
     use windows::core::PCWSTR;
     use windows::Win32::Foundation::{ERROR_FILE_NOT_FOUND, ERROR_SUCCESS, WIN32_ERROR};
     use windows::Win32::System::Registry::{
-        RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW,
-        RegSetValueExW, HKEY, HKEY_CURRENT_USER, KEY_QUERY_VALUE, KEY_SET_VALUE,
-        REG_OPTION_NON_VOLATILE, REG_SZ, REG_VALUE_TYPE,
+        RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegGetValueW, RegOpenKeyExW, RegSetValueExW,
+        HKEY, HKEY_CURRENT_USER, KEY_SET_VALUE, REG_OPTION_NON_VOLATILE, REG_ROUTINE_FLAGS, REG_SZ,
+        RRF_RT_REG_BINARY, RRF_RT_REG_SZ,
     };
 
     use super::{StartupError, StartupStatus};
@@ -212,54 +212,61 @@ mod windows {
     /// Value name the shell reads; kept stable so upgrades replace themselves.
     const VALUE_NAME: &str = "DeepL-oFM";
 
-    pub(super) fn status() -> StartupStatus {
-        let subkey = wide(RUN_KEY);
-        let mut key = HKEY::default();
-        // SAFETY: `subkey` is a NUL-terminated wide string that outlives the
-        // call, `key` is valid writable memory, and a successfully opened
-        // handle is closed exactly once below.
-        let opened = unsafe {
-            RegOpenKeyExW(
-                HKEY_CURRENT_USER,
-                PCWSTR(subkey.as_ptr()),
-                None,
-                KEY_QUERY_VALUE,
-                &mut key,
-            )
-        };
-        if opened != ERROR_SUCCESS {
-            return StartupStatus::Disabled;
-        }
+    const APPROVAL_KEY: &str =
+        r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 
+    fn read_value(path: &str, flags: REG_ROUTINE_FLAGS, bytes: &mut [u8]) -> bool {
+        let path = wide(path);
         let name = wide(VALUE_NAME);
-        let mut kind = REG_VALUE_TYPE(0);
-        let mut size = 0u32;
-        // SAFETY: `key` is open, `name` is a NUL-terminated wide string, and
-        // both out-parameters point at initialised local storage.
-        let queried = unsafe {
-            RegQueryValueExW(
-                key,
+        let mut size = bytes.len() as u32;
+        // SAFETY: the strings are NUL-terminated and size bounds the output buffer.
+        let status = unsafe {
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                PCWSTR(path.as_ptr()),
                 PCWSTR(name.as_ptr()),
+                flags,
                 None,
-                Some(&mut kind),
-                None,
+                Some(bytes.as_mut_ptr().cast()),
                 Some(&mut size),
             )
         };
-        // SAFETY: the handle was opened above and is closed exactly once here.
-        let _ = unsafe { RegCloseKey(key) };
+        status == ERROR_SUCCESS
+    }
 
-        if queried == ERROR_SUCCESS {
-            StartupStatus::Enabled
-        } else {
-            if queried != ERROR_FILE_NOT_FOUND {
-                log::debug!(
-                    "could not read HKCU\\{RUN_KEY}\\{VALUE_NAME}: {}",
-                    describe(queried)
-                );
-            }
-            StartupStatus::Disabled
+    pub(super) fn status() -> StartupStatus {
+        let Ok(command) = startup_command() else {
+            return StartupStatus::Disabled;
+        };
+        let mut registered = vec![0; (command.encode_utf16().count() + 1) * 2];
+        if !read_value(RUN_KEY, RRF_RT_REG_SZ, &mut registered) {
+            return StartupStatus::Disabled;
         }
+        let units: Vec<u16> = registered
+            .chunks_exact(2)
+            .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
+            .take_while(|unit| *unit != 0)
+            .collect();
+        if !String::from_utf16_lossy(&units).eq_ignore_ascii_case(&command) {
+            return StartupStatus::Disabled;
+        }
+
+        // The Windows shell owns StartupApproved. Read the known disabled
+        // states without changing the user's choice in Windows Settings.
+        let mut approval = [0; 12];
+        if read_value(APPROVAL_KEY, RRF_RT_REG_BINARY, &mut approval)
+            && matches!(approval[0], 3 | 7)
+        {
+            return StartupStatus::RequiresApproval;
+        }
+        StartupStatus::Enabled
+    }
+
+    fn startup_command() -> Result<String, StartupError> {
+        let executable = std::env::current_exe().map_err(|error| {
+            StartupError::new(format!("could not locate the application: {error}"))
+        })?;
+        Ok(format!("\"{}\"", executable.display()))
     }
 
     pub(super) fn set_enabled(enabled: bool) -> Result<StartupStatus, StartupError> {
@@ -271,10 +278,7 @@ mod windows {
     }
 
     fn enable() -> Result<StartupStatus, StartupError> {
-        let executable = std::env::current_exe().map_err(|error| {
-            StartupError::new(format!("could not locate the application: {error}"))
-        })?;
-        let command = format!("\"{}\"", executable.display());
+        let command = startup_command()?;
 
         let subkey = wide(RUN_KEY);
         let mut key = HKEY::default();
@@ -312,7 +316,7 @@ mod windows {
         let _ = unsafe { RegCloseKey(key) };
 
         if written == ERROR_SUCCESS {
-            Ok(StartupStatus::Enabled)
+            Ok(status())
         } else {
             Err(StartupError::new(describe(written)))
         }
@@ -391,7 +395,7 @@ mod macos {
     const LABEL: &str = "ua.admin.hymt";
     /// File name inside `~/Library/LaunchAgents`.
     const PLIST_NAME: &str = "ua.admin.hymt.plist";
-    const LAUNCHCTL: &str = "launchctl";
+    const LAUNCHCTL: &str = "/bin/launchctl";
     /// System Settings pane macOS 13+ uses for login items.
     const LOGIN_ITEMS_PANE: &str =
         "x-apple.systempreferences:com.apple.LoginItems-Settings.extension";
@@ -415,7 +419,7 @@ mod macos {
     }
 
     pub(super) fn set_enabled(root: &Path, enabled: bool) -> Result<StartupStatus, StartupError> {
-        if root.as_os_str().is_empty() || !launchctl_available() {
+        if root.as_os_str().is_empty() || !Path::new(LAUNCHCTL).is_file() {
             return Ok(StartupStatus::Unsupported);
         }
         if enabled {

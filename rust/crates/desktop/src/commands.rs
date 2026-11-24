@@ -29,6 +29,7 @@ pub fn get_state(state: State<'_, Shared>) -> Result<Value, String> {
 /// Command-line actions the window has not consumed yet.
 #[tauri::command]
 pub fn get_startup(state: State<'_, Shared>) -> Result<Value, String> {
+    log::debug!("WebView requested startup actions after rendering the application state");
     let mut startup = state
         .startup
         .lock()
@@ -50,9 +51,10 @@ pub fn save_settings(state: State<'_, Shared>, settings: Value) -> Result<Value,
 /// "Open at login" state: `{ "status": ..., "error": ... }`.
 #[tauri::command]
 pub fn get_login_item(state: State<'_, Shared>) -> Result<Value, String> {
-    let snapshot = controller(&state).state();
+    let controller = controller(&state);
+    let snapshot = controller.state();
     Ok(json!({
-        "status": snapshot.login_item_status,
+        "status": controller.login_item_status().value(),
         "error": snapshot.login_item_error,
     }))
 }
@@ -158,7 +160,9 @@ pub fn translate_clipboard(state: State<'_, Shared>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn translate_selection(state: State<'_, Shared>) -> Result<(), String> {
-    controller(&state).translate_selection();
+    let controller = state.controller.clone();
+    // Selection providers run out of process and can take time to respond.
+    tauri::async_runtime::spawn_blocking(move || controller.translate_selection());
     Ok(())
 }
 

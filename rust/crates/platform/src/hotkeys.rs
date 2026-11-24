@@ -497,8 +497,8 @@ impl HotkeyManager {
         }
         let hotkey = HotKey::new(Some(modifiers), code);
 
-        if self.registered.contains_key(name) {
-            self.remove_registration(name);
+        if self.registered.get(name) == Some(&hotkey) {
+            return Ok(());
         }
         let Some(manager) = self.manager.as_ref() else {
             return Err(HotkeyError::new(MESSAGE_COULD_NOT_REGISTER));
@@ -507,6 +507,7 @@ impl HotkeyManager {
             log::warn!("could not register {} ({}): {error}", combo.display(), code);
             return Err(HotkeyError::new(MESSAGE_COULD_NOT_REGISTER));
         }
+        self.remove_registration(name);
         if let Ok(mut actions) = self.actions.lock() {
             actions.insert(hotkey.id(), name.to_string());
         }
@@ -605,19 +606,13 @@ const HEARTBEAT_TICKS: u64 = 5_000;
 /// panicking or blocking action can be delivered without a window or an event
 /// loop.
 pub trait HotkeyBackend {
-    /// Remove every registered shortcut.
-    fn unregister_all(&mut self);
-    /// Register `action` for `combo`, replacing an existing binding.
+    /// Register `action` for `combo`, preserving its existing binding on failure.
     fn register(&mut self, action: &str, combo: &KeyCombo) -> Result<(), HotkeyError>;
     /// Actions pressed since the previous call.
     fn poll(&mut self) -> Vec<String>;
 }
 
 impl HotkeyBackend for HotkeyManager {
-    fn unregister_all(&mut self) {
-        HotkeyManager::unregister_all(self);
-    }
-
     fn register(&mut self, action: &str, combo: &KeyCombo) -> Result<(), HotkeyError> {
         HotkeyManager::register(self, action, combo)
     }
@@ -742,7 +737,6 @@ where
             return;
         }
 
-        self.backend.unregister_all();
         let mut registered = true;
         for (action, combo) in [("clipboard", clipboard), ("selection", selection)] {
             let result = self.backend.register(action, combo);
@@ -1049,7 +1043,6 @@ mod tests {
     /// be tested without a window, a message pump or a real shortcut.
     struct FakeBackend {
         pressed: Arc<Mutex<VecDeque<Vec<String>>>>,
-        unregisters: Arc<AtomicUsize>,
         registrations: Arc<AtomicUsize>,
         /// How many upcoming registrations to refuse, to model a combination
         /// another process is holding.
@@ -1060,7 +1053,6 @@ mod tests {
         fn new() -> Self {
             Self {
                 pressed: Arc::new(Mutex::new(VecDeque::new())),
-                unregisters: Arc::new(AtomicUsize::new(0)),
                 registrations: Arc::new(AtomicUsize::new(0)),
                 fail_next: Arc::new(AtomicUsize::new(0)),
             }
@@ -1068,10 +1060,6 @@ mod tests {
     }
 
     impl HotkeyBackend for FakeBackend {
-        fn unregister_all(&mut self) {
-            self.unregisters.fetch_add(1, Ordering::SeqCst);
-        }
-
         fn register(&mut self, _action: &str, _combo: &KeyCombo) -> Result<(), HotkeyError> {
             self.registrations.fetch_add(1, Ordering::SeqCst);
             // Plain load-and-decrement: `fetch_update` is deprecated on newer
@@ -1110,27 +1098,19 @@ mod tests {
     fn identical_settings_events_do_not_unregister_the_shortcuts() {
         let (updates, changes) = mpsc::channel();
         let backend = FakeBackend::new();
-        let unregisters = Arc::clone(&backend.unregisters);
         let registrations = Arc::clone(&backend.registrations);
         let mut hotkeys = HotkeyLoop::new(backend, |_| {}, |_, _, _| {});
 
         updates.send(default_pair()).expect("send settings");
         assert!(hotkeys.tick(&changes));
-        assert_eq!(unregisters.load(Ordering::SeqCst), 1);
         assert_eq!(registrations.load(Ordering::SeqCst), 2);
 
         // Two further events with the same combinations are what every
         // settings save emits; they must not touch the registration.
-        unregisters.store(0, Ordering::SeqCst);
         registrations.store(0, Ordering::SeqCst);
         updates.send(default_pair()).expect("send settings");
         updates.send(default_pair()).expect("send settings");
         assert!(hotkeys.tick(&changes));
-        assert_eq!(
-            unregisters.load(Ordering::SeqCst),
-            0,
-            "an unchanged pair must not unregister the working shortcuts"
-        );
         assert_eq!(
             registrations.load(Ordering::SeqCst),
             0,
@@ -1146,24 +1126,17 @@ mod tests {
         // no shortcuts until it was restarted.
         let (updates, changes) = mpsc::channel();
         let backend = FakeBackend::new();
-        let unregisters = Arc::clone(&backend.unregisters);
         let registrations = Arc::clone(&backend.registrations);
         let mut hotkeys = HotkeyLoop::new(backend, |_| {}, |_, _, _| {});
 
         updates.send(default_pair()).expect("send settings");
         assert!(hotkeys.tick(&changes));
-        unregisters.store(0, Ordering::SeqCst);
         registrations.store(0, Ordering::SeqCst);
 
         updates
             .send((KeyCombo::default(), KeyCombo::default()))
             .expect("send settings");
         assert!(hotkeys.tick(&changes));
-        assert_eq!(
-            unregisters.load(Ordering::SeqCst),
-            0,
-            "an unusable pair must not unregister the working shortcuts"
-        );
         assert_eq!(
             registrations.load(Ordering::SeqCst),
             0,
@@ -1202,13 +1175,11 @@ mod tests {
     fn a_changed_pair_is_registered_again() {
         let (updates, changes) = mpsc::channel();
         let backend = FakeBackend::new();
-        let unregisters = Arc::clone(&backend.unregisters);
         let registrations = Arc::clone(&backend.registrations);
         let mut hotkeys = HotkeyLoop::new(backend, |_| {}, |_, _, _| {});
 
         updates.send(default_pair()).expect("send settings");
         assert!(hotkeys.tick(&changes));
-        unregisters.store(0, Ordering::SeqCst);
         registrations.store(0, Ordering::SeqCst);
 
         let mut changed = KeyCombo::selection();
@@ -1217,7 +1188,6 @@ mod tests {
             .send((KeyCombo::standard(), changed))
             .expect("send settings");
         assert!(hotkeys.tick(&changes));
-        assert_eq!(unregisters.load(Ordering::SeqCst), 1);
         assert_eq!(registrations.load(Ordering::SeqCst), 2);
     }
 

@@ -8,12 +8,9 @@ in the repository are parsed mechanically:
 * ``Sources/HyMT/Support/Localization.swift`` -- the eight ``[String: String]``
   dictionaries of the macOS app (302 English keys each), the authority for the
   wording of the interface.
-* ``windows/deepl_ofm/i18n/extra.py`` -- the Windows-only strings (menu bar,
-  tray, file saving, dates) that the macOS catalogue does not know about.
-* ``windows/deepl_ofm/core/languages.py`` -- the 38-language registry, the
-  curated localised language names and the stop-word lists used by the script
-  detector.  The Python module is the behavioural spec, so its data is extracted
-  with :mod:`ast` instead of being copied by hand.
+* ``rust/scripts/data/windows-strings.json`` -- Windows-only interface strings.
+* ``rust/scripts/data/languages.json`` -- the language registry, localized names
+  and words for language detection.
 
 Two files are written:
 
@@ -33,8 +30,7 @@ The script only needs the Python standard library.
 from __future__ import annotations
 
 import argparse
-import ast
-import importlib.util
+import json
 import re
 import sys
 import unicodedata
@@ -57,8 +53,8 @@ SWIFT_TABLES: tuple[tuple[str, str, str], ...] = (
 LANGUAGE_CODES: tuple[str, ...] = tuple(code for _swift, code, _const in SWIFT_TABLES)
 
 SWIFT_RELATIVE_PATH = Path("Sources") / "HyMT" / "Support" / "Localization.swift"
-EXTRA_RELATIVE_PATH = Path("windows") / "deepl_ofm" / "i18n" / "extra.py"
-LANGUAGES_RELATIVE_PATH = Path("windows") / "deepl_ofm" / "core" / "languages.py"
+EXTRA_RELATIVE_PATH = Path("rust/scripts/data/windows-strings.json")
+LANGUAGES_RELATIVE_PATH = Path("rust/scripts/data/languages.json")
 CATALOG_RELATIVE_PATH = Path("rust") / "crates" / "i18n" / "src" / "catalog.rs"
 LANGUAGE_DATA_RELATIVE_PATH = (
     Path("rust") / "crates" / "i18n" / "src" / "language_data.rs"
@@ -227,133 +223,6 @@ def parse_swift_source(source: str) -> dict[str, dict[str, str]]:
             raise GeneratorError(f"table {swift_name!r} is empty")
         tables[code] = table
     return tables
-
-
-# ---------------------------------------------------------------------------
-# Python data extraction (extra.py and languages.py)
-# ---------------------------------------------------------------------------
-
-
-def load_extra(path: Path) -> dict[str, dict[str, str]]:
-    """Execute *path* and return its ``EXTRA`` table.
-
-    ``extra.py`` is pure data assembled with a couple of ``_merge`` helpers; its
-    own module docstring says the tables must stay in sync, and importing it is
-    more faithful (and less brittle) than re-implementing the merge in the
-    generator.
-    """
-    spec = importlib.util.spec_from_file_location("_ofm_i18n_extra_source", path)
-    if spec is None or spec.loader is None:  # pragma: no cover - defensive
-        raise GeneratorError(f"cannot import {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    extra = getattr(module, "EXTRA", None)
-    if not isinstance(extra, dict):
-        raise GeneratorError(f"{path} does not define an EXTRA dictionary")
-    return {str(code): dict(table) for code, table in extra.items()}
-
-
-def _parse_python(path: Path) -> ast.Module:
-    """Parse *path* without importing it."""
-    try:
-        return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    except SyntaxError as exc:  # pragma: no cover - defensive
-        raise GeneratorError(f"cannot parse {path}: {exc}") from exc
-
-
-def _assigned_value(tree: ast.Module, name: str) -> ast.expr:
-    """Return the value assigned to module-level *name*."""
-    for node in tree.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == name:
-                    return node.value
-        elif isinstance(node, ast.AnnAssign) and node.value is not None:
-            target = node.target
-            if isinstance(target, ast.Name) and target.id == name:
-                return node.value
-    raise GeneratorError(f"{name} not found in the Python source")
-
-
-def _class_attribute(tree: ast.Module, class_name: str, name: str) -> ast.expr:
-    """Return the value assigned to *class_name*.*name*."""
-    for node in tree.body:
-        if not isinstance(node, ast.ClassDef) or node.name != class_name:
-            continue
-        for statement in node.body:
-            if isinstance(statement, ast.AnnAssign) and statement.value is not None:
-                target = statement.target
-                if isinstance(target, ast.Name) and target.id == name:
-                    return statement.value
-            elif isinstance(statement, ast.Assign):
-                for target in statement.targets:
-                    if isinstance(target, ast.Name) and target.id == name:
-                        return statement.value
-    raise GeneratorError(f"{class_name}.{name} not found in the Python source")
-
-
-def _string_literal(node: ast.AST) -> str:
-    """Return the first string constant inside *node* (``"..."`` from ``.split()``)."""
-    for sub in ast.walk(node):
-        if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
-            return sub.value
-    raise GeneratorError("no string literal found")
-
-
-def _call_name(node: ast.expr) -> str:
-    """Return the bare name of a call target."""
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        return node.attr
-    return ""
-
-
-def _language_registry(value: ast.expr) -> list[tuple[str, str, str, str | None]]:
-    """Extract ``LanguageTable.ALL`` as tuples of (code, english, local, bcp47)."""
-    if not isinstance(value, ast.List):
-        raise GeneratorError("LanguageTable.ALL is not a list literal")
-    entries: list[tuple[str, str, str, str | None]] = []
-    for element in value.elts:
-        if not isinstance(element, ast.Call) or _call_name(element.func) != "Language":
-            raise GeneratorError("LanguageTable.ALL contains a non-Language entry")
-        positional = [ast.literal_eval(argument) for argument in element.args]
-        keywords = {keyword.arg: ast.literal_eval(keyword.value) for keyword in element.keywords}
-        code = keywords.pop("code", positional[0] if positional else None)
-        english = keywords.pop("english_name", positional[1] if len(positional) > 1 else None)
-        local = keywords.pop("local_name", positional[2] if len(positional) > 2 else None)
-        bcp47 = keywords.pop("bcp47", positional[3] if len(positional) > 3 else None)
-        if keywords:
-            raise GeneratorError(f"unexpected Language keywords: {sorted(keywords)}")
-        if not all(isinstance(item, str) for item in (code, english, local)):
-            raise GeneratorError(f"bad Language entry: {ast.dump(element)}")
-        if bcp47 is not None and not isinstance(bcp47, str):
-            raise GeneratorError(f"bad bcp47 for {code!r}")
-        entries.append((code, english, local, bcp47))
-    return entries
-
-
-def read_language_source(path: Path) -> dict[str, object]:
-    """Extract the metadata the Rust port needs from ``core/languages.py``."""
-    tree = _parse_python(path)
-    registry = _language_registry(_class_attribute(tree, "LanguageTable", "ALL"))
-    names = ast.literal_eval(_assigned_value(tree, "_LOCALIZED_NAMES"))
-    order = ast.literal_eval(_assigned_value(tree, "_LATIN_ORDER"))
-    stops = ast.literal_eval(_assigned_value(tree, "_LATIN_STOPS"))
-    ukrainian = _string_literal(_assigned_value(tree, "_UKRAINIAN_WORDS")).split()
-    russian = _string_literal(_assigned_value(tree, "_RUSSIAN_WORDS")).split()
-    if not isinstance(names, dict) or not isinstance(stops, dict):
-        raise GeneratorError("unexpected shape for _LOCALIZED_NAMES / _LATIN_STOPS")
-    if not isinstance(order, tuple) or not isinstance(stops, dict):
-        raise GeneratorError("unexpected shape for _LATIN_ORDER")
-    return {
-        "registry": registry,
-        "names": names,
-        "order": [str(code) for code in order],
-        "stops": {str(code): str(words) for code, words in stops.items()},
-        "ukrainian": [str(word) for word in ukrainian],
-        "russian": [str(word) for word in russian],
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -531,7 +400,7 @@ def render_catalog(
         "//! * [`TABLES`] holds the macOS catalogue from",
         f"//!   `Sources/HyMT/Support/Localization.swift` ({keys} keys per language).",
         "//! * [`EXTRA_TABLES`] holds the Windows-only strings from",
-        f"//!   `windows/deepl_ofm/i18n/extra.py` ({extra_keys} keys per language).",
+        f"//!   `rust/scripts/data/windows-strings.json` ({extra_keys} keys per language).",
         "//!",
         f"//! Both arrays are indexed in this order: {codes}.",
         "//! Every table is sorted by its English key, which keeps this file stable",
@@ -601,7 +470,7 @@ def render_language_data(data: dict[str, object], pairs: list[tuple[str, str]]) 
         "//! **Generated file -- do not edit.**  Regenerate it with",
         "//! `python3 rust/scripts/gen_i18n.py` from the checkout root.",
         "//!",
-        "//! Everything here comes from `windows/deepl_ofm/core/languages.py`, the",
+        "//! Everything here comes from `rust/scripts/data/languages.json`, the",
         "//! behavioural reference of the port; `language.rs` holds the algorithms",
         "//! that consume it.",
         "",
@@ -738,9 +607,9 @@ def generate() -> dict[Path, str]:
     languages_path = find_source(LANGUAGES_RELATIVE_PATH)
 
     tables = parse_swift_source(swift_path.read_text(encoding="utf-8"))
-    extra = load_extra(extra_path)
+    extra = json.loads(extra_path.read_text(encoding="utf-8"))
     check_catalog(tables, extra)
-    data = read_language_source(languages_path)
+    data = json.loads(languages_path.read_text(encoding="utf-8"))
     registry = data["registry"]
     if not isinstance(registry, list) or len(registry) != 38:
         raise GeneratorError(f"expected 38 languages, found {len(registry or [])}")

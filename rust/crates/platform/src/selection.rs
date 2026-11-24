@@ -1,10 +1,7 @@
 //! Capture the text selected in the foreground application.
 //!
-//! The trick is the same as the Swift original: synthesise the platform's copy
-//! shortcut, wait for the clipboard to change and read it.  Windows uses
-//! `SendInput` plus the clipboard sequence number (no Qt and no Accessibility
-//! grant); macOS asks `System Events` to send `⌘C` and reads the pasteboard.
-//! Other platforms report the feature as unsupported.
+//! Windows reads UI Automation text ranges without touching the clipboard.
+//! macOS uses the system copy shortcut. Other platforms are unsupported.
 
 use std::time::Duration;
 
@@ -13,35 +10,10 @@ pub const fn is_supported() -> bool {
     cfg!(any(windows, target_os = "macos"))
 }
 
-/// UTF-16 capacity of a clipboard block that `GlobalSize` reported as `bytes`.
-///
-/// `None` means the block is too small to hold even one UTF-16 code unit, so
-/// it cannot contain a `CF_UNICODETEXT` string and must not be read.
-#[cfg_attr(not(windows), allow(dead_code))]
-fn clipboard_capacity(bytes: usize) -> Option<usize> {
-    let units = bytes / std::mem::size_of::<u16>();
-    (units > 0).then_some(units)
-}
-
-/// Number of UTF-16 units before the first NUL in a bounded clipboard block.
-///
-/// `units` covers exactly the memory the clipboard owner allocated (its length
-/// is `GlobalSize` divided by two), so a hostile or buggy owner that omits the
-/// terminating NUL cannot make the scan walk past the allocation: the length
-/// is clamped to the block instead.  A normal NUL-terminated clipboard string
-/// stops at its terminator.
-#[cfg_attr(not(windows), allow(dead_code))]
-fn utf16_text_length(units: &[u16]) -> usize {
-    units
-        .iter()
-        .position(|unit| *unit == 0)
-        .unwrap_or(units.len())
-}
-
 /// Return the text selected in the foreground window, or `None`.
 ///
-/// Blocks for at most the modifier-release grace period plus `timeout`.  On
-/// unsupported platforms it logs once and returns `None` without blocking.
+/// Call off the UI thread. Windows applies the timeout to UI Automation
+/// transactions; macOS uses it to wait for the pasteboard update.
 pub fn capture(timeout: Duration) -> Option<String> {
     #[cfg(windows)]
     {
@@ -74,168 +46,79 @@ mod unsupported {
 
 #[cfg(windows)]
 mod windows_impl {
-    use std::thread::sleep;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
 
-    use windows::Win32::Foundation::HGLOBAL;
-    use windows::Win32::System::DataExchange::{
-        CloseClipboard, GetClipboardData, GetClipboardSequenceNumber, OpenClipboard,
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_INPROC_SERVER,
+        COINIT_MULTITHREADED,
     };
-    use windows::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
-    use windows::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
-        KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_C, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
+    use windows::Win32::UI::Accessibility::{
+        CUIAutomation8, IUIAutomation2, IUIAutomationTextPattern, UIA_TextPatternId,
     };
 
-    use super::{clipboard_capacity, utf16_text_length};
+    const MAX_SELECTION: i32 = 128_000;
 
-    /// Clipboard format for NUL-terminated UTF-16 text.
-    const CF_UNICODETEXT: u32 = 13;
+    struct ComSession;
 
-    /// Grace period for the user to release the hotkey modifiers.
-    const MODIFIER_WAIT: Duration = Duration::from_millis(300);
-
-    const MODIFIERS: [VIRTUAL_KEY; 5] = [VK_SHIFT, VK_CONTROL, VK_MENU, VK_LWIN, VK_RWIN];
-
-    fn modifier_is_down(key: VIRTUAL_KEY) -> bool {
-        // SAFETY: `GetAsyncKeyState` only reads the current keyboard state; it
-        // takes a virtual-key code and returns the key state as an `i16`.
-        let state = unsafe { GetAsyncKeyState(i32::from(key.0)) };
-        (state as u16 & 0x8000) != 0
-    }
-
-    fn send_key(key: VIRTUAL_KEY, release: bool) {
-        let flags = if release {
-            KEYEVENTF_KEYUP
-        } else {
-            KEYBD_EVENT_FLAGS(0)
-        };
-        let input = INPUT {
-            r#type: INPUT_KEYBOARD,
-            Anonymous: INPUT_0 {
-                ki: KEYBDINPUT {
-                    wVk: key,
-                    wScan: 0,
-                    dwFlags: flags,
-                    time: 0,
-                    dwExtraInfo: 0,
-                },
-            },
-        };
-        // SAFETY: the array contains one fully initialised `INPUT` and the size
-        // passed is exactly `size_of::<INPUT>()`, as the Win32 API requires.
-        let sent = unsafe { SendInput(&[input], std::mem::size_of::<INPUT>() as i32) };
-        if sent == 0 {
-            log::debug!("SendInput did not deliver a synthetic key event");
+    impl Drop for ComSession {
+        fn drop(&mut self) {
+            // SAFETY: A successful CoInitializeEx on this thread is paired here.
+            unsafe { CoUninitialize() };
         }
-    }
-
-    /// Wait until the user lets go of the hotkey modifiers.
-    ///
-    /// If they are still held at the deadline the keys are released
-    /// synthetically so the target application sees a plain `Ctrl+C` rather
-    /// than `Ctrl+Alt+C`.
-    fn wait_for_modifier_release(timeout: Duration) {
-        let deadline = Instant::now() + timeout;
-        while Instant::now() < deadline {
-            if !MODIFIERS.iter().any(|key| modifier_is_down(*key)) {
-                return;
-            }
-            sleep(Duration::from_millis(10));
-        }
-        for key in MODIFIERS {
-            send_key(key, true);
-        }
-        sleep(Duration::from_millis(30));
-    }
-
-    fn send_ctrl_c() {
-        send_key(VK_CONTROL, false);
-        sleep(Duration::from_millis(10));
-        send_key(VK_C, false);
-        sleep(Duration::from_millis(10));
-        send_key(VK_C, true);
-        sleep(Duration::from_millis(10));
-        send_key(VK_CONTROL, true);
-    }
-
-    /// Read `CF_UNICODETEXT` while the clipboard is open.
-    ///
-    /// # Safety
-    ///
-    /// The caller must have opened the clipboard with `OpenClipboard`.
-    unsafe fn read_locked_clipboard() -> Option<String> {
-        // SAFETY: the clipboard is open, so the returned handle is owned by the
-        // system and stays valid until `CloseClipboard`.
-        let handle = unsafe { GetClipboardData(CF_UNICODETEXT) }.ok()?;
-        if handle.is_invalid() {
-            return None;
-        }
-        let memory = HGLOBAL(handle.0);
-        // SAFETY: `memory` is the clipboard's global memory block for the
-        // requested format; `GlobalLock` pins it and returns a pointer to it.
-        let pointer = unsafe { GlobalLock(memory) };
-        if pointer.is_null() {
-            return None;
-        }
-        // SAFETY: `memory` is a live global memory block, so `GlobalSize` only
-        // reports how many bytes the clipboard owner actually allocated.
-        let Some(capacity) = clipboard_capacity(unsafe { GlobalSize(memory) }) else {
-            // A block too small to hold even one UTF-16 unit cannot contain a
-            // string; unlock it and treat the format as unreadable.
-            // SAFETY: `memory` was successfully locked above and is unlocked
-            // exactly once here.
-            let _ = unsafe { GlobalUnlock(memory) };
-            return None;
-        };
-        let wide = pointer as *const u16;
-        // SAFETY: `GlobalSize` returns the size of the whole allocation, so
-        // `wide` points at exactly `capacity` `u16` values inside the locked
-        // block.  Reading that slice is therefore in bounds; the scan below
-        // stops at the first NUL and is clamped to `capacity` for an owner
-        // that never terminates the string.
-        let units = unsafe { std::slice::from_raw_parts(wide, capacity) };
-        let length = utf16_text_length(units);
-        // SAFETY: `length` never exceeds `capacity`, so the slice is inside the
-        // locked allocation.  The borrow ends before the unlock below.
-        let text = String::from_utf16_lossy(&units[..length]);
-        // SAFETY: `memory` was successfully locked above and is unlocked once.
-        let _ = unsafe { GlobalUnlock(memory) };
-        Some(text)
-    }
-
-    fn read_clipboard_text() -> Option<String> {
-        // SAFETY: `OpenClipboard(None)` associates the clipboard with the
-        // current thread; every successful open is paired with a close below.
-        if unsafe { OpenClipboard(None) }.is_err() {
-            return None;
-        }
-        // SAFETY: the clipboard is open for this thread.
-        let text = unsafe { read_locked_clipboard() };
-        // SAFETY: closes the clipboard opened above; the error is irrelevant.
-        let _ = unsafe { CloseClipboard() };
-        text
     }
 
     pub(super) fn capture(timeout: Duration) -> Option<String> {
-        // SAFETY: reading the clipboard sequence number has no preconditions.
-        let before = unsafe { GetClipboardSequenceNumber() };
+        // SAFETY: This worker owns the COM initialization and all UI Automation
+        // interfaces. No keyboard input or clipboard writes are performed.
+        unsafe {
+            CoInitializeEx(None, COINIT_MULTITHREADED).ok().ok()?;
+            let _session = ComSession;
+            let automation: IUIAutomation2 =
+                CoCreateInstance(&CUIAutomation8, None, CLSCTX_INPROC_SERVER).ok()?;
+            let timeout_ms = timeout.as_millis().clamp(1, u32::MAX.into()) as u32;
+            automation.SetConnectionTimeout(timeout_ms).ok()?;
+            automation.SetTransactionTimeout(timeout_ms).ok()?;
 
-        wait_for_modifier_release(MODIFIER_WAIT);
-        send_ctrl_c();
-
-        let deadline = Instant::now() + timeout;
-        while Instant::now() < deadline {
-            // SAFETY: reading the clipboard sequence number has no preconditions.
-            if unsafe { GetClipboardSequenceNumber() } != before {
-                // Let the clipboard owner publish the data before reading it.
-                sleep(Duration::from_millis(20));
-                return read_clipboard_text();
+            let focused = automation.GetFocusedElement().ok()?;
+            if focused.CurrentIsPassword().ok()?.as_bool() {
+                return None;
             }
-            sleep(Duration::from_millis(10));
+            let selected = focused
+                .GetCurrentPatternAs::<IUIAutomationTextPattern>(UIA_TextPatternId)
+                .ok()?
+                .GetSelection()
+                .ok()?;
+            let range_count = selected.Length().ok()?;
+            if !(1..=64).contains(&range_count) {
+                return None;
+            }
+            let mut text = String::new();
+            let mut remaining = MAX_SELECTION + 1;
+            for i in 0..range_count {
+                let range = selected.GetElement(i).ok()?;
+                let piece = range.GetText(remaining).ok()?;
+                if !piece.is_empty() {
+                    if !text.is_empty() {
+                        text.push('\n');
+                        remaining -= 1;
+                    }
+                    remaining -= i32::try_from(piece.len()).ok()?;
+                    if remaining <= 0 {
+                        return None;
+                    }
+                    text.push_str(&piece.to_string());
+                }
+            }
+            if text.trim().is_empty() {
+                return None;
+            }
+            let current = automation.GetFocusedElement().ok()?;
+            automation
+                .CompareElements(&focused, &current)
+                .ok()?
+                .as_bool()
+                .then_some(text)
         }
-        log::info!("no clipboard update after Ctrl+C; the selection was not captured");
-        None
     }
 }
 
@@ -336,36 +219,5 @@ mod tests {
         assert_eq!(capture(Duration::from_millis(5)), None);
         // A second call must not panic or block either.
         assert_eq!(capture(Duration::ZERO), None);
-    }
-
-    #[test]
-    fn clipboard_capacity_comes_from_the_allocation_size() {
-        // `GlobalSize` is in bytes; the scan is in UTF-16 units.
-        assert_eq!(clipboard_capacity(0), None);
-        assert_eq!(clipboard_capacity(1), None);
-        assert_eq!(clipboard_capacity(2), Some(1));
-        assert_eq!(clipboard_capacity(6), Some(3));
-        // A trailing odd byte is not a whole code unit.
-        assert_eq!(clipboard_capacity(7), Some(3));
-    }
-
-    #[test]
-    fn clipboard_text_stops_at_the_first_nul() {
-        // The trailing junk after the terminator is part of the allocation but
-        // is not text.
-        assert_eq!(
-            utf16_text_length(&[u16::from(b'a'), u16::from(b'b'), 0, u16::from(b'c')]),
-            2
-        );
-        // A leading NUL is an empty string, not a 0-length malformed read.
-        assert_eq!(utf16_text_length(&[0, u16::from(b'x')]), 0);
-    }
-
-    #[test]
-    fn clipboard_text_is_clamped_to_the_allocation() {
-        // No terminator: `GlobalSize` bounds the read, so the whole block is
-        // consumed instead of scanning past it forever.
-        assert_eq!(utf16_text_length(&[0x41; 4]), 4);
-        assert_eq!(utf16_text_length(&[]), 0);
     }
 }

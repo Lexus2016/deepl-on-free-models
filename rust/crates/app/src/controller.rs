@@ -263,6 +263,11 @@ impl AppController {
 
     // ------------------------------------------------------------ login item
 
+    /// Read the current OS state, including changes made in Windows Settings.
+    pub fn login_item_status(&self) -> StartupStatus {
+        self.inner.startup.status()
+    }
+
     /// Read the platform's "Open at login" state and publish it.
     fn refresh_login_item(&self) {
         let status = self.inner.startup.status();
@@ -791,7 +796,7 @@ impl AppController {
                 self.translate(true);
             }
             _ => self.report_error(t(
-                "Could not copy the selected text. If the other app runs as administrator, this shortcut cannot reach it.",
+                "Could not read the selection. Copy it manually and use Translate clipboard.",
             )),
         }
     }

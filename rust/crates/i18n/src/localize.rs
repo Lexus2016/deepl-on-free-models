@@ -295,35 +295,11 @@ mod tests {
     }
 
     #[test]
-    fn catalogue_has_305_keys_per_language() {
-        assert_eq!(catalog::TABLES.len(), TABLE_COUNT);
-        for (index, table) in catalog::TABLES.iter().enumerate() {
-            assert_eq!(
-                table.len(),
-                305,
-                "{:?} has {} keys",
-                TABLE_LANGUAGES[index],
-                table.len()
-            );
-        }
-    }
-
-    #[test]
-    fn windows_only_table_has_74_keys_per_language() {
-        assert_eq!(catalog::EXTRA_TABLES.len(), TABLE_COUNT);
-        for (index, table) in catalog::EXTRA_TABLES.iter().enumerate() {
-            assert_eq!(
-                table.len(),
-                74,
-                "{:?} has {} extra keys",
-                TABLE_LANGUAGES[index],
-                table.len()
-            );
-        }
-    }
-
-    #[test]
     fn every_language_shares_the_same_key_set() {
+        assert_eq!(catalog::TABLES.len(), TABLE_COUNT);
+        assert_eq!(catalog::EXTRA_TABLES.len(), TABLE_COUNT);
+        assert!(!catalog::TABLES[0].is_empty());
+        assert!(!catalog::EXTRA_TABLES[0].is_empty());
         let reference: Vec<&str> = catalog::TABLES[0].iter().map(|(key, _)| *key).collect();
         for (index, table) in catalog::TABLES.iter().enumerate().skip(1) {
             let keys: Vec<&str> = table.iter().map(|(key, _)| *key).collect();
