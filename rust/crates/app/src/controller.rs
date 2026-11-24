@@ -265,7 +265,13 @@ impl AppController {
 
     /// Read the current OS state, including changes made in Windows Settings.
     pub fn login_item_status(&self) -> StartupStatus {
-        self.inner.startup.status()
+        let status = self.inner.startup.status();
+        let mut state = self.inner.state.write().unwrap_or_else(|p| p.into_inner());
+        if state.login_item_status != status.value() {
+            state.login_item_status = status.value().to_string();
+            state.login_item_error = None;
+        }
+        status
     }
 
     /// Read the platform's "Open at login" state and publish it.
@@ -3466,6 +3472,19 @@ mod login_item_tests {
         let state = fixture.controller.state();
         assert_eq!(state.login_item_status, "disabled");
         assert!(!fixture.entry().exists());
+    }
+
+    #[test]
+    fn reading_external_login_changes_also_refreshes_the_snapshot() {
+        let fixture = Fixture::new("external-change");
+        fixture.controller.set_login_item(true);
+        std::fs::remove_file(fixture.entry()).expect("disable startup externally");
+
+        assert_eq!(
+            fixture.controller.login_item_status(),
+            StartupStatus::Disabled
+        );
+        assert_eq!(fixture.controller.state().login_item_status, "disabled");
     }
 
     #[test]

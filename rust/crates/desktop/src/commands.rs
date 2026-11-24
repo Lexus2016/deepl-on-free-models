@@ -52,9 +52,10 @@ pub fn save_settings(state: State<'_, Shared>, settings: Value) -> Result<Value,
 #[tauri::command]
 pub fn get_login_item(state: State<'_, Shared>) -> Result<Value, String> {
     let controller = controller(&state);
+    let status = controller.login_item_status();
     let snapshot = controller.state();
     Ok(json!({
-        "status": controller.login_item_status().value(),
+        "status": status.value(),
         "error": snapshot.login_item_error,
     }))
 }

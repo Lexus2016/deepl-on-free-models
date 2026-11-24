@@ -1899,7 +1899,7 @@ body.has-compact-controls .chips-bar {
 }
 
 .write-panes .source-input {
-  padding: 4px 6px;
+  padding: 10px;
 }
 
 .busy-label {
@@ -3216,6 +3216,21 @@ input::placeholder {
 /* Responsive -------------------------------------------------------------- */
 
 @media (max-width: 1060px) {
+  .translate-top {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 0;
+  }
+
+  .translate-top .bar-spacer {
+    display: none;
+  }
+
+  .translate-top .chips-bar {
+    justify-content: center;
+  }
+
   .chips-bar,
   .chips-full {
     gap: 6px;
@@ -3266,6 +3281,11 @@ input::placeholder {
 }
 
 @media (max-width: 900px) {
+  .result-controls {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+
   .app-header {
     gap: 10px;
     padding-left: 12px;

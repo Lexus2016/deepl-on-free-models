@@ -52,4 +52,5 @@ ios/**/*.xcuserstate
 # Windows Rust builds
 rust/target/
 rust/dist/
+rust/crates/desktop/gen/
 .cargo-home/
