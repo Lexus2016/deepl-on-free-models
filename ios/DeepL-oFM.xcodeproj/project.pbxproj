@@ -7,30 +7,52 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02757E91E0CA5CB0884EB431 /* TranslationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CDD685FE41F2F5A51FDD94D /* TranslationService.swift */; };
 		049DD6BB8DAA341407AE2CC3 /* TranslationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A9542E4703AEE9BF017B98 /* TranslationModel.swift */; };
+		0A08749DFDF3D4C57830169E /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECA3F2F24FBB415F9631683 /* Localization.swift */; };
 		0A172B8944093F132284C46E /* Prompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3086D4FD6AA5A8140085BD /* Prompt.swift */; };
 		0CBC4D46D434188031F1B5CE /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECA3F2F24FBB415F9631683 /* Localization.swift */; };
 		17047058F55C2D232D66C6B9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97B5D72D9D0D7CF6FE6DCAD0 /* Assets.xcassets */; };
 		2337C7751FFBAFABA85E155D /* DeepL_oFMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126D1871234695F0209DAD14 /* DeepL_oFMApp.swift */; };
+		289EADC67E227FEF36761C74 /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED9E1D10D3DB9CBFFB28814 /* Provider.swift */; };
 		29961AA6AD77104263A7C7ED /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CCD49952BBC7418FA74386 /* BackendConfig.swift */; };
 		2B59CE97491CEBD731CE78A5 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6E48472DBD239421D9D4AEF3 /* PrivacyInfo.xcprivacy */; };
 		2B6739617C792106B957F7D0 /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ED9E1D10D3DB9CBFFB28814 /* Provider.swift */; };
+		2BA66DEBC6BE61D57FD162CD /* TokenRestorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248AAACCEC59C642AC115E11 /* TokenRestorer.swift */; };
 		310689E89395D4A09B10006A /* TranslationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10E9CB463760AC7E18D5F031 /* TranslationUITests.swift */; };
 		3145B51336C3DE30FF7B00D0 /* IOSSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6B300ABEDE240C2271C2159 /* IOSSettings.swift */; };
+		41772646E31CB45C99ECA7DA /* OutputSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6C82962C36FF08F8D58E2B /* OutputSanitizer.swift */; };
 		504F7E64920FF8D71DF2F5E2 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4AAD4BED7D8636F4EA3E8CC /* Language.swift */; };
 		5797B1CD52EFAEFE3A0FA162 /* TokenRestorer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248AAACCEC59C642AC115E11 /* TokenRestorer.swift */; };
 		6101B4F99DFF7AB09266F5AF /* IOSMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE750E49B83C637528711F92 /* IOSMarkdown.swift */; };
 		650C8ECAAB100E861364B35F /* ResultViewMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5281FCE74BC42083D95B07AD /* ResultViewMode.swift */; };
 		666BC0D95F642B2091AE2539 /* TranslationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CDD685FE41F2F5A51FDD94D /* TranslationService.swift */; };
+		74CBFFBBC8C7CB9246387FFF /* MarkdownDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACB500084A97299D7E21422 /* MarkdownDetector.swift */; };
 		7F98925A32387071F5288FF8 /* IOSSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FBE39315FA0B1F66A105427 /* IOSSettingsView.swift */; };
 		8EDFE9C03400F8A257CBE446 /* IOSTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE8E67FEE5EBA19B94C952C /* IOSTheme.swift */; };
+		90B1BD4D476661C485A5DE88 /* TranslationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAD6159E18FF38C64C979421 /* TranslationProvider.swift */; };
 		90BB5F699437FD515E0BA7AA /* OutputSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6C82962C36FF08F8D58E2B /* OutputSanitizer.swift */; };
+		A227F15EBBB96B48DCE13CE2 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4AAD4BED7D8636F4EA3E8CC /* Language.swift */; };
+		A8E0530E8AC0CC6C2F47A4E5 /* TranslationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A9542E4703AEE9BF017B98 /* TranslationModel.swift */; };
+		AA29A3947ED12F4F0C09EF51 /* Prompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3086D4FD6AA5A8140085BD /* Prompt.swift */; };
+		AF5BBC46CFE77EA5A081A44A /* SystemTranslationSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57308B0AF1772C04AD83CD04 /* SystemTranslationSettings.swift */; };
+		B6A8727E0CBBC398710BB001 /* TranslationProvider.appex in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 3E5A335312FA6E1FAB234B8E /* TranslationProvider.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B9FBA43154C561BF891F8812 /* IOSMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE750E49B83C637528711F92 /* IOSMarkdown.swift */; };
 		C7C8CFC5F3A57B93082F9A46 /* MarkdownDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACB500084A97299D7E21422 /* MarkdownDetector.swift */; };
 		C7E0F23CF24ACA97E31F3F8A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFBCC11B8FD2219013BAC97E /* ContentView.swift */; };
+		D28224D94ADEE100AF492A53 /* SystemTranslationSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57308B0AF1772C04AD83CD04 /* SystemTranslationSettings.swift */; };
+		E6C81E63FD4607C6AB9B8A1D /* BackendConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70CCD49952BBC7418FA74386 /* BackendConfig.swift */; };
 		FFC0D45ACD15D685351632DF /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB6260437BAD3D1BE93CD1F /* Keychain.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		1D124BE516F55DB9B2FF4213 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4341F99D39A929ED388D667E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4A310C90921CF29BA3AA7DA2;
+			remoteInfo = TranslationProvider;
+		};
 		F9A6A823A1E80066208B7EC3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4341F99D39A929ED388D667E /* Project object */;
@@ -40,20 +62,37 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		A6CBA8AC4DBBEFAF01698AE6 /* Embed Dependencies */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Extensions;
+			dstSubfolderSpec = 1;
+			files = (
+				B6A8727E0CBBC398710BB001 /* TranslationProvider.appex in Embed Dependencies */,
+			);
+			name = "Embed Dependencies";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		10E9CB463760AC7E18D5F031 /* TranslationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationUITests.swift; sourceTree = "<group>"; };
 		126D1871234695F0209DAD14 /* DeepL_oFMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepL_oFMApp.swift; sourceTree = "<group>"; };
 		1D6C82962C36FF08F8D58E2B /* OutputSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputSanitizer.swift; sourceTree = "<group>"; };
 		248AAACCEC59C642AC115E11 /* TokenRestorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenRestorer.swift; sourceTree = "<group>"; };
 		37A9542E4703AEE9BF017B98 /* TranslationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationModel.swift; sourceTree = "<group>"; };
+		3E5A335312FA6E1FAB234B8E /* TranslationProvider.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = TranslationProvider.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4ED9E1D10D3DB9CBFFB28814 /* Provider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Provider.swift; sourceTree = "<group>"; };
 		4FBE39315FA0B1F66A105427 /* IOSSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSSettingsView.swift; sourceTree = "<group>"; };
 		5281FCE74BC42083D95B07AD /* ResultViewMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultViewMode.swift; sourceTree = "<group>"; };
+		57308B0AF1772C04AD83CD04 /* SystemTranslationSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemTranslationSettings.swift; sourceTree = "<group>"; };
 		6E48472DBD239421D9D4AEF3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		70CCD49952BBC7418FA74386 /* BackendConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendConfig.swift; sourceTree = "<group>"; };
 		7CDD685FE41F2F5A51FDD94D /* TranslationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationService.swift; sourceTree = "<group>"; };
 		8D81343C41D560A44FC19A18 /* DeepL-oFMUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = "DeepL-oFMUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		97B5D72D9D0D7CF6FE6DCAD0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AAD6159E18FF38C64C979421 /* TranslationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationProvider.swift; sourceTree = "<group>"; };
 		ADE8E67FEE5EBA19B94C952C /* IOSTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSTheme.swift; sourceTree = "<group>"; };
 		BE750E49B83C637528711F92 /* IOSMarkdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSMarkdown.swift; sourceTree = "<group>"; };
 		CEB6260437BAD3D1BE93CD1F /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
@@ -67,12 +106,28 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		14FD9303C81F3DE354DDFA3B /* TranslationProvider */ = {
+			isa = PBXGroup;
+			children = (
+				AAD6159E18FF38C64C979421 /* TranslationProvider.swift */,
+			);
+			path = TranslationProvider;
+			sourceTree = "<group>";
+		};
 		1D767D48A4A9083A46E40F50 /* UITests */ = {
 			isa = PBXGroup;
 			children = (
 				10E9CB463760AC7E18D5F031 /* TranslationUITests.swift */,
 			);
 			path = UITests;
+			sourceTree = "<group>";
+		};
+		2DA66AD94E04F6847D7E8FCD /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				57308B0AF1772C04AD83CD04 /* SystemTranslationSettings.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		4ED9B5EC1A4B8F87EA8CFC6C /* HyMT */ = {
@@ -99,6 +154,7 @@
 			children = (
 				F6ADBD0D28B902EA96E9A845 /* DeepL-oFM.app */,
 				8D81343C41D560A44FC19A18 /* DeepL-oFMUITests.xctest */,
+				3E5A335312FA6E1FAB234B8E /* TranslationProvider.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,6 +188,8 @@
 			children = (
 				574680E2DD0FCA268C267602 /* DeepL */,
 				F521CF2067BA339A60288BA5 /* DeepL-oFM */,
+				2DA66AD94E04F6847D7E8FCD /* Shared */,
+				14FD9303C81F3DE354DDFA3B /* TranslationProvider */,
 				1D767D48A4A9083A46E40F50 /* UITests */,
 				7F6D7EDE83818FCC00C131E7 /* Products */,
 			);
@@ -172,6 +230,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		4A310C90921CF29BA3AA7DA2 /* TranslationProvider */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 52BAD697ACD2A84B410AC853 /* Build configuration list for PBXNativeTarget "TranslationProvider" */;
+			buildPhases = (
+				A5557CB9E3B5B74D203CD20B /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TranslationProvider;
+			packageProductDependencies = (
+			);
+			productName = TranslationProvider;
+			productReference = 3E5A335312FA6E1FAB234B8E /* TranslationProvider.appex */;
+			productType = "com.apple.product-type.extensionkit-extension";
+		};
 		500EB2CBBC35754EC72575A5 /* DeepL-oFMUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = E6DBF2CD3FA108E992758C7F /* Build configuration list for PBXNativeTarget "DeepL-oFMUITests" */;
@@ -196,10 +271,12 @@
 			buildPhases = (
 				DA97765F045114720F1F1C61 /* Sources */,
 				499FA0986A5E7724081D925D /* Resources */,
+				A6CBA8AC4DBBEFAF01698AE6 /* Embed Dependencies */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				2218CA96CD8467D84DDC873D /* PBXTargetDependency */,
 			);
 			name = "DeepL-oFM";
 			packageProductDependencies = (
@@ -217,6 +294,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					4A310C90921CF29BA3AA7DA2 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					500EB2CBBC35754EC72575A5 = {
 						TestTargetID = ADE346AA6DBCBDCC8117E796;
 					};
@@ -241,6 +322,7 @@
 			projectRoot = "";
 			targets = (
 				ADE346AA6DBCBDCC8117E796 /* DeepL-oFM */,
+				4A310C90921CF29BA3AA7DA2 /* TranslationProvider */,
 				500EB2CBBC35754EC72575A5 /* DeepL-oFMUITests */,
 			);
 		};
@@ -267,6 +349,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A5557CB9E3B5B74D203CD20B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6C81E63FD4607C6AB9B8A1D /* BackendConfig.swift in Sources */,
+				B9FBA43154C561BF891F8812 /* IOSMarkdown.swift in Sources */,
+				A227F15EBBB96B48DCE13CE2 /* Language.swift in Sources */,
+				0A08749DFDF3D4C57830169E /* Localization.swift in Sources */,
+				74CBFFBBC8C7CB9246387FFF /* MarkdownDetector.swift in Sources */,
+				41772646E31CB45C99ECA7DA /* OutputSanitizer.swift in Sources */,
+				AA29A3947ED12F4F0C09EF51 /* Prompt.swift in Sources */,
+				289EADC67E227FEF36761C74 /* Provider.swift in Sources */,
+				AF5BBC46CFE77EA5A081A44A /* SystemTranslationSettings.swift in Sources */,
+				2BA66DEBC6BE61D57FD162CD /* TokenRestorer.swift in Sources */,
+				A8E0530E8AC0CC6C2F47A4E5 /* TranslationModel.swift in Sources */,
+				90B1BD4D476661C485A5DE88 /* TranslationProvider.swift in Sources */,
+				02757E91E0CA5CB0884EB431 /* TranslationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DA97765F045114720F1F1C61 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -286,6 +388,7 @@
 				0A172B8944093F132284C46E /* Prompt.swift in Sources */,
 				2B6739617C792106B957F7D0 /* Provider.swift in Sources */,
 				650C8ECAAB100E861364B35F /* ResultViewMode.swift in Sources */,
+				D28224D94ADEE100AF492A53 /* SystemTranslationSettings.swift in Sources */,
 				5797B1CD52EFAEFE3A0FA162 /* TokenRestorer.swift in Sources */,
 				049DD6BB8DAA341407AE2CC3 /* TranslationModel.swift in Sources */,
 				666BC0D95F642B2091AE2539 /* TranslationService.swift in Sources */,
@@ -295,6 +398,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		2218CA96CD8467D84DDC873D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4A310C90921CF29BA3AA7DA2 /* TranslationProvider */;
+			targetProxy = 1D124BE516F55DB9B2FF4213 /* PBXContainerItemProxy */;
+		};
 		6E4C310E1DC86FB94E6CDE41 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = ADE346AA6DBCBDCC8117E796 /* DeepL-oFM */;
@@ -372,6 +480,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "DeepL-oFM/DeepL-oFM.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 14;
@@ -449,6 +558,31 @@
 			};
 			name = Release;
 		};
+		379C048A990EA0E0F55D5743 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = TranslationProvider/TranslationProvider.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 14;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TranslationProvider/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "ua.admin.hymt.ios.translation-provider";
+				PRODUCT_NAME = TranslationProvider;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 		7F1FAE8B790D5D6F75B03913 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -466,10 +600,36 @@
 			};
 			name = Release;
 		};
+		E3E9A4DA85A2AAF0298A461C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = TranslationProvider/TranslationProvider.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 14;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TranslationProvider/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "ua.admin.hymt.ios.translation-provider";
+				PRODUCT_NAME = TranslationProvider;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 		F2F9E2592A6420D562BC94B9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "DeepL-oFM/DeepL-oFM.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 14;
@@ -509,6 +669,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		52BAD697ACD2A84B410AC853 /* Build configuration list for PBXNativeTarget "TranslationProvider" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E3E9A4DA85A2AAF0298A461C /* Debug */,
+				379C048A990EA0E0F55D5743 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		9B4988EF1879ECF7969F4791 /* Build configuration list for PBXProject "DeepL-oFM" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

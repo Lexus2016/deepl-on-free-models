@@ -17,6 +17,8 @@ targets:
       - path: DeepL-oFM
         excludes:
           - Info.plist
+          - DeepL-oFM.entitlements
+      - path: Shared
       - path: ../Sources/HyMT/Models/BackendConfig.swift
       - path: ../Sources/HyMT/Models/Language.swift
       - path: ../Sources/HyMT/Models/Prompt.swift
@@ -28,14 +30,58 @@ targets:
       - path: ../Sources/HyMT/Support/OutputSanitizer.swift
       - path: ../Sources/HyMT/Support/MarkdownDetector.swift
       - path: ../Sources/HyMT/Support/ResultViewMode.swift
+    dependencies:
+      - target: TranslationProvider
+        embed: true
+        link: false
+        copy:
+          destination: wrapper
+          subpath: Extensions
     settings:
       base:
         PRODUCT_NAME: DeepL-oFM
         PRODUCT_BUNDLE_IDENTIFIER: ua.admin.hymt.ios
+        CODE_SIGN_ENTITLEMENTS: DeepL-oFM/DeepL-oFM.entitlements
         INFOPLIST_FILE: DeepL-oFM/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        MARKETING_VERSION: "2.0.1"
+        CURRENT_PROJECT_VERSION: "14"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+  TranslationProvider:
+    type: extensionkit-extension
+    platform: iOS
+    deploymentTarget: "18.4"
+    sources:
+      - path: TranslationProvider
+        excludes:
+          - Info.plist
+          - TranslationProvider.entitlements
+      - path: Shared
+      - path: DeepL-oFM/TranslationModel.swift
+      - path: DeepL-oFM/IOSMarkdown.swift
+      - path: ../Sources/HyMT/Models/BackendConfig.swift
+      - path: ../Sources/HyMT/Models/Language.swift
+      - path: ../Sources/HyMT/Models/Prompt.swift
+      - path: ../Sources/HyMT/Models/Provider.swift
+      - path: ../Sources/HyMT/Services/TranslationService.swift
+      - path: ../Sources/HyMT/Support/Localization.swift
+      - path: ../Sources/HyMT/Support/TokenRestorer.swift
+      - path: ../Sources/HyMT/Support/OutputSanitizer.swift
+      - path: ../Sources/HyMT/Support/MarkdownDetector.swift
+    settings:
+      base:
+        PRODUCT_NAME: TranslationProvider
+        PRODUCT_BUNDLE_IDENTIFIER: ua.admin.hymt.ios.translation-provider
+        CODE_SIGN_ENTITLEMENTS: TranslationProvider/TranslationProvider.entitlements
+        INFOPLIST_FILE: TranslationProvider/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
         SUPPORTS_MACCATALYST: NO
         MARKETING_VERSION: "2.0.1"
         CURRENT_PROJECT_VERSION: "14"

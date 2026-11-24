@@ -91,7 +91,7 @@ final class IOSSettings: ObservableObject {
     }
 
     var target: Language {
-        Language.with(code: targetCode) ?? Language.with(code: "en")!
+        translationConfiguration.target
     }
 
     var needsAPIKey: Bool { provider.requiresKey }
@@ -104,17 +104,19 @@ final class IOSSettings: ObservableObject {
     }
 
     var snapshot: BackendConfig {
-        BackendConfig(
-            kind: provider.kind,
+        translationConfiguration.backend
+    }
+
+    var translationConfiguration: IOSTranslationConfiguration {
+        IOSTranslationConfiguration(
+            provider: provider,
             baseURL: normalizedBaseURL,
             model: model.trimmingCharacters(in: .whitespacesAndNewlines),
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines),
-            temperature: 0.7,
-            topP: 0.6,
-            topK: 20,
-            repetitionPenalty: 1.05,
-            contextWindow: 8192,
-            requiresAPIKey: provider.requiresKey
+            targetCode: targetCode,
+            interfaceLanguage: interfaceLanguage,
+            style: style,
+            tone: tone
         )
     }
 

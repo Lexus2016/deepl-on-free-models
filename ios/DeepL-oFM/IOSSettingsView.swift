@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct IOSSettingsView: View {
     @ObservedObject var settings: IOSSettings
@@ -34,6 +35,20 @@ struct IOSSettingsView: View {
                         "Cloud providers need an API key. For a server on your Wi-Fi network, choose Custom.",
                         language
                     ))
+                }
+
+                if #available(iOS 18.4, *) {
+                    Section {
+                        Button(L10n.t("Open Default Apps", language)) {
+                            if let url = URL(string: UIApplication.openDefaultApplicationsSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                    } header: {
+                        Text(L10n.t("Default translation app", language))
+                    } footer: {
+                        Text(L10n.t("In Settings, go to Apps → Default Apps → Translation and choose DeepL-oFM.", language))
+                    }
                 }
 
                 Section {

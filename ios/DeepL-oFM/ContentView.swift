@@ -8,6 +8,7 @@ struct ContentView: View {
     @AppStorage("ios.source") private var sourceCode = "auto"
     @FocusState private var sourceFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @State private var mode: ResultViewMode = .preview
     @State private var showSettings = false
     @State private var copied = false
@@ -81,6 +82,14 @@ struct ContentView: View {
             }
         }
         .tint(IOSTheme.accent)
+        .onChange(of: settings.translationConfiguration, initial: true) { _, configuration in
+            if #available(iOS 18.4, *) { SystemTranslationSettings.save(configuration) }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if #available(iOS 18.4, *), phase == .active {
+                SystemTranslationSettings.save(settings.translationConfiguration)
+            }
+        }
         .onChange(of: model.sourceText) { _, _ in model.sourceDidChange(language: language) }
         .onChange(of: settings.targetCode) { _, _ in model.invalidateResult() }
         .onChange(of: sourceCode) { _, _ in model.invalidateResult() }
@@ -267,7 +276,7 @@ struct ContentView: View {
                     model.cancel()
                 } else {
                     sourceFocused = false
-                    model.translate(settings: settings, sourceCode: sourceCode)
+                    model.translate(configuration: settings.translationConfiguration, sourceCode: sourceCode)
                 }
             } label: {
                 Label(

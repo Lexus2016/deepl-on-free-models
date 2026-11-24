@@ -57,15 +57,14 @@ final class TranslationModel: ObservableObject {
         warningCount = 0
     }
 
-    func translate(settings: IOSSettings, sourceCode: String) {
+    func translate(configuration: IOSTranslationConfiguration, sourceCode: String) {
         let text = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let language = settings.interfaceLanguage
+        let language = configuration.interfaceLanguage
         invalidateResult()
         detectionTask?.cancel()
 
-        if settings.needsAPIKey,
-           settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if configuration.provider.requiresKey, configuration.apiKey.isEmpty {
             errorMessage = L10n.t("Add your API key in Settings.", language)
             return
         }
@@ -74,10 +73,10 @@ final class TranslationModel: ObservableObject {
         let source = Language.with(code: sourceCode)
         detected = source ?? Language.detect(text, preferred: language)
 
-        let target = settings.target
-        let style = settings.style
-        let tone = settings.tone
-        let config = settings.snapshot
+        let target = configuration.target
+        let style = configuration.style
+        let tone = configuration.tone
+        let config = configuration.backend
         let started = Date()
 
         task = Task { [weak self] in

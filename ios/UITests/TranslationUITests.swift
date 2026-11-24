@@ -12,6 +12,9 @@ final class TranslationUITests: XCTestCase {
         app.buttons["translation-settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.secureTextFields["API key"].exists)
+        if #available(iOS 18.4, *) {
+            XCTAssertTrue(app.buttons["Open Default Apps"].exists)
+        }
         let privacyLink = app.descendants(matching: .any)["privacy-policy"].firstMatch
         if !privacyLink.isHittable { app.swipeUp() }
         XCTAssertTrue(privacyLink.exists)
