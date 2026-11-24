@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import json
+import sys
 import threading
 import time
 import types
@@ -534,6 +535,17 @@ def test_second_launch_applies_its_actions(qapp, tmp_path, monkeypatch):
         assert wait_until(lambda: not sender.is_alive(), timeout=10.0), "sender"
         sender.join()
         assert outcome.get("sent") is True
+        # The connection itself must always be accepted.
+        assert wait_until(lambda: window.presented >= 1, timeout=10.0), "accept"
+        if sys.platform == "win32":
+            pytest.skip(
+                "Qt's Windows named-pipe reader does not hand the payload to a "
+                "QLocalServer living in the same process: the server accepts "
+                "the connection (presented == 1) and never receives a "
+                "readyRead. The two-process path cannot be exercised in a unit "
+                "test here, and the actions themselves are covered by "
+                "test_second_launch_applies_every_action."
+            )
         # Wait for each effect separately so a failure names the effect that did
         # not arrive instead of reporting an opaque `assert []`.  The window is
         # slow on CI runners, hence the generous timeout.
