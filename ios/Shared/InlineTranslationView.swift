@@ -24,12 +24,11 @@ struct InlineTranslationView: View {
                     LabeledContent(L10n.t("Provider", language), value: configuration.provider.title)
                         .font(.subheadline)
 
-                    Picker(L10n.t("Target language", language), selection: $targetCode) {
-                        ForEach(Language.all) { option in
-                            Text(option.displayName(in: language)).tag(option.code)
+                    LabeledContent(L10n.t("Target language", language)) {
+                        IOSLanguagePicker(selection: $targetCode, language: language, titleKey: "Target language") {
+                            Text(Language.with(code: targetCode)?.displayName(in: language) ?? "")
                         }
                     }
-                    .pickerStyle(.menu)
 
                     Button {
                         if model.isTranslating {
@@ -111,5 +110,92 @@ struct InlineTranslationView: View {
         copied = false
         model.translate(configuration: request, sourceCode: "auto")
         onTranslationStarted()
+    }
+}
+
+struct IOSLanguagePicker<Caption: View>: View {
+    @Binding var selection: String
+    let language: AppLanguage
+    let titleKey: String
+    var includeAuto = false
+    @ViewBuilder let caption: () -> Caption
+    @State private var isOpen = false
+    @State private var query = ""
+    @FocusState private var searchFocused: Bool
+
+    var body: some View {
+        Button {
+            query = ""
+            isOpen = true
+        } label: {
+            caption()
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(L10n.t(titleKey, language))
+        .accessibilityValue((Language.with(code: selection) ?? .auto).displayName(in: language))
+        .sheet(isPresented: $isOpen) {
+            NavigationStack {
+                optionsList
+                    .navigationTitle(L10n.t(titleKey, language))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(L10n.t("Cancel", language)) { isOpen = false }
+                        }
+                    }
+            }
+        }
+    }
+
+    private var optionsList: some View {
+        let options = Language.pickerOptions(in: language, includeAuto: includeAuto, query: query)
+        return VStack(spacing: 0) {
+            TextField(L10n.t("Search language", language), text: $query)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .focused($searchFocused)
+                .submitLabel(.search)
+                .onSubmit {
+                    if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       let first = options.first {
+                        choose(first)
+                    }
+                }
+                .padding()
+
+            List {
+                if options.isEmpty {
+                    Text(L10n.t("Nothing found", language)).foregroundStyle(.secondary)
+                }
+                ForEach(options) { option in
+                    Button {
+                        choose(option)
+                    } label: {
+                        HStack {
+                            Text(option.displayName(in: language))
+                            Spacer()
+                            if selection == option.code {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(Color.accentColor)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .foregroundStyle(.primary)
+                    .accessibilityAddTraits(selection == option.code ? .isSelected : [])
+                }
+            }
+            .listStyle(.plain)
+            .scrollDismissesKeyboard(.interactively)
+            .id(query)
+        }
+        .onAppear { searchFocused = true }
+    }
+
+    private func choose(_ option: Language) {
+        selection = option.code
+        isOpen = false
     }
 }

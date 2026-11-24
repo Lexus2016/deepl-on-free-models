@@ -4,6 +4,18 @@ All notable changes to DeepL-oFM. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions use
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.6] (2026-11-24)
+
+- Find a language as you type its name or short code. The list follows the
+  alphabet of the interface language, with Auto-detect first for the source.
+- Use the same search when choosing languages for documents and writing.
+
+### Українською
+
+- Щоб знайти мову, почніть вводити її назву або код. Назви впорядковано за
+  абеткою мови інтерфейсу. Автовизначення стоїть першим у списку мов оригіналу.
+- Пошук також доступний під час вибору мови для документів і покращення тексту.
+
 ## [2.0.5] (2026-11-24)
 
 - Publish macOS and Windows packages from the same main branch revision.

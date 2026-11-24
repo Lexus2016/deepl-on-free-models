@@ -8,13 +8,13 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-ofm-i18n = { path = "../i18n", version = "2.0.5" }
-ofm-text = { path = "../text", version = "2.0.5" }
-ofm-config = { path = "../config", version = "2.0.5" }
-ofm-net = { path = "../net", version = "2.0.5" }
-ofm-docs = { path = "../docs", version = "2.0.5" }
-ofm-store = { path = "../store", version = "2.0.5" }
-ofm-platform = { path = "../platform", version = "2.0.5" }
+ofm-i18n = { path = "../i18n", version = "2.0.6" }
+ofm-text = { path = "../text", version = "2.0.6" }
+ofm-config = { path = "../config", version = "2.0.6" }
+ofm-net = { path = "../net", version = "2.0.6" }
+ofm-docs = { path = "../docs", version = "2.0.6" }
+ofm-store = { path = "../store", version = "2.0.6" }
+ofm-platform = { path = "../platform", version = "2.0.6" }
 
 log.workspace = true
 serde.workspace = true

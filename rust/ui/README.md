@@ -94,7 +94,7 @@ google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars \
 
 `probe.sh` loads `probe-defects.html` in headless Chrome (with file access for
 the same-origin iframe) and fails unless every assertion passes. The probe runs
-`index.html?still=1&mock=1` in an iframe and drives `app.js` through the real
+`index.html?still=1&mock=1&lang=en` in an iframe and drives `app.js` through the real
 event and command paths exposed by `mock.js`:
 
 - a `sourceText` event arriving while the source editor has focus must replace
@@ -104,7 +104,9 @@ event and command paths exposed by `mock.js`:
 - clearing a Files job (`value: null`) must bring the drop zone back, and an
   empty or path-less job payload must never masquerade as a real job;
 - retrying a failed job must start the next one, and clearing it while it is
-  starting must leave no ghost card.
+  starting must leave no ghost card;
+- the language picker sorts localized names, keeps Auto-detect first for
+  source languages, and supports prefix search and keyboard selection.
 
 The probe is also a regression guard for the old `FileJob::default()` payload,
 which normalised into a truthy job and left the Files tab unusable.

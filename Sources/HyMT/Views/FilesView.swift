@@ -103,17 +103,14 @@ struct FilesView: View {
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Theme.secondary)
 
-                Picker(L10n.t("Source language", language), selection: $store.sourceCode) {
-                    let auto = Language.auto.displayName(in: language)
-                    let detected = store.detectedSource?.displayName(in: language)
-                    Text(detected.map { "\(auto) · \($0)" } ?? auto).tag(Language.auto.code)
-                    ForEach(Language.all) { item in
-                        Text(item.displayName(in: language)).tag(item.code)
-                    }
+                LanguagePicker(
+                    selection: Language.with(code: store.sourceCode) ?? .auto,
+                    includeAuto: true,
+                    detected: store.detectedSource,
+                    width: 230
+                ) { option in
+                    store.sourceCode = option.code
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(width: 230)
                 .disabled(store.isWorking || store.isSaving || store.state == .finished)
             }
 
@@ -122,14 +119,15 @@ struct FilesView: View {
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(Theme.secondary)
 
-                Picker(L10n.t("Translate to", language), selection: $store.targetCode) {
-                    ForEach(Language.all) { item in
-                        Text(item.displayName(in: language)).tag(item.code)
-                    }
+                LanguagePicker(
+                    selection: Language.with(code: store.targetCode) ?? .auto,
+                    includeAuto: false,
+                    detected: nil,
+                    labelKey: "Translate to",
+                    width: 230
+                ) { option in
+                    store.targetCode = option.code
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(width: 230)
                 .disabled(store.isWorking || store.isSaving || store.state == .finished)
 
                 Spacer()

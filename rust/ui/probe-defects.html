@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>DeepL-oFM UI probe: shortcut source text and Files reset</title>
+    <title>DeepL-oFM UI probe: shortcut, Files and language search</title>
   </head>
   <body>
     <!--
@@ -10,7 +10,7 @@
       browser opens: index.html?still=1&mock=1.  `probe.sh` loads this file in
       headless Chrome and fails unless every check passes.
     -->
-    <iframe id="ui" src="index.html?still=1&mock=1" style="width: 1180px; height: 800px; border: 0"></iframe>
+    <iframe id="ui" src="index.html?still=1&mock=1&lang=en" style="width: 1180px; height: 800px; border: 0"></iframe>
     <pre id="out">pending</pre>
     <script>
       (function () {
@@ -226,6 +226,90 @@
               ui.currentState().fileJob === null && dropZone.hidden === false,
               { fileJob: ui.currentState().fileJob, dropZoneHidden: dropZone.hidden }
             );
+
+            // The shared picker keeps translated names in alphabetic order.
+            const dialog = doc.getElementById("languageDialog");
+            const search = doc.getElementById("languageSearch");
+            const options = () => Array.from(doc.querySelectorAll("#languageResults button"));
+            const openPicker = (id) => {
+              const button = doc.getElementById(id + "Button");
+              button.focus();
+              button.click();
+              return button;
+            };
+            const filter = (value) => {
+              search.value = value;
+              search.dispatchEvent(new win.Event("input", { bubbles: true }));
+            };
+            const press = (element, key) =>
+              element.dispatchEvent(new win.KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+            await mock.invoke("set_tab", { tab: "translate" });
+            const sourcePicker = openPicker("sourceLang");
+            const codes = options().map((button) => button.dataset.languageCode);
+            const names = options().slice(1).map((button) => button.textContent);
+            check("opening a picker focuses search and keeps Auto-detect first",
+              dialog.open && doc.activeElement === search && codes[0] === "auto");
+            check("the picker sorts names in the interface language",
+              names.length === win.OFM_LANGUAGES.length &&
+              names.every((name, index) => index === 0 || names[index - 1].localeCompare(name, "en") <= 0));
+            filter("krain");
+            check("search matches prefixes and has an empty state",
+              options().length === 0 && !doc.getElementById("languageEmpty").hidden);
+            filter("ukra");
+            check("search narrows the list immediately",
+              options().length === 1 && options()[0].dataset.languageCode === "uk");
+            press(search, "ArrowDown");
+            check("Arrow Down takes focus to the first result", doc.activeElement === options()[0]);
+            press(options()[0], "ArrowUp");
+            press(search, "Enter");
+            await sleep(60);
+            check("Enter selects the language and restores focus",
+              !dialog.open && ui.currentState().sourceLanguage === "uk" && doc.activeElement === sourcePicker);
+
+            await mock.invoke("set_interface_language", { code: "uk" });
+            await waitFor(() => doc.documentElement.lang === "uk"
+              && search.getAttribute("placeholder") === "Пошук мови", 2000, "Ukrainian catalogue");
+            openPicker("targetLang");
+            const localized = options().map((button) => button.textContent);
+            check("changing the interface language re-sorts targets and omits Auto-detect",
+              !options().some((button) => button.dataset.languageCode === "auto") &&
+              localized.every((name, index) => index === 0 || localized[index - 1].localeCompare(name, "uk") <= 0));
+            filter("англій");
+            check("search accepts a localized prefix", options().some((button) => button.dataset.languageCode === "en"));
+            filter("zh-ha");
+            check("search accepts a language-code prefix",
+              options().length === 1 && options()[0].dataset.languageCode === "zh-Hant");
+            press(search, "Escape");
+            check("Escape closes the picker without changing the language", !dialog.open);
+
+            await mock.invoke("set_tab", { tab: "files" });
+            mock.emit({ type: "fileJob", value: { path: "notes.txt", name: "notes.txt", state: "ready" } });
+            openPicker("fileSource");
+            check("Files source keeps Auto-detect first", options()[0]?.dataset.languageCode === "auto");
+            press(search, "Escape");
+            const fileTarget = openPicker("fileTarget");
+            filter("swe");
+            check("Files target uses the same search and empty state", options().length === 0);
+            filter("fr");
+            options()[0].click();
+            check("choosing a Files target leaves the Translate target alone",
+              doc.getElementById("fileTarget").value === "fr" && fileTarget.textContent.includes("Француз") &&
+              ui.currentState().targetLanguage !== "fr");
+            await mock.invoke("set_tab", { tab: "write" });
+            openPicker("writeTarget");
+            filter("de");
+            options()[0].click();
+            check("choosing a writing language updates Write", doc.getElementById("writeTarget").value === "de");
+
+            doc.getElementById("settingsBtn").click();
+            doc.getElementById("settingsTab-generation").click();
+            openPicker("promptTarget");
+            filter("pl");
+            options()[0].click();
+            check("the picker works inside Settings and returns focus there",
+              doc.getElementById("settingsDialog").open && !dialog.open &&
+              doc.getElementById("promptTarget").value === "pl" &&
+              doc.activeElement === doc.getElementById("promptTargetButton"));
 
             finish();
           })().catch(function (error) {

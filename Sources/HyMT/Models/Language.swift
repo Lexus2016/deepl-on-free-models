@@ -36,6 +36,31 @@ struct Language: Identifiable, Hashable, Codable {
         return englishName
     }
 
+    static func pickerOptions(in interfaceLanguage: AppLanguage, includeAuto: Bool, query: String) -> [Language] {
+        let locale = Locale(identifier: interfaceLanguage.localeIdentifier)
+        let folding: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+        let prefix = query.trimmingCharacters(in: .whitespacesAndNewlines).folding(options: folding, locale: locale)
+        func matches(_ language: Language) -> Bool {
+            guard !prefix.isEmpty else { return true }
+            let names = [
+                language.displayName(in: interfaceLanguage), language.englishName,
+                language.localName, language.displayName(in: .ru), language.code
+            ]
+            return names.contains { name in
+                let folded = name.folding(options: folding, locale: locale)
+                return folded.hasPrefix(prefix) || folded.split(whereSeparator: { !$0.isLetter })
+                    .contains { $0.hasPrefix(prefix) }
+            }
+        }
+
+        let sorted = all.filter(matches).sorted {
+            let comparison = $0.displayName(in: interfaceLanguage)
+                .compare($1.displayName(in: interfaceLanguage), options: [.caseInsensitive], locale: locale)
+            return comparison == .orderedSame ? $0.code < $1.code : comparison == .orderedAscending
+        }
+        return includeAuto && matches(.auto) ? [.auto] + sorted : sorted
+    }
+
     static let all: [Language] = [
         Language(code: "zh", englishName: "Chinese", localName: "китайська", bcp47: "zh-CN"),
         Language(code: "en", englishName: "English", localName: "англійська", bcp47: "en-US"),

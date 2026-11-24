@@ -124,6 +124,16 @@
 
   const t = typeof window.t === "function" ? window.t : (key) => key;
   const LANGS = Array.isArray(window.OFM_LANGUAGES) ? window.OFM_LANGUAGES : [];
+  const LANGUAGE_PICKERS = {
+    sourceLang: "Source language",
+    targetLang: "Target language",
+    fileSource: "Source language",
+    fileTarget: "Translate to",
+    writeTarget: "Improve in",
+    promptTarget: "Translate to",
+  };
+  const languageButtons = new Map();
+  let activeLanguageSelect = null;
   const UI_LANGS = Array.isArray(window.OFM_INTERFACE_LANGUAGES)
     ? window.OFM_INTERFACE_LANGUAGES
     : [];
@@ -1148,6 +1158,12 @@
       "confirmText",
       "confirmCancel",
       "confirmOk",
+      "languageDialog",
+      "languageTitle",
+      "languageSearch",
+      "languageResults",
+      "languageEmpty",
+      "languageClose",
     ].forEach((id) => {
       els[id] = $(id);
     });
@@ -1159,6 +1175,8 @@
       value: item.code,
       label: tr(item.name),
     }));
+    const collator = new Intl.Collator(uiLanguageCode());
+    languageOptions.sort((first, second) => collator.compare(first.label, second.label));
     fillSelect(
       els.sourceLang,
       [{ value: "auto", label: tr("Auto-detect") }].concat(languageOptions)
@@ -1323,11 +1341,101 @@
     });
   }
 
-  function syncLanguageTitles() {
-    [els.sourceLang, els.targetLang].forEach((select) => {
-      if (!select) return;
-      const option = select.selectedOptions && select.selectedOptions[0];
-      select.title = option ? option.textContent : "";
+  function syncLanguageButton(select) {
+    const button = languageButtons.get(select);
+    const name = select.selectedOptions[0]?.textContent ?? "";
+    button.textContent = name;
+    button.title = name;
+    button.setAttribute("aria-label", tr(LANGUAGE_PICKERS[select.id]) + (name ? " · " + name : ""));
+    button.disabled = select.disabled;
+  }
+
+  function foldLanguageName(text) {
+    return text.toLocaleLowerCase(uiLanguageCode()).normalize("NFD").replace(/\p{M}/gu, "");
+  }
+
+  function renderLanguageResults() {
+    const select = activeLanguageSelect;
+    if (!select) return;
+    const query = foldLanguageName(els.languageSearch.value.trim());
+    const options = Array.from(select.options).filter((option) => {
+      if (!query) return true;
+      const item = LANGS.find(({ code }) => code === option.value);
+      const optionName = option.value === "auto" ? tr("Auto-detect") : option.textContent;
+      const names = [optionName, item?.name || "", option.value];
+      return names.some((name) => {
+        const folded = foldLanguageName(name);
+        return folded.startsWith(query) ||
+          folded.split(/[^\p{L}]+/u).some((word) => word.startsWith(query));
+      });
+    });
+    els.languageResults.replaceChildren(...options.map((option) => {
+      const selected = option.selected;
+      const button = el("button", "language-option", option.textContent);
+      button.type = "button";
+      button.dataset.languageCode = option.value;
+      if (selected) button.setAttribute("aria-current", "true");
+      return button;
+    }));
+    els.languageResults.scrollTop = 0;
+    els.languageResults.hidden = options.length === 0;
+    els.languageEmpty.hidden = options.length !== 0;
+  }
+
+  function bindLanguagePickers() {
+    Object.keys(LANGUAGE_PICKERS).forEach((id) => {
+      const select = els[id];
+      const button = el("button", "language-button");
+      button.type = "button";
+      button.id = id + "Button";
+      button.setAttribute("aria-haspopup", "dialog");
+      button.setAttribute("aria-controls", "languageDialog");
+      Array.from(select.labels).forEach((label) => { label.htmlFor = button.id; });
+      select.hidden = true;
+      select.after(button);
+      languageButtons.set(select, button);
+      syncLanguageButton(select);
+      button.addEventListener("click", () => {
+        activeLanguageSelect = select;
+        els.languageTitle.textContent = tr(LANGUAGE_PICKERS[id]);
+        els.languageSearch.value = "";
+        renderLanguageResults();
+        els.languageDialog.showModal();
+        dialogStackPush(els.languageDialog);
+        syncModalState();
+        els.languageSearch.focus();
+      });
+    });
+
+    els.languageSearch.addEventListener("input", renderLanguageResults);
+    els.languageClose.addEventListener("click", () => els.languageDialog.close());
+    els.languageResults.addEventListener("click", (event) => {
+      const button = closest(event.target, "[data-language-code]");
+      const select = activeLanguageSelect;
+      if (!button || !select || select.disabled) return;
+      const { languageCode } = button.dataset;
+      if (select.value !== languageCode) {
+        select.value = languageCode;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        syncLanguageButton(select);
+      }
+      els.languageDialog.close();
+    });
+    els.languageDialog.addEventListener("keydown", (event) => {
+      if (event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const results = Array.from(els.languageResults.children);
+      if (!results.length) return;
+      const index = results.indexOf(event.target);
+      if (event.target === els.languageSearch) {
+        if (event.key === "ArrowDown") results[0].focus();
+        else if (event.key === "Enter" && els.languageSearch.value.trim()) results[0].click();
+        else return;
+      } else if (index !== -1 && event.key === "ArrowDown") {
+        results[Math.min(index + 1, results.length - 1)].focus();
+      } else if (index !== -1 && event.key === "ArrowUp") {
+        (results[index - 1] || els.languageSearch).focus();
+      } else return;
+      event.preventDefault();
     });
   }
 
@@ -1419,7 +1527,8 @@
   function renderTranslate() {
     if (els.sourceLang.value !== state.sourceLanguage) els.sourceLang.value = state.sourceLanguage;
     if (els.targetLang.value !== state.targetLanguage) els.targetLang.value = state.targetLanguage;
-    syncLanguageTitles();
+    syncLanguageButton(els.sourceLang);
+    syncLanguageButton(els.targetLang);
     setSegment(els.styleChips, "style", state.style);
     setSegment(els.toneChips, "tone", state.tone);
     syncCompactControls();
@@ -1612,6 +1721,8 @@
     els.fileSource.value = local.fileSource;
     els.fileSource.disabled = running;
     els.fileTarget.disabled = running;
+    syncLanguageButton(els.fileSource);
+    syncLanguageButton(els.fileTarget);
     els.translateFileBtn.disabled = running;
     els.removeFileBtn.disabled = running;
     els.fileTryAgainBtn.hidden = !(failed && !!job.path);
@@ -1706,6 +1817,7 @@
     els.cancelWriteBtn.hidden = !busy;
     els.clearWriteBtn.disabled = busy || !local.writeText;
     els.writeTarget.disabled = busy;
+    syncLanguageButton(els.writeTarget);
     els.copyWriteBtn.disabled = !output || busy;
 
     setSegment(els.writeViewSwitch, "view", local.writeView);
@@ -1984,7 +2096,7 @@
   }
 
   function syncModalState() {
-    const open = [els.settingsDialog, els.catalogDialog, els.confirmDialog].some(
+    const open = [els.settingsDialog, els.catalogDialog, els.confirmDialog, els.languageDialog].some(
       (dialog) => dialog && dialog.open
     );
     document.body.classList.toggle("has-modal", open);
@@ -2006,7 +2118,7 @@
       const dialog = local.dialogStack[index];
       if (dialog && dialog.open) return dialog;
     }
-    const fallback = [els.settingsDialog, els.catalogDialog, els.confirmDialog].find(
+    const fallback = [els.languageDialog, els.confirmDialog, els.catalogDialog, els.settingsDialog].find(
       (dialog) => dialog && dialog.open
     );
     return fallback || null;
@@ -2680,6 +2792,7 @@
     if (els.promptTarget.value !== local.promptTarget) {
       els.promptTarget.value = local.promptTarget;
     }
+    syncLanguageButton(els.promptTarget);
   }
 
   // Fallback prompt preview, byte-identical to
@@ -3949,12 +4062,12 @@
     // Translate ----------------------------------------------------------
     els.sourceLang.addEventListener("change", () => {
       state.sourceLanguage = els.sourceLang.value;
-      syncLanguageTitles();
+      syncLanguageButton(els.sourceLang);
       send("set_source_language", { code: state.sourceLanguage });
     });
     els.targetLang.addEventListener("change", () => {
       state.targetLanguage = els.targetLang.value;
-      syncLanguageTitles();
+      syncLanguageButton(els.targetLang);
       send("set_target_language", { code: state.targetLanguage });
     });
     els.swapBtn.addEventListener("click", () => send("swap_languages"));
@@ -4160,14 +4273,16 @@
     els.catalogBody.addEventListener("scroll", () => syncScrollFade(els.catalogBody));
 
     // Dialogs -------------------------------------------------------------
-    [els.settingsDialog, els.catalogDialog, els.confirmDialog].forEach((dialog) => {
+    [els.settingsDialog, els.catalogDialog, els.confirmDialog, els.languageDialog].forEach((dialog) => {
       if (!dialog) return;
       dialog.addEventListener("close", () => {
+        if (dialog.open) return;
         dialogStackRemove(dialog);
         if (dialog === els.settingsDialog) {
           local.settingsDraft = null;
           local.settingsSnapshot = null;
-            }
+        }
+        if (dialog === els.languageDialog) activeLanguageSelect = null;
         syncModalState();
       });
       // Native Esc would close whichever <dialog> receives the event; the
@@ -4654,7 +4769,7 @@
   async function init() {
     cacheElements();
     applyTheme();
-    buildStaticOptions();
+    bindLanguagePickers();
     localize();
     observeTranslateBar();
     bindEvents();

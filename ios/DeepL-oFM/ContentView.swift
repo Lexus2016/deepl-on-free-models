@@ -182,31 +182,12 @@ struct ContentView: View {
         includeAuto: Bool,
         detected: Language?
     ) -> some View {
-        Menu {
-            if includeAuto {
-                Button {
-                    selection.wrappedValue = "auto"
-                } label: {
-                    if selection.wrappedValue == "auto" {
-                        Label(L10n.t("Auto-detect", language), systemImage: "checkmark")
-                    } else {
-                        Text(L10n.t("Auto-detect", language))
-                    }
-                }
-                Divider()
-            }
-            ForEach(Language.all) { item in
-                Button {
-                    selection.wrappedValue = item.code
-                } label: {
-                    if selection.wrappedValue == item.code {
-                        Label(item.displayName(in: language), systemImage: "checkmark")
-                    } else {
-                        Text(item.displayName(in: language))
-                    }
-                }
-            }
-        } label: {
+        IOSLanguagePicker(
+            selection: selection,
+            language: language,
+            titleKey: includeAuto ? "Source language" : "Target language",
+            includeAuto: includeAuto
+        ) {
             HStack(spacing: 6) {
                 Text(label(for: selection.wrappedValue, detected: detected))
                     .font(.subheadline.weight(.semibold))
@@ -222,7 +203,6 @@ struct ContentView: View {
             .background(Capsule().fill(IOSTheme.raised))
             .overlay(Capsule().strokeBorder(IOSTheme.border, lineWidth: 1))
         }
-        .accessibilityLabel(L10n.t(includeAuto ? "Source language" : "Target language", language))
         .accessibilityValue(label(for: selection.wrappedValue, detected: detected))
     }
 

@@ -13,10 +13,10 @@ updater-smoke = []
 [dependencies]
 env_logger.workspace = true
 log.workspace = true
-ofm-config = { version = "2.0.5", path = "../config" }
-ofm-i18n = { version = "2.0.5", path = "../i18n" }
-ofm-platform = { version = "2.0.5", path = "../platform" }
-ofm-app = { version = "2.0.5", path = "../app" }
+ofm-config = { version = "2.0.6", path = "../config" }
+ofm-i18n = { version = "2.0.6", path = "../i18n" }
+ofm-platform = { version = "2.0.6", path = "../platform" }
+ofm-app = { version = "2.0.6", path = "../app" }
 serde.workspace = true
 serde_json.workspace = true
 tauri = { version = "2.11.6", features = ["tray-icon"] }

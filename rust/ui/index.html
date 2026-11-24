@@ -1084,6 +1084,23 @@
     </div>
   </dialog>
 
+  <dialog class="dialog dialog-language" id="languageDialog" aria-labelledby="languageTitle">
+    <div class="dialog-shell">
+      <header class="dialog-head">
+        <h2 id="languageTitle"></h2>
+        <button class="icon-btn" type="button" id="languageClose" data-i18n-aria="Close" data-i18n-title="Close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </header>
+      <div class="search-field language-search">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+        <input type="search" id="languageSearch" data-i18n-placeholder="Search language" data-i18n-aria="Search language" autocomplete="off" spellcheck="false" autofocus>
+      </div>
+      <div class="language-results" id="languageResults"></div>
+      <p class="language-empty" id="languageEmpty" role="status" data-i18n="Nothing found" hidden></p>
+    </div>
+  </dialog>
+
   <!-- Model catalogue dialog -------------------------------------------- -->
   <dialog class="dialog dialog-catalog" id="catalogDialog" aria-labelledby="catalogTitle">
     <div class="dialog-shell" tabindex="-1">

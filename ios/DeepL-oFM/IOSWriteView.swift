@@ -26,9 +26,9 @@ struct IOSWriteView: View {
                         .accessibilityIdentifier("write-editor")
                         .onChange(of: store.sourceText) { _, _ in store.updateDetectedLanguage() }
 
-                    Picker(L10n.t("Source language", language), selection: writingLanguage) {
-                        ForEach(Language.all) { item in
-                            Text(item.displayName(in: language)).tag(item.code)
+                    LabeledContent(L10n.t("Source language", language)) {
+                        IOSLanguagePicker(selection: writingLanguage, language: language, titleKey: "Source language") {
+                            Text(Language.with(code: store.languageCode)?.displayName(in: language) ?? "")
                         }
                     }
 

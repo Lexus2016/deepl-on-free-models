@@ -2,6 +2,32 @@ import XCTest
 
 final class TranslationUITests: XCTestCase {
     @MainActor
+    func testLanguagePickerFiltersAndAppliesSelection() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ios.interface", "en", "-ios.source", "auto", "-ios.target", "en"]
+        app.launch()
+
+        let target = app.buttons["Target language"]
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        target.tap()
+
+        let search = app.textFields["Search language"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.tap()
+        search.typeText("fren")
+
+        let french = app.buttons["French"]
+        XCTAssertTrue(french.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Spanish"].exists)
+        XCTAssertFalse(app.buttons["Auto-detect"].exists)
+        french.tap()
+
+        let selection = NSPredicate(format: "value == %@", "French")
+        expectation(for: selection, evaluatedWith: target)
+        waitForExpectations(timeout: 5)
+    }
+
+    @MainActor
     func testProviderSetupAndPrivacyLink() {
         let app = XCUIApplication()
         app.launchArguments = ["-ios.interface", "en", "-ios.provider", "groq"]

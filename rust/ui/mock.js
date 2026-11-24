@@ -58,6 +58,7 @@
       "New translation": "Новий переклад",
       "Settings…": "Налаштування…",
       "Auto-detect": "Визначити мову",
+      "Search language": "Пошук мови",
       "Source": "Джерело",
       "Translation": "Переклад",
       "Copy": "Копіювати",

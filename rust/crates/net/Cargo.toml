@@ -9,9 +9,9 @@ authors.workspace = true
 
 [dependencies]
 fancy-regex = "0.20.2"
-ofm-i18n = { path = "../i18n", version = "2.0.5" }
-ofm-text = { path = "../text", version = "2.0.5" }
-ofm-config = { path = "../config", version = "2.0.5" }
+ofm-i18n = { path = "../i18n", version = "2.0.6" }
+ofm-text = { path = "../text", version = "2.0.6" }
+ofm-config = { path = "../config", version = "2.0.6" }
 
 futures-util = "0.3.34"
 log.workspace = true

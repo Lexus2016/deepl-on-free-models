@@ -88,9 +88,12 @@ struct LanguageBar: View {
 
 struct LanguagePicker: View {
     @EnvironmentObject private var app: AppState
+    @Environment(\.isEnabled) private var isEnabled
     let selection: Language
     let includeAuto: Bool
     let detected: Language?
+    var labelKey: String? = nil
+    var width: CGFloat = 164
     let onSelect: (Language) -> Void
 
     private var language: AppLanguage { app.settings.interfaceLanguage }
@@ -107,22 +110,7 @@ struct LanguagePicker: View {
     }
 
     private var filtered: [Language] {
-        var list = includeAuto ? [Language.auto] + Language.all : Language.all
-        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if !needle.isEmpty {
-            list = list.filter { language in
-                let names = [
-                    language.localName,
-                    language.englishName,
-                    language.displayName(in: self.language),
-                    language.displayName(in: .uk),
-                    language.displayName(in: .ru),
-                    language.code
-                ]
-                return names.contains { $0.lowercased().contains(needle) }
-            }
-        }
-        return list
+        Language.pickerOptions(in: language, includeAuto: includeAuto, query: query)
     }
 
     var body: some View {
@@ -139,10 +127,13 @@ struct LanguagePicker: View {
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(Theme.tertiary)
             }
-            .frame(width: 164)
+            .frame(width: width)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.55)
+        .accessibilityLabel(L10n.t(labelKey ?? (includeAuto ? "Source language" : "Target language"), language))
+        .accessibilityValue(displayName)
         .help(displayName)
         .popover(isPresented: $open, arrowEdge: .bottom) {
             popover
@@ -150,7 +141,8 @@ struct LanguagePicker: View {
     }
 
     private var popover: some View {
-        VStack(spacing: 0) {
+        let options = filtered
+        return VStack(spacing: 0) {
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 11, weight: .medium))
@@ -160,6 +152,12 @@ struct LanguagePicker: View {
                     .font(.system(size: 12.5))
                     .foregroundStyle(Theme.text)
                     .focused($searchFocused)
+                    .onSubmit {
+                        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                           let first = options.first {
+                            choose(first)
+                        }
+                    }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -168,11 +166,15 @@ struct LanguagePicker: View {
 
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    ForEach(filtered) { language in
+                    if options.isEmpty {
+                        Text(L10n.t("Nothing found", language))
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(Theme.secondary)
+                            .padding(.vertical, 20)
+                    }
+                    ForEach(options) { language in
                         Button {
-                            onSelect(language)
-                            open = false
-                            query = ""
+                            choose(language)
                         } label: {
                             HStack(spacing: 8) {
                                 Text(language.displayName(in: self.language))
@@ -202,11 +204,18 @@ struct LanguagePicker: View {
                 .padding(.vertical, 4)
             }
             .scrollIndicators(.hidden)
+            .id(query)
         }
         .frame(width: 290, height: 350)
         .background(Theme.chrome)
         .preferredColorScheme(.dark)
         .onAppear { searchFocused = true }
+        .onDisappear { query = "" }
+    }
+
+    private func choose(_ option: Language) {
+        onSelect(option)
+        open = false
     }
 }
 

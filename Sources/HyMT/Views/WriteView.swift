@@ -44,20 +44,16 @@ struct WriteView: View {
             Text(L10n.t("Improve in", language))
                 .font(.system(size: 12.5, weight: .medium))
                 .foregroundStyle(Theme.secondary)
-            Picker("", selection: Binding(
-                get: { store.languageCode },
-                set: {
-                    store.languageCode = $0
-                    store.languageWasChosen = true
-                }
-            )) {
-                ForEach(Language.all) { item in
-                    Text(item.displayName(in: language)).tag(item.code)
-                }
+            LanguagePicker(
+                selection: Language.with(code: store.languageCode) ?? .auto,
+                includeAuto: false,
+                detected: nil,
+                labelKey: "Improve in",
+                width: 220
+            ) { option in
+                store.languageCode = option.code
+                store.languageWasChosen = true
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .frame(width: 220)
             Spacer()
         }
     }
