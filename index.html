@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeepL-oFM — a hello you can flip</title>
-<meta name="description" content="A native Mac app that translates text, Markdown, Word and PDF. Hy-MT2 can run on the machine through Ollama. Free, signed, no account.">
+<title>DeepL-oFM — your words and the translation in one window</title>
+<meta name="description" content="A Mac window with your paragraph on the left and the translation on the right. Hy-MT2 can stay on the machine through Ollama, or you can use your own key. Free, signed, no account.">
 <link rel="canonical" href="https://lexus2016.github.io/deepl-on-free-models/">
 <link rel="icon" href="docs/app-icon.png">
 <meta name="theme-color" content="#fff4e8">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DeepL-oFM">
-<meta property="og:title" content="DeepL-oFM — a hello you can flip">
-<meta property="og:description" content="Translate on your Mac. The model can stay on the machine. Watch a hello change language, then download the app.">
+<meta property="og:title" content="DeepL-oFM — your words and the translation in one window">
+<meta property="og:description" content="Your paragraph stays on the left, the translation on the right. The model can stay on the Mac, or you can use your own key.">
 <meta property="og:url" content="https://lexus2016.github.io/deepl-on-free-models/">
 <meta property="og:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-card.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="DeepL-oFM — a hello you can flip">
-<meta name="twitter:description" content="A native Mac translator. Local model or your own cloud key. Free.">
+<meta name="twitter:title" content="DeepL-oFM — your words and the translation in one window">
+<meta name="twitter:description" content="Your paragraph stays on the left, the translation on the right. The model can stay on the Mac, or you can use your own key.">
 <meta name="twitter:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-card.png">
 <style>
 @font-face{font-family:Unbounded;font-style:normal;font-weight:700;font-display:swap;src:url("docs/fonts/unbounded-cyrillic-700.woff2") format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
@@ -48,9 +48,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(255,244,232,.9);backdrop
 .links{display:flex;gap:16px}
 .links a{text-decoration:none;font-weight:600}
 .links a:hover{text-decoration:underline}
-.langpick{display:flex;flex:0 0 auto;border:2px solid var(--ink);border-radius:999px;overflow:hidden}
-.langpick button{background:transparent;border:0;min-width:44px;min-height:36px;padding:0 10px;cursor:pointer;font-family:Unbounded,sans-serif;font-size:12px;font-weight:700}
-.langpick button[aria-pressed="true"]{background:var(--ink);color:var(--lemon)}
+.langpick{display:flex;flex:0 0 auto;align-items:center;border:2px solid var(--ink);border-radius:999px;background:#fff;max-width:46vw}
+.langpick select{appearance:none;border:0;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%231c140e' d='M1 1l5 5 5-5'/></svg>") no-repeat right 10px center;color:var(--ink);font-family:Unbounded,sans-serif;font-size:12px;font-weight:700;min-height:36px;padding:0 28px 0 12px;cursor:pointer;max-width:42vw}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 18px;border-radius:999px;text-decoration:none;border:2px solid var(--ink);cursor:pointer;font-family:Unbounded,sans-serif;font-weight:700;font-size:14px;line-height:1}
 .btn-go{background:var(--ink);color:var(--lemon)}
 .btn-go:hover{background:#000}
@@ -149,10 +148,12 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
 }
 @media (max-width:420px){
   .wrap{width:min(1120px,calc(100% - 20px))}
-  .bar{gap:8px}
+  .bar{flex-wrap:wrap;gap:8px;padding:8px 0}
   .brand{font-size:14px;gap:6px}
   .brand img{width:28px;height:28px;border-radius:8px}
-  .langpick button{min-width:40px;padding:0 8px}
+  .langpick{flex:1 1 100%;max-width:none;order:3;border-radius:12px}
+  .langpick select{width:100%;max-width:none;font-size:12px}
+  .menu{margin-left:auto}
   .menu summary{width:44px;padding:0;font-size:0}
   .menu summary::before{content:"";width:16px;height:2px;background:currentColor;box-shadow:0 -6px 0 currentColor,0 6px 0 currentColor}
 }
@@ -163,7 +164,7 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
 }
 </style>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"A Mac app for translating text and documents with a local model or your own cloud key.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.3","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"A Mac window with your paragraph on the left and the translation on the right. The model can stay on the machine, or you can use your own key.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.3","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
 </script>
 </head>
 <body>
@@ -172,19 +173,29 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
   <div class="wrap bar">
     <a class="brand" href="./"><img src="docs/app-icon.png" alt="">DeepL-oFM</a>
     <nav class="links" aria-label="Sections">
-      <a href="#look" data-i="nav_how">How it feels</a>
+      <a href="#look" data-i="nav_how">The window</a>
       <a href="#watch" data-i="nav_watch">Watch</a>
       <a href="#install" data-i="nav_get">Install</a>
     </nav>
-    <div class="langpick" role="group" aria-label="Language">
-      <button type="button" data-setlang="en" aria-pressed="true">EN</button>
-      <button type="button" data-setlang="uk" aria-pressed="false">UK</button>
-    </div>
+    <label class="langpick">
+      <span class="vh">Language</span>
+      <select id="lang" aria-label="Language">
+        <option value="en">English</option>
+        <option value="uk">Українська</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="pl">Polski</option>
+        <option value="pt">Português</option>
+        <option value="it">Italiano</option>
+      </select>
+    </label>
     <a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download_short">Download</a>
     <details class="menu">
       <summary data-i="menu">Menu</summary>
       <div class="menu-panel">
-        <a href="#look" data-i="nav_how">How it feels</a>
+        <a href="#look" data-i="nav_how">The window</a>
         <a href="#watch" data-i="nav_watch">Watch</a>
         <a href="#install" data-i="nav_get">Install</a>
         <a href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download_short">Download</a>
@@ -207,19 +218,19 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
       <p class="line" id="line" lang="uk">Текст лишається на твоєму Mac.</p>
       <div class="chips" id="chips"></div>
       <div class="board-foot">
-        <p class="hint" id="hint" data-i="board_hint">Prepared lines, so the flap is instant. The app translates what you paste.</p>
+        <p class="hint" id="hint" data-i="board_hint">These hellos are already written, so the board flips without waiting for a model. Your own text is what the app translates.</p>
         <button type="button" class="play" id="play" aria-pressed="true" data-i="pause">Pause</button>
       </div>
       <p class="vh" id="live"></p>
     </div>
     <div class="pitch">
-      <h1 data-i="h1">A hello you can flip.</h1>
-      <p class="lead" data-i="lead">DeepL-oFM is a native Mac app. The original stays on the left, the translation on the right. Hy-MT2 can run on the machine through Ollama, with the network off. A cloud model is there when you want one, with your own key.</p>
+      <h1 data-i="h1">See your words and the translation in one window.</h1>
+      <p class="lead" data-i="lead">Paste a paragraph, a mail you are still writing, or a page of Markdown. DeepL-oFM keeps what you wrote on the left and puts the translation on the right, so you can check a sentence without losing the one you meant. If that text should stay on the Mac, install Hy-MT2 through Ollama once (about 4.6 GB) and a translation can finish with the network off. If you already have a key for OpenRouter, Groq or Cerebras, the same window can send the paragraph there.</p>
       <div class="cta">
         <a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download">Download for Mac</a>
         <a class="btn btn-ghost" href="https://github.com/Lexus2016/deepl-on-free-models" data-i="github">Source</a>
       </div>
-      <p class="note" data-i="note">Free. Signed. macOS 14 or later, Apple silicon. No account.</p>
+      <p class="note" data-i="note">Free, and signed. It needs macOS 14 or later on Apple silicon, and you do not create an account.</p>
     </div>
   </div>
 
@@ -235,20 +246,20 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
       </figure>
       <div>
         <h2 data-i="proof_h">The window you actually use</h2>
-        <p class="prose" data-i="proof_p">Two panes, a percentage while it works, and Copy when it is done. Settings pick the provider and keep a fallback if the first one fails.</p>
+        <p class="prose" data-i="proof_p">While it works you see both sides and a percentage. Copy shows up once every line is done. In Settings you pick where the text goes, and you can name a second place to try if the first one stays quiet.</p>
         <div class="facts" style="margin-top:16px">
           <article>
-            <h3 data-i="m1h">Offline, when you choose Ollama</h3>
-            <p data-i="m1p">Hy-MT2 7B is about 4.6 GB. After it is on the Mac, a translation does not have to leave.</p>
+            <h3 data-i="m1h">The paragraph can stay on the Mac</h3>
+            <p data-i="m1p">The model people usually put on the Mac is Hy-MT2 7B, about 4.6 GB, through Ollama. Once that download is done, a translation does not have to leave the machine.</p>
           </article>
           <article>
-            <h3 data-i="m2h">Word and PDF keep the layout</h3>
-            <p data-i="m2p">DOCX updates the text inside the original package. PDF draws the translation on the same pages. A scan still needs text recognition first.</p>
+            <h3 data-i="m2h">A Word file still looks like your file</h3>
+            <p data-i="m2p">A Word file stays a Word file: the app changes the words inside it and leaves the layout around them. A PDF that already contains text gets the translation drawn on those same pages. A scan is a photograph of paper, so run text recognition before you ask for a translation.</p>
           </article>
           <article>
             <div class="keys" aria-hidden="true"><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd></div>
-            <h3 data-i="m3h">From whatever app you are in</h3>
-            <p data-i="m3p">⌥⌘T translates the clipboard. ⌥⌘C copies the selection in the app you are using, then opens DeepL-oFM. The selection shortcut needs Accessibility.</p>
+            <h3 data-i="m3h">You can stay in the mail you are writing</h3>
+            <p data-i="m3p">If you are in the middle of a mail, ⌥⌘T translates whatever you just copied. ⌥⌘C takes the sentence you highlighted in that other app and opens DeepL-oFM with it. macOS only allows the second shortcut after you grant Accessibility.</p>
           </article>
         </div>
       </div>
@@ -268,49 +279,50 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
 
   <section id="watch">
     <div class="wrap">
-      <h2 data-i="watch_h">The app, in motion</h2>
-      <p class="lead" data-i="watch_p">Markdown, plain text, the source, a PDF, and settings. This is a recording of the real window.</p>
+      <h2 data-i="watch_h">A recording of the real window</h2>
+      <p class="lead" data-i="watch_p">Markdown, a plain paragraph, the source behind it, a PDF, and Settings. This is the app running, filmed, not a picture drawn for the website.</p>
       <div class="stage"><img src="docs/demo-framed.gif" alt="DeepL-oFM demo: result views, PDF translation and settings"></div>
-      <h2 style="margin-top:48px" data-i="film_h">Ten seconds, just the hello</h2>
-      <p class="lead" data-i="film_p">The same flap, with sound off. Pause it whenever you like.</p>
+      <h2 style="margin-top:48px" data-i="film_h">Ten seconds of the board</h2>
+      <p class="lead" data-i="film_p">The board above can flip on its own. This film is the same idea, ten seconds, with the sound left off.</p>
       <div class="stage">
         <video id="film" controls playsinline muted loop preload="metadata" poster="docs/hello-poster.jpg">
           <source src="docs/hello-flap.mp4" type="video/mp4">
         </video>
       </div>
-      <p class="film-note" data-i="film_note">Silent on purpose. The greetings in the film are the same prepared lines as the board above.</p>
+      <p class="film-note" data-i="film_note">The hellos were written ahead of time. A model did not produce them while you watched.</p>
     </div>
   </section>
 
   <section id="install">
     <div class="wrap">
-      <h2 data-i="install_h">On the Mac in three moves</h2>
+      <h2 data-i="install_h">Put it on the Mac</h2>
       <div class="steps">
-        <article class="step"><b>1</b><span data-i="step1">Download the disk image.</span></article>
-        <article class="step"><b>2</b><span data-i="step2">Drag DeepL-oFM onto Applications.</span></article>
-        <article class="step"><b>3</b><span data-i="step3">Open Settings, choose Ollama or a cloud provider, press Connect.</span></article>
+        <article class="step"><b>1</b><span data-i="step1">Download the disk image. The file is signed, and Apple has notarized it.</span></article>
+        <article class="step"><b>2</b><span data-i="step2">Drag DeepL-oFM onto Applications, then open it the way you open any other app.</span></article>
+        <article class="step"><b>3</b><span data-i="step3">In Settings, choose Ollama, or paste the key from OpenRouter, Groq or Cerebras, and press Connect.</span></article>
       </div>
-      <p class="note" data-i="model_label">The usual local model</p>
+      <p class="note" data-i="model_label">Before the first offline translation, Ollama has to store the model. These two lines do that.</p>
       <div class="cmd">
         <pre id="cmd">ollama pull maternion/hy-mt2:7b
 ollama cp maternion/hy-mt2:7b hy-mt2:7b</pre>
         <button type="button" class="btn btn-ghost" id="copycmd" data-i="copy">Copy</button>
       </div>
-      <p class="note" data-ih="iphone">An <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md">iPhone project</a> is in the repository. The download button is the Mac app.</p>
+      <p class="note" data-ih="iphone">There is an <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md">iPhone project</a> in the repository. The button on this page downloads the Mac app. That build is not in the App Store.</p>
       <p style="margin-top:22px"><a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download">Download for Mac</a></p>
     </div>
   </section>
 
   <section>
     <div class="wrap skipbox">
-      <h2 data-i="skip_h">It is not for every translator</h2>
-      <p data-i="skip_p">Skip it if you need a company glossary, a CAT tool, or a translator your whole team already pays for. Stay if you want a Mac window, a local model, and no account.</p>
+      <h2 data-i="skip_h">Leave it if you live in a shared glossary</h2>
+      <p data-i="skip_p">If your work depends on a term list the whole company shares, or on a tool that remembers every approved sentence, this app will not replace that. Take it when you want a Mac window, a model that can stay on the machine, and no account.</p>
     </div>
   </section>
 
   <section>
     <div class="wrap">
-      <h2 data-i="guides_h">The long version, in nine languages</h2>
+      <h2 data-i="guides_h">The longer guide</h2>
+      <p class="prose" data-i="guides_p">The same guide exists in nine languages. The privacy page is written in English only.</p>
       <div class="langs">
         <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.md">English</a>
         <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.uk.md">Українська</a>
@@ -322,13 +334,13 @@ ollama cp maternion/hy-mt2:7b hy-mt2:7b</pre>
         <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.pt.md">Português</a>
         <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/README.it.md">Italiano</a>
         <a href="privacy.html" data-i="privacy">Privacy policy</a>
-        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/CHANGELOG.md">Changelog</a>
-        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/SECURITY.md">Security</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/CHANGELOG.md" data-i="changelog">Changelog</a>
+        <a href="https://github.com/Lexus2016/deepl-on-free-models/blob/main/SECURITY.md" data-i="security">Security</a>
       </div>
       <h2 style="margin-top:36px" data-i="faq_h">Before you download</h2>
-      <details class="faq"><summary data-i="q1">Does the project see what I translate?</summary><p data-i="a1">No account and no analytics. A cloud provider receives the text only when you select that provider. Keys sit in the macOS Keychain.</p></details>
-      <details class="faq"><summary data-i="q2">Will a scanned PDF translate?</summary><p data-i="a2">Not by itself. Run text recognition first, then translate. Digital PDFs and Word files keep their layout.</p></details>
-      <details class="faq"><summary data-i="q3">Is this DeepL?</summary><p data-i="a3">No. DeepL-oFM is an independent app. The name describes a side-by-side window (“on Free Models”). It is not affiliated with DeepL SE.</p></details>
+      <details class="faq"><summary data-i="q1">Can the people behind this read what I translate?</summary><p data-i="a1">There is no account and no analytics, so a translation does not come back to the project. A cloud service sees the text only when you choose that service and send the paragraph. Keys you type stay in the macOS Keychain.</p></details>
+      <details class="faq"><summary data-i="q2">What if the PDF is a scan?</summary><p data-i="a2">A scan is a photograph of a page. Run text recognition first, then translate. A PDF that already has real text, and a Word file, keep their layout.</p></details>
+      <details class="faq"><summary data-i="q3">Is this the DeepL app from DeepL SE?</summary><p data-i="a3">No. DeepL-oFM is a separate app, and it is not affiliated with DeepL SE. The name means a side-by-side window that can run on free models.</p></details>
     </div>
   </section>
 </main>
@@ -347,90 +359,400 @@ ollama cp maternion/hy-mt2:7b hy-mt2:7b</pre>
 <script>
 const I18N = {
   en: {
-    title: "DeepL-oFM — a hello you can flip",
-    nav_how: "How it feels", nav_watch: "Watch", nav_get: "Install", menu: "Menu",
-    download_short: "Download", download: "Download for Mac", github: "Source",
-    h1: "A hello you can flip.",
-    lead: "DeepL-oFM is a native Mac app. The original stays on the left, the translation on the right. Hy-MT2 can run on the machine through Ollama, with the network off. A cloud model is there when you want one, with your own key.",
-    note: "Free. Signed. macOS 14 or later, Apple silicon. No account.",
-    board_hint: "Prepared lines, so the flap is instant. The app translates what you paste.",
+    title: "DeepL-oFM — your words and the translation in one window",
+    nav_how: "The window", nav_watch: "Watch", nav_get: "Install", menu: "Menu",
+    download_short: "Download", download: "Download for Mac", github: "Code",
+    h1: "See your words and the translation in one window.",
+    lead: "Paste a paragraph, a mail you are still writing, or a page of Markdown. DeepL-oFM keeps what you wrote on the left and puts the translation on the right, so you can check a sentence without losing the one you meant. If that text should stay on the Mac, install Hy-MT2 through Ollama once (about 4.6 GB) and a translation can finish with the network off. If you already have a key for OpenRouter, Groq or Cerebras, the same window can send the paragraph there.",
+    note: "Free, and signed. It needs macOS 14 or later on Apple silicon, and you do not create an account.",
+    board_hint: "These hellos are already written, so the board flips without waiting for a model. Your own text is what the app translates.",
     play: "Play", pause: "Pause",
     proof_h: "The window you actually use",
-    proof_p: "Two panes, a percentage while it works, and Copy when it is done. Settings pick the provider and keep a fallback if the first one fails.",
-    m1h: "Offline, when you choose Ollama",
-    m1p: "Hy-MT2 7B is about 4.6 GB. After it is on the Mac, a translation does not have to leave.",
-    m2h: "Word and PDF keep the layout",
-    m2p: "DOCX updates the text inside the original package. PDF draws the translation on the same pages. A scan still needs text recognition first.",
-    m3h: "From whatever app you are in",
-    m3p: "⌥⌘T translates the clipboard. ⌥⌘C copies the selection in the app you are using, then opens DeepL-oFM. The selection shortcut needs Accessibility.",
+    proof_p: "While it works you see both sides and a percentage. Copy shows up once every line is done. In Settings you pick where the text goes, and you can name a second place to try if the first one stays quiet.",
+    m1h: "The paragraph can stay on the Mac",
+    m1p: "The model people usually put on the Mac is Hy-MT2 7B, about 4.6 GB, through Ollama. Once that download is done, a translation does not have to leave the machine.",
+    m2h: "A Word file still looks like your file",
+    m2p: "A Word file stays a Word file: the app changes the words inside it and leaves the layout around them. A PDF that already contains text gets the translation drawn on those same pages. A scan is a photograph of paper, so run text recognition before you ask for a translation.",
+    m3h: "You can stay in the mail you are writing",
+    m3p: "If you are in the middle of a mail, ⌥⌘T translates whatever you just copied. ⌥⌘C takes the sentence you highlighted in that other app and opens DeepL-oFM with it. macOS only allows the second shortcut after you grant Accessibility.",
     c_text: "Text", c_preview: "Preview", c_write: "Rewrite", c_files: "Files", c_settings: "Settings",
-    watch_h: "The app, in motion",
-    watch_p: "Markdown, plain text, the source, a PDF, and settings. This is a recording of the real window.",
-    film_h: "Ten seconds, just the hello",
-    film_p: "The same flap, with sound off. Pause it whenever you like.",
-    film_note: "Silent on purpose. The greetings in the film are the same prepared lines as the board above.",
-    install_h: "On the Mac in three moves",
-    step1: "Download the disk image.",
-    step2: "Drag DeepL-oFM onto Applications.",
-    step3: "Open Settings, choose Ollama or a cloud provider, press Connect.",
-    model_label: "The usual local model",
+    watch_h: "A recording of the real window",
+    watch_p: "Markdown, a plain paragraph, the source behind it, a PDF, and Settings. This is the app running, filmed, not a picture drawn for the website.",
+    film_h: "Ten seconds of the board",
+    film_p: "The board above can flip on its own. This film is the same idea, ten seconds, with the sound left off.",
+    film_note: "The hellos were written ahead of time. A model did not produce them while you watched.",
+    install_h: "Put it on the Mac",
+    step1: "Download the disk image. The file is signed, and Apple has notarized it.",
+    step2: "Drag DeepL-oFM onto Applications, then open it the way you open any other app.",
+    step3: "In Settings, choose Ollama, or paste the key from OpenRouter, Groq or Cerebras, and press Connect.",
+    model_label: "Before the first offline translation, Ollama has to store the model. These two lines do that.",
     copy: "Copy", copied: "Copied", copyfail: "Select the lines",
-    iphone: "An <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone project</a> is in the repository. The download button is the Mac app.",
-    skip_h: "It is not for every translator",
-    skip_p: "Skip it if you need a company glossary, a CAT tool, or a translator your whole team already pays for. Stay if you want a Mac window, a local model, and no account.",
-    guides_h: "The long version, in nine languages",
-    privacy: "Privacy policy",
+    iphone: "There is an <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone project</a> in the repository. The button on this page downloads the Mac app. That build is not in the App Store.",
+    skip_h: "Leave it if you live in a shared glossary",
+    skip_p: "If your work depends on a term list the whole company shares, or on a tool that remembers every approved sentence, this app will not replace that. Take it when you want a Mac window, a model that can stay on the machine, and no account.",
+    guides_h: "The longer guide",
+    guides_p: "The same guide exists in nine languages. The privacy page is written in English only.",
+    privacy: "Privacy policy", changelog: "Changelog", security: "Security",
     faq_h: "Before you download",
-    q1: "Does the project see what I translate?",
-    a1: "No account and no analytics. A cloud provider receives the text only when you select that provider. Keys sit in the macOS Keychain.",
-    q2: "Will a scanned PDF translate?",
-    a2: "Not by itself. Run text recognition first, then translate. Digital PDFs and Word files keep their layout.",
-    q3: "Is this DeepL?",
-    a3: "No. DeepL-oFM is an independent app. The name describes a side-by-side window (“on Free Models”). It is not affiliated with DeepL SE.",
+    q1: "Can the people behind this read what I translate?",
+    a1: "There is no account and no analytics, so a translation does not come back to the project. A cloud service sees the text only when you choose that service and send the paragraph. Keys you type stay in the macOS Keychain.",
+    q2: "What if the PDF is a scan?",
+    a2: "A scan is a photograph of a page. Run text recognition first, then translate. A PDF that already has real text, and a Word file, keep their layout.",
+    q3: "Is this the DeepL app from DeepL SE?",
+    a3: "No. DeepL-oFM is a separate app, and it is not affiliated with DeepL SE. The name means a side-by-side window that can run on free models.",
     foot: "MIT license. Not affiliated with DeepL SE."
   },
   uk: {
-    title: "DeepL-oFM — привітання, яке можна перегортати",
-    nav_how: "Як це виглядає", nav_watch: "Дивитися", nav_get: "Встановлення", menu: "Меню",
+    title: "DeepL-oFM — ваші слова й переклад в одному вікні",
+    nav_how: "Вікно", nav_watch: "Дивитися", nav_get: "Встановлення", menu: "Меню",
     download_short: "Завантажити", download: "Завантажити для Mac", github: "Код",
-    h1: "Привітання, яке можна перегортати.",
-    lead: "DeepL-oFM — нативний застосунок для Mac. Оригінал лишається ліворуч, переклад — праворуч. Hy-MT2 може працювати на машині через Ollama, навіть без мережі. Хмарна модель є, коли вона потрібна, з вашим ключем.",
-    note: "Безкоштовно. Підписано. macOS 14 або новіша, Apple silicon. Без акаунта.",
-    board_hint: "Це заготовлені рядки, тому табло миттєве. Застосунок перекладає те, що ви вставляєте.",
+    h1: "Ваші слова й переклад в одному вікні.",
+    lead: "Вставте абзац, листа, якого ще дописуєте, або сторінку Markdown. DeepL-oFM лишає написане ліворуч і ставить переклад праворуч, тож речення можна звірити й не загубити те, яке ви мали на увазі. Якщо текст має лишитися на Mac, один раз поставте Hy-MT2 через Ollama (близько 4,6 ГБ), і переклад зможе завершитись без мережі. Якщо ключ OpenRouter, Groq чи Cerebras у вас уже є, те саме вікно надішле абзац туди.",
+    note: "Безкоштовно і підписано. Потрібна macOS 14 або новіша на Apple silicon, акаунт створювати не треба.",
+    board_hint: "Ці привітання вже написані, тому табло перегортається без очікування моделі. Власний текст перекладає застосунок.",
     play: "Пустити", pause: "Пауза",
-    proof_h: "Вікно, у якому працюєте",
-    proof_p: "Дві панелі, відсоток, поки переклад іде, і кнопка Copy, коли готово. У налаштуваннях обираєте провайдера і запасний варіант, якщо перший не відповідає.",
-    m1h: "Офлайн, якщо обрали Ollama",
-    m1p: "Hy-MT2 7B важить близько 4,6 ГБ. Коли модель уже на Mac, переклад може не виходити з машини.",
-    m2h: "Word і PDF зберігають вигляд",
-    m2p: "DOCX змінює текст усередині оригінального файла. PDF малює переклад на тих самих сторінках. Скан спочатку потребує розпізнавання.",
-    m3h: "З будь-якого застосунку",
-    m3p: "⌥⌘T перекладає буфер обміну. ⌥⌘C копіює виділене там, де ви зараз, і відкриває DeepL-oFM. Для виділення потрібен дозвіл Accessibility.",
+    proof_h: "Вікно, у якому ви працюєте",
+    proof_p: "Поки переклад іде, видно обидва боки й відсоток. Кнопка Copy з'являється, коли готовий кожен рядок. У Settings обираєте, куди йде текст, і можете вказати друге місце, якщо перше мовчить.",
+    m1h: "Абзац може лишитися на Mac",
+    m1p: "Модель, яку зазвичай ставлять на Mac, це Hy-MT2 7B, близько 4,6 ГБ, через Ollama. Коли це завантаження закінчене, переклад не мусить виходити з машини.",
+    m2h: "Файл Word лишається вашим файлом",
+    m2p: "Файл Word лишається файлом Word: застосунок міняє слова всередині й не чіпає вигляд навколо. PDF, у якому вже є текст, отримує переклад на тих самих сторінках. Скан — це фотографія паперу, тож спершу розпізнайте текст.",
+    m3h: "Можна не виходити з листа, який пишете",
+    m3p: "Якщо ви посеред листа, ⌥⌘T перекладає те, що ви щойно скопіювали. ⌥⌘C бере речення, яке ви виділили в іншому застосунку, і відкриває з ним DeepL-oFM. Другу комбінацію macOS дозволяє лише після дозволу Accessibility.",
     c_text: "Текст", c_preview: "Перегляд", c_write: "Перепис", c_files: "Файли", c_settings: "Налаштування",
-    watch_h: "Сам застосунок у русі",
-    watch_p: "Markdown, звичайний текст, джерело, PDF і налаштування. Це запис справжнього вікна.",
-    film_h: "Десять секунд, саме привітання",
-    film_p: "Те саме табло, без звуку. Поставте на паузу, коли захочете.",
-    film_note: "Без звуку навмисно. Привітання у ролику ті самі заготовлені рядки, що й на табло вище.",
-    install_h: "На Mac за три кроки",
-    step1: "Завантажте образ диска.",
-    step2: "Перетягніть DeepL-oFM у Applications.",
-    step3: "Відкрийте Settings, оберіть Ollama або хмару, натисніть Connect.",
-    model_label: "Звична локальна модель",
+    watch_h: "Запис справжнього вікна",
+    watch_p: "Markdown, звичайний абзац, джерело під ним, PDF і Settings. Це працює сам застосунок, знятий на відео.",
+    film_h: "Десять секунд табло",
+    film_p: "Табло вище вміє перегортатися саме. Цей ролик про те саме, десять секунд, без звуку.",
+    film_note: "Привітання написані заздалегідь. Модель не складала їх, поки ви дивилися.",
+    install_h: "Поставити на Mac",
+    step1: "Завантажте образ диска. Файл підписано, і Apple його нотарізувала.",
+    step2: "Перетягніть DeepL-oFM у Applications і відкрийте, як будь-який інший застосунок.",
+    step3: "У Settings оберіть Ollama або вставте ключ OpenRouter, Groq чи Cerebras і натисніть Connect.",
+    model_label: "Перед першим перекладом без мережі Ollama має зберегти модель. Це роблять ось ці два рядки.",
     copy: "Копіювати", copied: "Скопійовано", copyfail: "Виділіть рядки",
-    iphone: "<a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">Проєкт для iPhone</a> лежить у репозиторії. Кнопка завантаження — це застосунок для Mac.",
-    skip_h: "Це не кожен перекладач",
-    skip_p: "Пропустіть, якщо потрібні корпоративний глосарій, CAT-інструмент або перекладач, за який уже платить уся команда. Лишайтеся, якщо хочете вікно на Mac, локальну модель і жодного акаунта.",
-    guides_h: "Довга версія дев’ятьма мовами",
-    privacy: "Політика приватності",
+    iphone: "У репозиторії є <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">проєкт для iPhone</a>. Кнопка на цій сторінці завантажує застосунок для Mac. У App Store його немає.",
+    skip_h: "Облиште, якщо живете в спільному глосарії",
+    skip_p: "Якщо робота тримається на списку термінів, який ділить уся компанія, або на інструменті, що пам'ятає кожне ухвалене речення, цей застосунок того не замінить. Беріть його, коли потрібні вікно на Mac, модель, яка може лишатися на машині, і жоден акаунт.",
+    guides_h: "Довший посібник",
+    guides_p: "Той самий посібник є дев'ятьма мовами. Сторінка про приватність написана лише англійською.",
+    privacy: "Політика приватності", changelog: "Журнал змін", security: "Безпека",
     faq_h: "Перед завантаженням",
-    q1: "Чи бачить проєкт, що я перекладаю?",
-    a1: "Немає акаунта й аналітики. Хмарний провайдер отримує текст лише тоді, коли ви його обрали. Ключі лежать у В’язці ключів macOS.",
-    q2: "Чи перекладе сканований PDF?",
-    a2: "Сам не перекладе. Спочатку розпізнайте текст, потім перекладайте. Звичайні PDF і Word зберігають верстку.",
-    q3: "Це DeepL?",
-    a3: "Ні. DeepL-oFM — окремий застосунок. Назва описує вікно з двома панелями («on Free Models»). Із DeepL SE він не пов’язаний.",
-    foot: "Ліцензія MIT. Не пов’язаний із DeepL SE."
+    q1: "Чи можуть автори прочитати те, що я перекладаю?",
+    a1: "Акаунта й аналітики немає, тож переклад не повертається до проєкту. Хмарний сервіс бачить текст лише тоді, коли ви самі обираєте цей сервіс і надсилаєте абзац. Ключі, які ви вводите, лежать у В'язці ключів macOS.",
+    q2: "А якщо PDF — це скан?",
+    a2: "Скан — це фотографія сторінки. Спершу розпізнайте текст, тоді перекладайте. PDF, у якому вже є справжній текст, і файл Word зберігають вигляд.",
+    q3: "Це застосунок DeepL від DeepL SE?",
+    a3: "Ні. DeepL-oFM — окремий застосунок, і з DeepL SE він не пов'язаний. Назва означає вікно з двома панелями, яке може працювати на безкоштовних моделях.",
+    foot: "Ліцензія MIT. Не пов'язаний із DeepL SE."
+  },
+  ru: {
+    title: "DeepL-oFM — ваши слова и перевод в одном окне",
+    nav_how: "Окно", nav_watch: "Смотреть", nav_get: "Установка", menu: "Меню",
+    download_short: "Скачать", download: "Скачать для Mac", github: "Код",
+    h1: "Ваши слова и перевод в одном окне.",
+    lead: "Вставьте абзац, письмо, которое ещё дописываете, или страницу Markdown. DeepL-oFM оставляет написанное слева и ставит перевод справа, так что фразу можно сверить и не потерять ту, которую вы имели в виду. Если текст должен остаться на Mac, один раз поставьте Hy-MT2 через Ollama (около 4,6 ГБ), и перевод сможет закончиться без сети. Если ключ OpenRouter, Groq или Cerebras у вас уже есть, то же окно отправит абзац туда.",
+    note: "Бесплатно и подписано. Нужна macOS 14 или новее на Apple silicon, учётную запись создавать не нужно.",
+    board_hint: "Эти приветствия уже написаны, поэтому табло переворачивается без ожидания модели. Свой текст переводит приложение.",
+    play: "Пуск", pause: "Пауза",
+    proof_h: "Окно, в котором вы работаете",
+    proof_p: "Пока перевод идёт, видны обе стороны и процент. Кнопка Copy появляется, когда готова каждая строка. В Settings вы выбираете, куда уходит текст, и можете указать второе место, если первое молчит.",
+    m1h: "Абзац может остаться на Mac",
+    m1p: "Модель, которую обычно ставят на Mac, это Hy-MT2 7B, около 4,6 ГБ, через Ollama. Когда эта загрузка закончена, перевод не обязан покидать машину.",
+    m2h: "Файл Word остаётся вашим файлом",
+    m2p: "Файл Word остаётся файлом Word: приложение меняет слова внутри и не трогает оформление вокруг. PDF, в котором уже есть текст, получает перевод на тех же страницах. Скан — это фотография бумаги, поэтому сначала распознайте текст.",
+    m3h: "Можно не выходить из письма, которое пишете",
+    m3p: "Если вы посреди письма, ⌥⌘T переводит то, что вы только что скопировали. ⌥⌘C берёт предложение, которое вы выделили в другом приложении, и открывает с ним DeepL-oFM. Второе сочетание macOS разрешает только после доступа Accessibility.",
+    c_text: "Текст", c_preview: "Просмотр", c_write: "Пересказ", c_files: "Файлы", c_settings: "Настройки",
+    watch_h: "Запись настоящего окна",
+    watch_p: "Markdown, обычный абзац, источник под ним, PDF и Settings. Это само приложение, снятое на видео.",
+    film_h: "Десять секунд табло",
+    film_p: "Табло выше умеет переворачиваться само. Этот ролик о том же, десять секунд, без звука.",
+    film_note: "Приветствия написаны заранее. Модель не составляла их, пока вы смотрели.",
+    install_h: "Поставить на Mac",
+    step1: "Скачайте образ диска. Файл подписан, и Apple его нотаризовала.",
+    step2: "Перетащите DeepL-oFM в Applications и откройте, как любое другое приложение.",
+    step3: "В Settings выберите Ollama или вставьте ключ OpenRouter, Groq или Cerebras и нажмите Connect.",
+    model_label: "Перед первым переводом без сети Ollama должна сохранить модель. Это делают вот эти две строки.",
+    copy: "Копировать", copied: "Скопировано", copyfail: "Выделите строки",
+    iphone: "В репозитории есть <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">проект для iPhone</a>. Кнопка на этой странице скачивает приложение для Mac. В App Store его нет.",
+    skip_h: "Оставьте, если живёте в общем глоссарии",
+    skip_p: "Если работа держится на списке терминов, который делит вся компания, или на инструменте, который помнит каждое утверждённое предложение, это приложение того не заменит. Берите его, когда нужны окно на Mac, модель, которая может оставаться на машине, и никакая учётная запись.",
+    guides_h: "Подробный гид",
+    guides_p: "Тот же гид есть на девяти языках. Страница о приватности написана только по-английски.",
+    privacy: "Политика конфиденциальности", changelog: "История изменений", security: "Безопасность",
+    faq_h: "Перед загрузкой",
+    q1: "Могут ли авторы прочитать то, что я перевожу?",
+    a1: "Учётной записи и аналитики нет, поэтому перевод не возвращается в проект. Облачный сервис видит текст только тогда, когда вы сами выбираете этот сервис и отправляете абзац. Ключи, которые вы вводите, лежат в Связке ключей macOS.",
+    q2: "А если PDF — это скан?",
+    a2: "Скан — это фотография страницы. Сначала распознайте текст, потом переводите. PDF, в котором уже есть настоящий текст, и файл Word сохраняют оформление.",
+    q3: "Это приложение DeepL от DeepL SE?",
+    a3: "Нет. DeepL-oFM — отдельное приложение, и с DeepL SE оно не связано. Название означает окно с двумя панелями, которое может работать на бесплатных моделях.",
+    foot: "Лицензия MIT. Не связано с DeepL SE."
+  },
+  de: {
+    title: "DeepL-oFM — Ihre Worte und die Übersetzung in einem Fenster",
+    nav_how: "Das Fenster", nav_watch: "Ansehen", nav_get: "Installation", menu: "Menü",
+    download_short: "Laden", download: "Für den Mac laden", github: "Code",
+    h1: "Ihre Worte und die Übersetzung in einem Fenster.",
+    lead: "Fügen Sie einen Absatz ein, eine Mail, die Sie noch schreiben, oder eine Markdown-Seite. DeepL-oFM lässt Ihren Text links stehen und setzt die Übersetzung rechts daneben, sodass Sie einen Satz prüfen können, ohne den gemeinten zu verlieren. Soll der Text auf dem Mac bleiben, holen Sie Hy-MT2 einmal über Ollama (etwa 4,6 GB). Danach kann eine Übersetzung auch ohne Netz zu Ende laufen. Haben Sie schon einen Schlüssel für OpenRouter, Groq oder Cerebras, kann dasselbe Fenster den Absatz dorthin schicken.",
+    note: "Kostenlos und signiert. Sie brauchen macOS 14 oder neuer auf Apple silicon, und Sie legen kein Konto an.",
+    board_hint: "Diese Grüße sind schon geschrieben, darum klappt die Tafel ohne Warten auf ein Modell. Ihren eigenen Text übersetzt die App.",
+    play: "Start", pause: "Pause",
+    proof_h: "Das Fenster, in dem Sie arbeiten",
+    proof_p: "Während die Übersetzung läuft, sehen Sie beide Seiten und einen Prozentwert. Copy erscheint, sobald jede Zeile fertig ist. In den Settings wählen Sie, wohin der Text geht, und Sie können einen zweiten Ort nennen, falls der erste still bleibt.",
+    m1h: "Der Absatz kann auf dem Mac bleiben",
+    m1p: "Das Modell, das die meisten auf den Mac legen, ist Hy-MT2 7B, etwa 4,6 GB groß, über Ollama. Wenn dieser Download fertig ist, muss eine Übersetzung die Maschine nicht verlassen.",
+    m2h: "Eine Word-Datei bleibt Ihre Datei",
+    m2p: "Eine Word-Datei bleibt eine Word-Datei: Die App tauscht die Wörter darin und lässt das Layout darum herum stehen. Ein PDF, das schon Text enthält, bekommt die Übersetzung auf dieselben Seiten gezeichnet. Ein Scan ist ein Foto von Papier, darum erkennen Sie den Text zuerst.",
+    m3h: "Sie können in der Mail bleiben, die Sie schreiben",
+    m3p: "Mitten in einer Mail übersetzt ⌥⌘T das, was Sie gerade kopiert haben. ⌥⌘C nimmt den Satz, den Sie in der anderen App markiert haben, und öffnet DeepL-oFM damit. Das zweite Kürzel erlaubt macOS erst, nachdem Sie Accessibility gewährt haben.",
+    c_text: "Text", c_preview: "Vorschau", c_write: "Umschreiben", c_files: "Dateien", c_settings: "Einstellungen",
+    watch_h: "Eine Aufnahme des echten Fensters",
+    watch_p: "Markdown, ein gewöhnlicher Absatz, die Quelle darunter, ein PDF und die Settings. Das ist die App beim Laufen, gefilmt.",
+    film_h: "Zehn Sekunden von der Tafel",
+    film_p: "Die Tafel oben kann von selbst klappen. Dieser Film ist dieselbe Idee, zehn Sekunden, ohne Ton.",
+    film_note: "Die Grüße wurden vorher geschrieben. Ein Modell hat sie nicht erzeugt, während Sie zugesehen haben.",
+    install_h: "Auf den Mac bringen",
+    step1: "Laden Sie das Disk-Image. Die Datei ist signiert, und Apple hat sie notarisiert.",
+    step2: "Ziehen Sie DeepL-oFM auf Applications und öffnen Sie die App wie jede andere.",
+    step3: "Wählen Sie in den Settings Ollama, oder fügen Sie den Schlüssel von OpenRouter, Groq oder Cerebras ein, und drücken Sie Connect.",
+    model_label: "Vor der ersten Übersetzung ohne Netz muss Ollama das Modell speichern. Diese zwei Zeilen tun das.",
+    copy: "Kopieren", copied: "Kopiert", copyfail: "Zeilen markieren",
+    iphone: "Im Repository liegt ein <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">iPhone-Projekt</a>. Die Schaltfläche auf dieser Seite lädt die Mac-App. Die gibt es nicht im App Store.",
+    skip_h: "Lassen Sie es, wenn Sie in einem gemeinsamen Glossar leben",
+    skip_p: "Hängt Ihre Arbeit an einer Begriffsliste, die die ganze Firma teilt, oder an einem Werkzeug, das jeden freigegebenen Satz behält, ersetzt diese App das nicht. Nehmen Sie sie, wenn Sie ein Mac-Fenster wollen, ein Modell, das auf der Maschine bleiben kann, und kein Konto.",
+    guides_h: "Die längere Anleitung",
+    guides_p: "Dieselbe Anleitung gibt es in neun Sprachen. Die Seite zum Datenschutz ist nur auf Englisch geschrieben.",
+    privacy: "Datenschutz", changelog: "Änderungen", security: "Sicherheit",
+    faq_h: "Bevor Sie laden",
+    q1: "Können die Leute dahinter lesen, was ich übersetze?",
+    a1: "Es gibt kein Konto und keine Analytik, darum kommt eine Übersetzung nicht zum Projekt zurück. Ein Cloud-Dienst sieht den Text nur, wenn Sie diesen Dienst wählen und den Absatz schicken. Schlüssel, die Sie eintippen, liegen im macOS-Schlüsselbund.",
+    q2: "Was, wenn das PDF ein Scan ist?",
+    a2: "Ein Scan ist ein Foto einer Seite. Erkennen Sie zuerst den Text, dann übersetzen Sie. Ein PDF, das schon echten Text hat, und eine Word-Datei behalten ihr Layout.",
+    q3: "Ist das die DeepL-App von DeepL SE?",
+    a3: "Nein. DeepL-oFM ist eine eigene App und nicht mit DeepL SE verbunden. Der Name meint ein Fenster mit zwei Seiten, das auf freien Modellen laufen kann.",
+    foot: "MIT-Lizenz. Nicht mit DeepL SE verbunden."
+  },
+  fr: {
+    title: "DeepL-oFM — vos mots et la traduction dans la même fenêtre",
+    nav_how: "La fenêtre", nav_watch: "Voir", nav_get: "Installation", menu: "Menu",
+    download_short: "Télécharger", download: "Télécharger pour Mac", github: "Code",
+    h1: "Vos mots et la traduction dans la même fenêtre.",
+    lead: "Collez un paragraphe, un message que vous êtes encore en train d'écrire, ou une page en Markdown. DeepL-oFM laisse votre texte à gauche et place la traduction à droite, pour que vous puissiez vérifier une phrase sans perdre celle que vous vouliez dire. Si ce texte doit rester sur le Mac, installez Hy-MT2 une fois via Ollama (environ 4,6 Go). Ensuite, une traduction peut se terminer sans réseau. Si vous avez déjà une clé pour OpenRouter, Groq ou Cerebras, la même fenêtre peut envoyer le paragraphe là-bas.",
+    note: "Gratuit, et signé. Il faut macOS 14 ou plus récent sur Apple silicon, et vous ne créez pas de compte.",
+    board_hint: "Ces bonjours sont déjà écrits, donc le tableau tourne sans attendre un modèle. C'est votre propre texte que l'application traduit.",
+    play: "Lecture", pause: "Pause",
+    proof_h: "La fenêtre dans laquelle vous travaillez",
+    proof_p: "Pendant que la traduction avance, vous voyez les deux côtés et un pourcentage. Copy apparaît quand chaque ligne est finie. Dans Settings, vous choisissez où va le texte, et vous pouvez nommer un second endroit si le premier reste silencieux.",
+    m1h: "Le paragraphe peut rester sur le Mac",
+    m1p: "Le modèle que les gens posent d'habitude sur le Mac est Hy-MT2 7B, environ 4,6 Go, via Ollama. Une fois ce téléchargement fini, une traduction n'a pas à quitter la machine.",
+    m2h: "Un fichier Word reste votre fichier",
+    m2p: "Un fichier Word reste un fichier Word : l'application change les mots à l'intérieur et laisse la mise en page autour. Un PDF qui contient déjà du texte reçoit la traduction dessinée sur ces mêmes pages. Un scan est une photo de papier, donc reconnaissez le texte d'abord.",
+    m3h: "Vous pouvez rester dans le message que vous écrivez",
+    m3p: "Au milieu d'un message, ⌥⌘T traduit ce que vous venez de copier. ⌥⌘C prend la phrase que vous avez surlignée dans l'autre application et ouvre DeepL-oFM avec elle. macOS n'autorise le second raccourci qu'après l'accès Accessibility.",
+    c_text: "Texte", c_preview: "Aperçu", c_write: "Réécriture", c_files: "Fichiers", c_settings: "Réglages",
+    watch_h: "Un enregistrement de la vraie fenêtre",
+    watch_p: "Markdown, un paragraphe ordinaire, la source dessous, un PDF et Settings. C'est l'application en train de tourner, filmée.",
+    film_h: "Dix secondes du tableau",
+    film_p: "Le tableau au-dessus peut tourner tout seul. Ce film est la même idée, dix secondes, sans son.",
+    film_note: "Les bonjours ont été écrits à l'avance. Un modèle ne les a pas produits pendant que vous regardiez.",
+    install_h: "Le mettre sur le Mac",
+    step1: "Téléchargez l'image disque. Le fichier est signé, et Apple l'a notarié.",
+    step2: "Glissez DeepL-oFM dans Applications, puis ouvrez-le comme n'importe quelle autre application.",
+    step3: "Dans Settings, choisissez Ollama, ou collez la clé d'OpenRouter, de Groq ou de Cerebras, et appuyez sur Connect.",
+    model_label: "Avant la première traduction hors ligne, Ollama doit stocker le modèle. Ces deux lignes font ça.",
+    copy: "Copier", copied: "Copié", copyfail: "Sélectionnez les lignes",
+    iphone: "Le dépôt contient un <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">projet iPhone</a>. Le bouton de cette page télécharge l'application Mac. Elle n'est pas sur l'App Store.",
+    skip_h: "Laissez-le si vous vivez dans un glossaire partagé",
+    skip_p: "Si votre travail dépend d'une liste de termes que toute l'entreprise partage, ou d'un outil qui retient chaque phrase déjà approuvée, cette application ne remplacera pas ça. Prenez-la quand vous voulez une fenêtre sur Mac, un modèle qui peut rester sur la machine, et aucun compte.",
+    guides_h: "Le guide plus long",
+    guides_p: "Le même guide existe en neuf langues. La page sur la confidentialité est écrite en anglais seulement.",
+    privacy: "Confidentialité", changelog: "Journal des modifications", security: "Sécurité",
+    faq_h: "Avant de télécharger",
+    q1: "Les gens derrière ceci peuvent-ils lire ce que je traduis ?",
+    a1: "Il n'y a pas de compte et pas d'analytique, donc une traduction ne revient pas au projet. Un service cloud voit le texte seulement quand vous choisissez ce service et envoyez le paragraphe. Les clés que vous tapez restent dans le Trousseau macOS.",
+    q2: "Et si le PDF est un scan ?",
+    a2: "Un scan est une photo d'une page. Reconnaissez d'abord le texte, puis traduisez. Un PDF qui a déjà du vrai texte, et un fichier Word, gardent leur mise en page.",
+    q3: "Est-ce l'application DeepL de DeepL SE ?",
+    a3: "Non. DeepL-oFM est une application à part, et elle n'est pas affiliée à DeepL SE. Le nom désigne une fenêtre côte à côte qui peut tourner sur des modèles libres.",
+    foot: "Licence MIT. Pas affilié à DeepL SE."
+  },
+  es: {
+    title: "DeepL-oFM — tus palabras y la traducción en la misma ventana",
+    nav_how: "La ventana", nav_watch: "Ver", nav_get: "Instalación", menu: "Menú",
+    download_short: "Descargar", download: "Descargar para Mac", github: "Código",
+    h1: "Tus palabras y la traducción en la misma ventana.",
+    lead: "Pega un párrafo, un correo que todavía estás escribiendo, o una página en Markdown. DeepL-oFM deja lo que escribiste a la izquierda y pone la traducción a la derecha, para que puedas revisar una frase sin perder la que querías decir. Si ese texto tiene que quedarse en el Mac, instala Hy-MT2 una vez con Ollama (unos 4,6 GB). A partir de ahí, una traducción puede terminar sin red. Si ya tienes una clave de OpenRouter, Groq o Cerebras, la misma ventana puede enviar el párrafo allí.",
+    note: "Gratis, y firmado. Necesita macOS 14 o posterior en Apple silicon, y no creas una cuenta.",
+    board_hint: "Estos saludos ya están escritos, así que el tablero gira sin esperar a un modelo. Tu propio texto es lo que traduce la app.",
+    play: "Reproducir", pause: "Pausa",
+    proof_h: "La ventana en la que trabajas",
+    proof_p: "Mientras trabaja ves los dos lados y un porcentaje. Copy aparece cuando cada línea está lista. En Settings eliges a dónde va el texto, y puedes nombrar un segundo sitio si el primero se queda callado.",
+    m1h: "El párrafo puede quedarse en el Mac",
+    m1p: "El modelo que la gente suele poner en el Mac es Hy-MT2 7B, unos 4,6 GB de tamaño, a través de Ollama. Cuando esa descarga termina, una traducción no tiene que salir de la máquina.",
+    m2h: "Un archivo de Word sigue siendo tu archivo",
+    m2p: "Un archivo de Word sigue siendo un archivo de Word: la app cambia las palabras dentro y deja el diseño alrededor. Un PDF que ya contiene texto recibe la traducción dibujada en esas mismas páginas. Un escaneo es una foto del papel, así que reconoce el texto antes.",
+    m3h: "Puedes seguir en el correo que estás escribiendo",
+    m3p: "Si estás a mitad de un correo, ⌥⌘T traduce lo que acabas de copiar. ⌥⌘C toma la frase que resaltaste en la otra app y abre DeepL-oFM con ella. macOS solo permite el segundo atajo después de que concedas Accessibility.",
+    c_text: "Texto", c_preview: "Vista previa", c_write: "Reescritura", c_files: "Archivos", c_settings: "Ajustes",
+    watch_h: "Una grabación de la ventana real",
+    watch_p: "Markdown, un párrafo normal, la fuente debajo, un PDF y Settings. Es la app en marcha, filmada.",
+    film_h: "Diez segundos del tablero",
+    film_p: "El tablero de arriba puede girar solo. Este vídeo es la misma idea, diez segundos, sin sonido.",
+    film_note: "Los saludos se escribieron de antemano. Un modelo no los produjo mientras mirabas.",
+    install_h: "Ponlo en el Mac",
+    step1: "Descarga la imagen de disco. El archivo está firmado, y Apple lo ha notarizado.",
+    step2: "Arrastra DeepL-oFM a Applications y ábrelo como cualquier otra app.",
+    step3: "En Settings, elige Ollama, o pega la clave de OpenRouter, Groq o Cerebras, y pulsa Connect.",
+    model_label: "Antes de la primera traducción sin red, Ollama tiene que guardar el modelo. Estas dos líneas hacen eso.",
+    copy: "Copiar", copied: "Copiado", copyfail: "Selecciona las líneas",
+    iphone: "En el repositorio hay un <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">proyecto para iPhone</a>. El botón de esta página descarga la app para Mac. Esa versión no está en el App Store.",
+    skip_h: "Déjalo si vives en un glosario compartido",
+    skip_p: "Si tu trabajo depende de una lista de términos que comparte toda la compañía, o de una herramienta que recuerda cada frase ya aprobada, esta app no va a sustituir eso. Tómala cuando quieras una ventana en el Mac, un modelo que pueda quedarse en la máquina, y ninguna cuenta.",
+    guides_h: "La guía más larga",
+    guides_p: "La misma guía existe en nueve idiomas. La página de privacidad está escrita solo en inglés.",
+    privacy: "Política de privacidad", changelog: "Registro de cambios", security: "Seguridad",
+    faq_h: "Antes de descargar",
+    q1: "¿Puede leer la gente detrás de esto lo que traduzco?",
+    a1: "No hay cuenta ni analítica, así que una traducción no vuelve al proyecto. Un servicio en la nube ve el texto solo cuando eliges ese servicio y envías el párrafo. Las claves que escribes se quedan en el Llavero de macOS.",
+    q2: "¿Y si el PDF es un escaneo?",
+    a2: "Un escaneo es una foto de una página. Reconoce el texto primero y luego traduce. Un PDF que ya tiene texto de verdad, y un archivo de Word, conservan su diseño.",
+    q3: "¿Es esta la app DeepL de DeepL SE?",
+    a3: "No. DeepL-oFM es una app aparte, y no está afiliada a DeepL SE. El nombre significa una ventana lado a lado que puede funcionar con modelos gratuitos.",
+    foot: "Licencia MIT. No afiliado a DeepL SE."
+  },
+  pl: {
+    title: "DeepL-oFM — twoje słowa i tłumaczenie w jednym oknie",
+    nav_how: "Okno", nav_watch: "Obejrzyj", nav_get: "Instalacja", menu: "Menu",
+    download_short: "Pobierz", download: "Pobierz na Maca", github: "Kod",
+    h1: "Twoje słowa i tłumaczenie w jednym oknie.",
+    lead: "Wklej akapit, maila, którego jeszcze piszesz, albo stronę w Markdown. DeepL-oFM zostawia to, co napisane, po lewej i stawia tłumaczenie po prawej, żeby dało się sprawdzić zdanie i nie zgubić tego, o które ci chodziło. Jeśli ten tekst ma zostać na Macu, zainstaluj Hy-MT2 raz przez Ollama (około 4,6 GB). Potem tłumaczenie może dojść do końca bez sieci. Jeśli masz już klucz do OpenRouter, Groq albo Cerebras, to samo okno może wysłać akapit tam.",
+    note: "Za darmo i podpisane. Potrzebuje macOS 14 albo nowszego na Apple silicon, a konta nie zakładasz.",
+    board_hint: "Te powitania są już napisane, więc tablica przerzuca się bez czekania na model. Własny tekst tłumaczy aplikacja.",
+    play: "Start", pause: "Pauza",
+    proof_h: "Okno, w którym pracujesz",
+    proof_p: "Kiedy tłumaczenie idzie, widać obie strony i procent. Copy pojawia się, gdy każda linia jest gotowa. W Settings wybierasz, dokąd idzie tekst, i możesz podać drugie miejsce, jeśli pierwsze milczy.",
+    m1h: "Akapit może zostać na Macu",
+    m1p: "Model, który ludzie zwykle kładą na Maca, to Hy-MT2 7B, około 4,6 GB, przez Ollama. Gdy to pobieranie się skończy, tłumaczenie nie musi opuszczać maszyny.",
+    m2h: "Plik Word zostaje twoim plikiem",
+    m2p: "Plik Word zostaje plikiem Word: aplikacja zmienia słowa w środku i zostawia układ wokół nich. PDF, który już zawiera tekst, dostaje tłumaczenie narysowane na tych samych stronach. Skan to zdjęcie papieru, więc najpierw rozpoznaj tekst.",
+    m3h: "Możesz zostać w mailu, który piszesz",
+    m3p: "Jeśli jesteś w środku maila, ⌥⌘T tłumaczy to, co właśnie wylądowało w schowku. ⌥⌘C bierze zdanie zaznaczone w innej aplikacji i otwiera z nim DeepL-oFM. Drugi skrót macOS puszcza dopiero po zgodzie na Accessibility.",
+    c_text: "Tekst", c_preview: "Podgląd", c_write: "Przeredagowanie", c_files: "Pliki", c_settings: "Ustawienia",
+    watch_h: "Nagranie prawdziwego okna",
+    watch_p: "Markdown, zwykły akapit, źródło pod spodem, PDF i Settings. To działająca aplikacja, sfilmowana.",
+    film_h: "Dziesięć sekund tablicy",
+    film_p: "Tablica wyżej umie przerzucać się sama. Ten film jest o tym samym, dziesięć sekund, bez dźwięku.",
+    film_note: "Powitania napisano wcześniej. Model nie układał ich w trakcie oglądania.",
+    install_h: "Połóż to na Maca",
+    step1: "Pobierz obraz dysku. Plik jest podpisany, a Apple go poświadczyło.",
+    step2: "Przeciągnij DeepL-oFM do Applications i otwórz tak, jak każdą inną aplikację.",
+    step3: "W Settings wybierz Ollama albo wklej klucz z OpenRouter, Groq lub Cerebras i naciśnij Connect.",
+    model_label: "Przed pierwszym tłumaczeniem bez sieci Ollama musi zapisać model. Te dwie linie to robią.",
+    copy: "Kopiuj", copied: "Skopiowano", copyfail: "Zaznacz linie",
+    iphone: "W repozytorium jest <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">projekt na iPhone'a</a>. Przycisk na tej stronie pobiera aplikację na Maca. Tej wersji nie ma w App Store.",
+    skip_h: "Zostaw to, jeśli żyjesz we wspólnym glosariuszu",
+    skip_p: "Jeśli praca wisi na liście terminów, którą dzieli cała firma, albo na narzędziu, które pamięta każde zatwierdzone zdanie, ta aplikacja tego nie zastąpi. Weź ją, kiedy chcesz okno na Macu, model, który może zostać na maszynie, i żadnego konta.",
+    guides_h: "Dłuższy przewodnik",
+    guides_p: "Ten sam przewodnik jest w dziewięciu językach. Strona o prywatności jest napisana tylko po angielsku.",
+    privacy: "Polityka prywatności", changelog: "Dziennik zmian", security: "Bezpieczeństwo",
+    faq_h: "Zanim pobierzesz",
+    q1: "Czy ludzie za tym mogą przeczytać to, co tłumaczę?",
+    a1: "Nie ma konta ani analityki, więc tłumaczenie nie wraca do projektu. Usługa w chmurze widzi tekst tylko wtedy, gdy sam wybierzesz tę usługę i wyślesz akapit. Klucze, które wpisujesz, leżą w Pęku kluczy macOS.",
+    q2: "A jeśli PDF to skan?",
+    a2: "Skan to zdjęcie strony. Najpierw rozpoznaj tekst, potem tłumacz. PDF, który już ma prawdziwy tekst, i plik Word zostawiają swój układ.",
+    q3: "Czy to aplikacja DeepL od DeepL SE?",
+    a3: "Nie. DeepL-oFM to osobna aplikacja i nie jest powiązana z DeepL SE. Nazwa znaczy okno obok siebie, które może działać na darmowych modelach.",
+    foot: "Licencja MIT. Bez powiązania z DeepL SE."
+  },
+  pt: {
+    title: "DeepL-oFM — as tuas palavras e a tradução na mesma janela",
+    nav_how: "A janela", nav_watch: "Ver", nav_get: "Instalação", menu: "Menu",
+    download_short: "Descarregar", download: "Descarregar para Mac", github: "Código",
+    h1: "As tuas palavras e a tradução na mesma janela.",
+    lead: "Cola um parágrafo, uma mensagem que ainda estás a escrever, ou uma página em Markdown. O DeepL-oFM deixa o que escreveste à esquerda e põe a tradução à direita, para poderes rever uma frase sem perderes a que querias dizer. Se esse texto tem de ficar no Mac, instala o Hy-MT2 uma vez pelo Ollama (cerca de 4,6 GB). A partir daí, uma tradução pode acabar sem rede. Se já tens uma chave da OpenRouter, Groq ou Cerebras, a mesma janela pode enviar o parágrafo para lá.",
+    note: "Grátis, e assinado. Precisa de macOS 14 ou posterior em Apple silicon, e não crias uma conta.",
+    board_hint: "Estes cumprimentos já estão escritos, por isso o painel vira sem esperar por um modelo. O teu próprio texto é o que a aplicação traduz.",
+    play: "Reproduzir", pause: "Pausa",
+    proof_h: "A janela em que trabalhas",
+    proof_p: "Enquanto trabalha vês os dois lados e uma percentagem. Copy aparece quando cada linha está pronta. Em Settings escolhes para onde vai o texto, e podes nomear um segundo sítio se o primeiro ficar calado.",
+    m1h: "O parágrafo pode ficar no Mac",
+    m1p: "O modelo que as pessoas costumam pôr no Mac é o Hy-MT2 7B, cerca de 4,6 GB, pelo Ollama. Quando esse descarregamento acaba, uma tradução não tem de sair da máquina.",
+    m2h: "Um ficheiro Word continua a ser o teu ficheiro",
+    m2p: "Um ficheiro Word continua a ser um ficheiro Word: a aplicação muda as palavras lá dentro e deixa a disposição à volta. Um PDF que já contém texto recebe a tradução desenhada nessas mesmas páginas. Uma digitalização é uma fotografia do papel, por isso reconhece o texto primeiro.",
+    m3h: "Podes ficar na mensagem que estás a escrever",
+    m3p: "Se estás a meio de uma mensagem, ⌥⌘T traduz o que acabaste de copiar. ⌥⌘C pega na frase que realçaste na outra aplicação e abre o DeepL-oFM com ela. O macOS só deixa o segundo atalho depois de concederes Accessibility.",
+    c_text: "Texto", c_preview: "Pré-visualização", c_write: "Reescrita", c_files: "Ficheiros", c_settings: "Definições",
+    watch_h: "Uma gravação da janela real",
+    watch_p: "Markdown, um parágrafo normal, a fonte por baixo, um PDF e Settings. É a aplicação a correr, filmada.",
+    film_h: "Dez segundos do painel",
+    film_p: "O painel acima pode virar sozinho. Este filme é a mesma ideia, dez segundos, sem som.",
+    film_note: "Os cumprimentos foram escritos antes. Um modelo não os produziu enquanto vias.",
+    install_h: "Pô-lo no Mac",
+    step1: "Descarrega a imagem de disco. O ficheiro está assinado, e a Apple autenticou-o.",
+    step2: "Arrasta o DeepL-oFM para Applications e abre-o como qualquer outra aplicação.",
+    step3: "Em Settings, escolhe Ollama, ou cola a chave da OpenRouter, Groq ou Cerebras, e prime Connect.",
+    model_label: "Antes da primeira tradução sem rede, o Ollama tem de guardar o modelo. Estas duas linhas fazem isso.",
+    copy: "Copiar", copied: "Copiado", copyfail: "Seleciona as linhas",
+    iphone: "No repositório há um <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">projeto para iPhone</a>. O botão desta página descarrega a aplicação para Mac. Essa versão não está na App Store.",
+    skip_h: "Deixa-o se vives num glossário partilhado",
+    skip_p: "Se o teu trabalho depende de uma lista de termos que toda a empresa partilha, ou de uma ferramenta que lembra cada frase já aprovada, esta aplicação não substitui isso. Toma-a quando quiseres uma janela no Mac, um modelo que possa ficar na máquina, e nenhuma conta.",
+    guides_h: "O guia mais longo",
+    guides_p: "O mesmo guia existe em nove línguas. A página de privacidade está escrita só em inglês.",
+    privacy: "Política de privacidade", changelog: "Registo de alterações", security: "Segurança",
+    faq_h: "Antes de descarregares",
+    q1: "As pessoas por trás disto podem ler o que eu traduzo?",
+    a1: "Não há conta nem analítica, por isso uma tradução não volta ao projeto. Um serviço na nuvem vê o texto só quando escolhes esse serviço e envias o parágrafo. As chaves que escreves ficam no Porta-chaves do macOS.",
+    q2: "E se o PDF for uma digitalização?",
+    a2: "Uma digitalização é uma fotografia de uma página. Reconhece o texto primeiro e depois traduz. Um PDF que já tem texto a sério, e um ficheiro Word, mantêm a disposição.",
+    q3: "Isto é a aplicação DeepL da DeepL SE?",
+    a3: "Não. O DeepL-oFM é uma aplicação à parte, e não está afiliado à DeepL SE. O nome quer dizer uma janela lado a lado que pode correr em modelos gratuitos.",
+    foot: "Licença MIT. Sem afiliação à DeepL SE."
+  },
+  it: {
+    title: "DeepL-oFM — le tue parole e la traduzione nella stessa finestra",
+    nav_how: "La finestra", nav_watch: "Guarda", nav_get: "Installazione", menu: "Menu",
+    download_short: "Scarica", download: "Scarica per Mac", github: "Codice",
+    h1: "Le tue parole e la traduzione nella stessa finestra.",
+    lead: "Incolla un paragrafo, un messaggio che stai ancora scrivendo, o una pagina in Markdown. DeepL-oFM lascia quello che hai scritto a sinistra e mette la traduzione a destra, così puoi controllare una frase senza perdere quella che volevi dire. Se quel testo deve restare sul Mac, installa Hy-MT2 una volta con Ollama (circa 4,6 GB). Da lì, una traduzione può finire anche senza rete. Se hai già una chiave per OpenRouter, Groq o Cerebras, la stessa finestra può mandare il paragrafo lì.",
+    note: "Gratis, e firmato. Serve macOS 14 o successivo su Apple silicon, e non crei un account.",
+    board_hint: "Questi saluti sono già scritti, quindi il tabellone gira senza aspettare un modello. Il tuo testo è quello che traduce l'app.",
+    play: "Avvia", pause: "Pausa",
+    proof_h: "La finestra in cui lavori",
+    proof_p: "Mentre lavora vedi i due lati e una percentuale. Copy compare quando ogni riga è pronta. In Settings scegli dove va il testo, e puoi indicare un secondo posto se il primo resta zitto.",
+    m1h: "Il paragrafo può restare sul Mac",
+    m1p: "Il modello che di solito si mette sul Mac è Hy-MT2 7B, circa 4,6 GB, tramite Ollama. Quando quel download è finito, una traduzione non deve lasciare la macchina.",
+    m2h: "Un file Word resta il tuo file",
+    m2p: "Un file Word resta un file Word: l'app cambia le parole dentro e lascia l'impaginazione intorno. Un PDF che contiene già testo riceve la traduzione disegnata su quelle stesse pagine. Una scansione è una foto della carta, quindi riconosci prima il testo.",
+    m3h: "Puoi restare nel messaggio che stai scrivendo",
+    m3p: "Se sei a metà di un messaggio, ⌥⌘T traduce quello che hai appena copiato. ⌥⌘C prende la frase che hai evidenziato nell'altra app e apre DeepL-oFM con quella. macOS consente la seconda scorciatoia solo dopo che concedi Accessibility.",
+    c_text: "Testo", c_preview: "Anteprima", c_write: "Riscrittura", c_files: "File", c_settings: "Impostazioni",
+    watch_h: "Una registrazione della finestra vera",
+    watch_p: "Markdown, un paragrafo normale, la fonte sotto, un PDF e Settings. È l'app che gira, filmata.",
+    film_h: "Dieci secondi del tabellone",
+    film_p: "Il tabellone sopra può girare da solo. Questo film è la stessa idea, dieci secondi, senza audio.",
+    film_note: "I saluti sono stati scritti prima. Un modello non li ha prodotti mentre guardavi.",
+    install_h: "Mettilo sul Mac",
+    step1: "Scarica l'immagine disco. Il file è firmato, e Apple lo ha autenticato.",
+    step2: "Trascina DeepL-oFM in Applications e aprilo come qualsiasi altra app.",
+    step3: "In Settings scegli Ollama, oppure incolla la chiave di OpenRouter, Groq o Cerebras, e premi Connect.",
+    model_label: "Prima della prima traduzione senza rete, Ollama deve salvare il modello. Queste due righe fanno quello.",
+    copy: "Copia", copied: "Copiato", copyfail: "Seleziona le righe",
+    iphone: "Nel repository c'è un <a href=\"https://github.com/Lexus2016/deepl-on-free-models/blob/main/ios/README.md\">progetto per iPhone</a>. Il pulsante di questa pagina scarica l'app per Mac. Quella build non è sull'App Store.",
+    skip_h: "Lascialo se vivi in un glossario condiviso",
+    skip_p: "Se il tuo lavoro dipende da un elenco di termini che tutta l'azienda condivide, o da uno strumento che ricorda ogni frase già approvata, questa app non lo sostituisce. Prendila quando vuoi una finestra sul Mac, un modello che può restare sulla macchina, e nessun account.",
+    guides_h: "La guida più lunga",
+    guides_p: "La stessa guida esiste in nove lingue. La pagina sulla privacy è scritta solo in inglese.",
+    privacy: "Informativa privacy", changelog: "Registro delle modifiche", security: "Sicurezza",
+    faq_h: "Prima di scaricare",
+    q1: "Le persone dietro a questo possono leggere ciò che traduco?",
+    a1: "Non c'è un account e non c'è analitica, quindi una traduzione non torna al progetto. Un servizio cloud vede il testo solo quando scegli quel servizio e mandi il paragrafo. Le chiavi che scrivi restano nel Portachiavi di macOS.",
+    q2: "E se il PDF è una scansione?",
+    a2: "Una scansione è una foto di una pagina. Riconosci prima il testo, poi traduci. Un PDF che ha già testo vero, e un file Word, tengono l'impaginazione.",
+    q3: "Questa è l'app DeepL di DeepL SE?",
+    a3: "No. DeepL-oFM è un'app a parte, e non è affiliata a DeepL SE. Il nome indica una finestra affiancata che può girare su modelli gratuiti.",
+    foot: "Licenza MIT. Nessuna affiliazione con DeepL SE."
   }
 };
 
@@ -463,7 +785,7 @@ let playing = !reduce;
 function apply(next) {
   lang = I18N[next] ? next : "en";
   const pack = I18N[lang];
-  document.documentElement.lang = lang === "uk" ? "uk" : "en";
+  document.documentElement.lang = lang;
   document.title = pack.title;
   document.querySelectorAll("[data-i]").forEach((el) => {
     const value = pack[el.dataset.i];
@@ -473,12 +795,11 @@ function apply(next) {
     const value = pack[el.dataset.ih];
     if (value) el.innerHTML = value;
   });
-  document.querySelectorAll("[data-setlang]").forEach((btn) => {
-    btn.setAttribute("aria-pressed", btn.dataset.setlang === lang ? "true" : "false");
-  });
+  const picker = document.getElementById("lang");
+  if (picker) picker.value = lang;
   const play = document.getElementById("play");
   play.textContent = playing ? pack.pause : pack.play;
-  try { localStorage.setItem("deepl-ofm-lang", lang); } catch (err) {}
+  try { localStorage.setItem("deepl-ofm-lang-v2", lang); } catch (err) {}
 }
 
 function glyphsOf(word) {
@@ -570,8 +891,8 @@ document.getElementById("copycmd").addEventListener("click", async () => {
   setTimeout(() => { btn.textContent = I18N[lang].copy; }, 1600);
 });
 
-document.querySelectorAll("[data-setlang]").forEach((btn) => {
-  btn.addEventListener("click", () => apply(btn.dataset.setlang));
+document.getElementById("lang").addEventListener("change", (event) => {
+  apply(event.target.value);
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -592,13 +913,15 @@ if (reduce) {
 
 buildChips();
 buildRibbon();
+const LANGS = ["en", "uk", "ru", "de", "fr", "es", "pl", "pt", "it"];
 let start = "en";
 try {
-  const saved = localStorage.getItem("deepl-ofm-lang");
   const query = new URLSearchParams(location.search).get("lang");
-  start = query || saved || (navigator.language || "").slice(0, 2);
+  const saved = localStorage.getItem("deepl-ofm-lang-v2");
+  if (LANGS.includes(query)) start = query;
+  else if (LANGS.includes(saved)) start = saved;
 } catch (err) {}
-apply(start === "uk" ? "uk" : "en");
+apply(start);
 paint(0, false, false);
 if (!reduce) playRow();
 </script>
