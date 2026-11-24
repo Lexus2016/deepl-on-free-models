@@ -1074,13 +1074,11 @@ mod tests {
 
         fn register(&mut self, _action: &str, _combo: &KeyCombo) -> Result<(), HotkeyError> {
             self.registrations.fetch_add(1, Ordering::SeqCst);
-            if self
-                .fail_next
-                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| {
-                    left.checked_sub(1)
-                })
-                .is_ok()
-            {
+            // Plain load-and-decrement: `fetch_update` is deprecated on newer
+            // stable and `try_update` does not exist on 1.96, and this fake is
+            // only ever touched from one test thread.
+            if self.fail_next.load(Ordering::SeqCst) > 0 {
+                self.fail_next.fetch_sub(1, Ordering::SeqCst);
                 return Err(HotkeyError::new("This shortcut needs Ctrl or Alt."));
             }
             Ok(())
