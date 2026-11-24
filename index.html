@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeepL-oFM — your words and the translation in one window</title>
-<meta name="description" content="A Mac window with your paragraph on the left and the translation on the right. Hy-MT2 can stay on the machine through Ollama, or you can use your own key. Free, signed, no account.">
+<title>DeepL-oFM — a free replacement for the DeepL window</title>
+<meta name="description" content="A free Mac app if you got used to the DeepL window and do not want a subscription. Your paragraph can stay on the Mac. This is a different program, not DeepL.">
 <link rel="canonical" href="https://lexus2016.github.io/deepl-on-free-models/">
 <link rel="icon" href="docs/app-icon.png">
 <meta name="theme-color" content="#fff4e8">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DeepL-oFM">
-<meta property="og:title" content="DeepL-oFM — your words and the translation in one window">
-<meta property="og:description" content="Your paragraph stays on the left, the translation on the right. The model can stay on the Mac, or you can use your own key.">
+<meta property="og:title" content="DeepL-oFM — a free replacement for the DeepL window">
+<meta property="og:description" content="A free Mac app if you got used to the DeepL window and do not want a subscription. Your paragraph can stay on the Mac. This is a different program, not DeepL.">
 <meta property="og:url" content="https://lexus2016.github.io/deepl-on-free-models/">
 <meta property="og:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-card.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="DeepL-oFM — your words and the translation in one window">
-<meta name="twitter:description" content="Your paragraph stays on the left, the translation on the right. The model can stay on the Mac, or you can use your own key.">
+<meta name="twitter:title" content="DeepL-oFM — a free replacement for the DeepL window">
+<meta name="twitter:description" content="A free Mac app if you got used to the DeepL window and do not want a subscription. Your paragraph can stay on the Mac. This is a different program, not DeepL.">
 <meta name="twitter:image" content="https://lexus2016.github.io/deepl-on-free-models/docs/social-card.png">
 <style>
 @font-face{font-family:Unbounded;font-style:normal;font-weight:700;font-display:swap;src:url("docs/fonts/unbounded-cyrillic-700.woff2") format("woff2");unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
@@ -66,7 +66,7 @@ h1,h2{font-family:Unbounded,sans-serif;font-weight:700;letter-spacing:-0.04em;li
 h1{font-size:clamp(36px,4.6vw,60px);margin:0 0 14px}
 h2{font-size:clamp(28px,3.4vw,42px);margin:0 0 12px}
 p{text-wrap:pretty}
-.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:36px;align-items:center;padding:36px 0 18px;position:relative}
+.hero{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:36px;align-items:start;padding:36px 0 18px;position:relative}
 .blobs{position:absolute;inset:-20px 0 auto;height:280px;pointer-events:none;z-index:0;overflow:hidden}
 .blob{position:absolute;width:240px;height:240px;border-radius:50%;filter:blur(28px);opacity:.55;animation:floaty 14s ease-in-out infinite}
 .b1{background:#ff5a36;left:-40px;top:-30px}
@@ -164,7 +164,7 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
 }
 </style>
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"A Mac window with your paragraph on the left and the translation on the right. The model can stay on the machine, or you can use your own key.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.3","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"DeepL-oFM","operatingSystem":"macOS 14+","applicationCategory":"ProductivityApplication","description":"A free Mac app if you got used to the DeepL window and do not want a subscription. Your paragraph can stay on the Mac. This is a different program, not DeepL.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"downloadUrl":"https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg","softwareVersion":"2.0.3","license":"https://github.com/Lexus2016/deepl-on-free-models/blob/main/LICENSE"}
 </script>
 </head>
 <body>
@@ -224,8 +224,9 @@ footer{border-top:2px solid var(--ink);padding:26px 0 40px}
       <p class="vh" id="live"></p>
     </div>
     <div class="pitch">
-      <h1 data-i="h1">See your words and the translation in one window.</h1>
-      <p class="lead" data-i="lead">Paste a paragraph, a mail you are still writing, or a page of Markdown. DeepL-oFM keeps what you wrote on the left and puts the translation on the right, so you can check a sentence without losing the one you meant. If that text should stay on the Mac, install Hy-MT2 through Ollama once (about 4.6 GB) and a translation can finish with the network off. If you already have a key for OpenRouter, Groq or Cerebras, the same window can send the paragraph there.</p>
+      <h1 data-i="h1">A free replacement for the DeepL window.</h1>
+      <p class="lead" data-i="lead">You got used to your words on one side and the translation on the other. You can drop the subscription. You do not have to drop that window. DeepL-oFM is a free app for the Mac, and it is a different program from DeepL. There is no account.</p>
+      <p class="lead" data-i="lead2">If you were simply looking for a translator, the difference is practical. Your paragraph can stay on this Mac, and a translation can finish with the internet off. A translator in the browser sends the paragraph to someone else's server as soon as you paste it. Here the paragraph leaves the computer only when you choose a service you already have a key for.</p>
       <div class="cta">
         <a class="btn btn-go" href="https://github.com/Lexus2016/deepl-on-free-models/releases/latest/download/DeepL-oFM.dmg" data-i="download">Download for Mac</a>
         <a class="btn btn-ghost" href="https://github.com/Lexus2016/deepl-on-free-models" data-i="github">Source</a>
@@ -359,11 +360,12 @@ ollama cp maternion/hy-mt2:7b hy-mt2:7b</pre>
 <script>
 const I18N = {
   en: {
-    title: "DeepL-oFM — your words and the translation in one window",
+    title: "DeepL-oFM — a free replacement for the DeepL window",
     nav_how: "The window", nav_watch: "Watch", nav_get: "Install", menu: "Menu",
     download_short: "Download", download: "Download for Mac", github: "Code",
-    h1: "See your words and the translation in one window.",
-    lead: "Paste a paragraph, a mail you are still writing, or a page of Markdown. DeepL-oFM keeps what you wrote on the left and puts the translation on the right, so you can check a sentence without losing the one you meant. If that text should stay on the Mac, install Hy-MT2 through Ollama once (about 4.6 GB) and a translation can finish with the network off. If you already have a key for OpenRouter, Groq or Cerebras, the same window can send the paragraph there.",
+    h1: "A free replacement for the DeepL window.",
+    lead: "You got used to your words on one side and the translation on the other. You can drop the subscription. You do not have to drop that window. DeepL-oFM is a free app for the Mac, and it is a different program from DeepL. There is no account.",
+    lead2: "If you were simply looking for a translator, the difference is practical. Your paragraph can stay on this Mac, and a translation can finish with the internet off. A translator in the browser sends the paragraph to someone else's server as soon as you paste it. Here the paragraph leaves the computer only when you choose a service you already have a key for.",
     note: "Free, and signed. It needs macOS 14 or later on Apple silicon, and you do not create an account.",
     board_hint: "These hellos are already written, so the board flips without waiting for a model. Your own text is what the app translates.",
     play: "Play", pause: "Pause",
@@ -403,11 +405,12 @@ const I18N = {
     foot: "MIT license. Not affiliated with DeepL SE."
   },
   uk: {
-    title: "DeepL-oFM — ваші слова й переклад в одному вікні",
+    title: "DeepL-oFM — безкоштовна заміна вікна DeepL",
     nav_how: "Вікно", nav_watch: "Дивитися", nav_get: "Встановлення", menu: "Меню",
     download_short: "Завантажити", download: "Завантажити для Mac", github: "Код",
-    h1: "Ваші слова й переклад в одному вікні.",
-    lead: "Вставте абзац, листа, якого ще дописуєте, або сторінку Markdown. DeepL-oFM лишає написане ліворуч і ставить переклад праворуч, тож речення можна звірити й не загубити те, яке ви мали на увазі. Якщо текст має лишитися на Mac, один раз поставте Hy-MT2 через Ollama (близько 4,6 ГБ), і переклад зможе завершитись без мережі. Якщо ключ OpenRouter, Groq чи Cerebras у вас уже є, те саме вікно надішле абзац туди.",
+    h1: "Безкоштовна заміна вікна DeepL.",
+    lead: "Ви звикли, що ваші слова стоять з одного боку, а переклад — з другого. Підписку можна кинути. Вікно — ні. DeepL-oFM — безкоштовна програма для Mac, і це інша програма, не DeepL. Обліковий запис створювати не треба.",
+    lead2: "Якщо ви просто шукали перекладач, різниця практична. Абзац може лишитися на цьому Mac, і переклад може завершитися без інтернету. Перекладач у браузері відправляє абзац на чужий сервер, щойно ви його вставили. Тут абзац іде з комп'ютера лише тоді, коли ви самі обираєте сервіс, до якого у вас уже є ключ.",
     note: "Безкоштовно і підписано. Потрібна macOS 14 або новіша на Apple silicon, акаунт створювати не треба.",
     board_hint: "Ці привітання вже написані, тому табло перегортається без очікування моделі. Власний текст перекладає застосунок.",
     play: "Пустити", pause: "Пауза",
@@ -447,11 +450,12 @@ const I18N = {
     foot: "Ліцензія MIT. Не пов'язаний із DeepL SE."
   },
   ru: {
-    title: "DeepL-oFM — ваши слова и перевод в одном окне",
+    title: "DeepL-oFM — бесплатная замена окна DeepL",
     nav_how: "Окно", nav_watch: "Смотреть", nav_get: "Установка", menu: "Меню",
     download_short: "Скачать", download: "Скачать для Mac", github: "Код",
-    h1: "Ваши слова и перевод в одном окне.",
-    lead: "Вставьте абзац, письмо, которое ещё дописываете, или страницу Markdown. DeepL-oFM оставляет написанное слева и ставит перевод справа, так что фразу можно сверить и не потерять ту, которую вы имели в виду. Если текст должен остаться на Mac, один раз поставьте Hy-MT2 через Ollama (около 4,6 ГБ), и перевод сможет закончиться без сети. Если ключ OpenRouter, Groq или Cerebras у вас уже есть, то же окно отправит абзац туда.",
+    h1: "Бесплатная замена окна DeepL.",
+    lead: "Вы привыкли, что ваши слова стоят с одной стороны, а перевод — с другой. Подписку можно бросить. Окно — нет. DeepL-oFM — бесплатная программа для Mac, и это другая программа, не DeepL. Учётную запись создавать не нужно.",
+    lead2: "Если вам нужен просто переводчик, разница практическая. Абзац может остаться на этом Mac, и перевод может закончиться без интернета. Переводчик в браузере отправляет абзац на чужой сервер, как только вы его вставляете. Здесь абзац уходит с компьютера только тогда, когда вы сами выбираете сервис, к которому у вас уже есть ключ.",
     note: "Бесплатно и подписано. Нужна macOS 14 или новее на Apple silicon, учётную запись создавать не нужно.",
     board_hint: "Эти приветствия уже написаны, поэтому табло переворачивается без ожидания модели. Свой текст переводит приложение.",
     play: "Пуск", pause: "Пауза",
@@ -491,11 +495,12 @@ const I18N = {
     foot: "Лицензия MIT. Не связано с DeepL SE."
   },
   de: {
-    title: "DeepL-oFM — Ihre Worte und die Übersetzung in einem Fenster",
+    title: "DeepL-oFM — ein kostenloser Ersatz für das DeepL-Fenster",
     nav_how: "Das Fenster", nav_watch: "Ansehen", nav_get: "Installation", menu: "Menü",
     download_short: "Laden", download: "Für den Mac laden", github: "Code",
-    h1: "Ihre Worte und die Übersetzung in einem Fenster.",
-    lead: "Fügen Sie einen Absatz ein, eine Mail, die Sie noch schreiben, oder eine Markdown-Seite. DeepL-oFM lässt Ihren Text links stehen und setzt die Übersetzung rechts daneben, sodass Sie einen Satz prüfen können, ohne den gemeinten zu verlieren. Soll der Text auf dem Mac bleiben, holen Sie Hy-MT2 einmal über Ollama (etwa 4,6 GB). Danach kann eine Übersetzung auch ohne Netz zu Ende laufen. Haben Sie schon einen Schlüssel für OpenRouter, Groq oder Cerebras, kann dasselbe Fenster den Absatz dorthin schicken.",
+    h1: "Ein kostenloser Ersatz für das DeepL-Fenster.",
+    lead: "Sie haben sich daran gewöhnt, dass Ihre Worte auf der einen Seite stehen und die Übersetzung auf der anderen. Das Abo können Sie bleiben lassen. Das Fenster nicht. DeepL-oFM ist ein kostenloses Programm für den Mac, und es ist ein anderes Programm, nicht DeepL. Ein Konto legen Sie nicht an.",
+    lead2: "Wenn Sie einfach einen Übersetzer gesucht haben, ist der Unterschied praktisch. Der Absatz kann auf diesem Mac bleiben, und eine Übersetzung kann ohne Internet zu Ende kommen. Ein Übersetzer im Browser schickt den Absatz auf einen fremden Server, sobald Sie ihn einfügen. Hier verlässt der Absatz den Computer nur, wenn Sie einen Dienst wählen, für den Sie schon einen Schlüssel haben.",
     note: "Kostenlos und signiert. Sie brauchen macOS 14 oder neuer auf Apple silicon, und Sie legen kein Konto an.",
     board_hint: "Diese Grüße sind schon geschrieben, darum klappt die Tafel ohne Warten auf ein Modell. Ihren eigenen Text übersetzt die App.",
     play: "Start", pause: "Pause",
@@ -535,11 +540,12 @@ const I18N = {
     foot: "MIT-Lizenz. Nicht mit DeepL SE verbunden."
   },
   fr: {
-    title: "DeepL-oFM — vos mots et la traduction dans la même fenêtre",
+    title: "DeepL-oFM — un remplacement gratuit de la fenêtre DeepL",
     nav_how: "La fenêtre", nav_watch: "Voir", nav_get: "Installation", menu: "Menu",
     download_short: "Télécharger", download: "Télécharger pour Mac", github: "Code",
-    h1: "Vos mots et la traduction dans la même fenêtre.",
-    lead: "Collez un paragraphe, un message que vous êtes encore en train d'écrire, ou une page en Markdown. DeepL-oFM laisse votre texte à gauche et place la traduction à droite, pour que vous puissiez vérifier une phrase sans perdre celle que vous vouliez dire. Si ce texte doit rester sur le Mac, installez Hy-MT2 une fois via Ollama (environ 4,6 Go). Ensuite, une traduction peut se terminer sans réseau. Si vous avez déjà une clé pour OpenRouter, Groq ou Cerebras, la même fenêtre peut envoyer le paragraphe là-bas.",
+    h1: "Un remplacement gratuit de la fenêtre DeepL.",
+    lead: "Vous avez pris l'habitude d'avoir vos mots d'un côté et la traduction de l'autre. L'abonnement, vous pouvez le laisser. La fenêtre, non. DeepL-oFM est une application gratuite pour le Mac, et c'est un autre programme. Ce n'est pas DeepL. Vous ne créez pas de compte.",
+    lead2: "Si vous cherchiez simplement un traducteur, la différence est pratique. Votre paragraphe peut rester sur ce Mac, et une traduction peut se terminer sans Internet. Un traducteur dans le navigateur envoie le paragraphe sur le serveur de quelqu'un d'autre dès que vous le collez. Ici, le paragraphe ne quitte l'ordinateur que lorsque vous choisissez un service pour lequel vous avez déjà une clé.",
     note: "Gratuit, et signé. Il faut macOS 14 ou plus récent sur Apple silicon, et vous ne créez pas de compte.",
     board_hint: "Ces bonjours sont déjà écrits, donc le tableau tourne sans attendre un modèle. C'est votre propre texte que l'application traduit.",
     play: "Lecture", pause: "Pause",
@@ -579,11 +585,12 @@ const I18N = {
     foot: "Licence MIT. Pas affilié à DeepL SE."
   },
   es: {
-    title: "DeepL-oFM — tus palabras y la traducción en la misma ventana",
+    title: "DeepL-oFM — un sustituto gratis de la ventana de DeepL",
     nav_how: "La ventana", nav_watch: "Ver", nav_get: "Instalación", menu: "Menú",
     download_short: "Descargar", download: "Descargar para Mac", github: "Código",
-    h1: "Tus palabras y la traducción en la misma ventana.",
-    lead: "Pega un párrafo, un correo que todavía estás escribiendo, o una página en Markdown. DeepL-oFM deja lo que escribiste a la izquierda y pone la traducción a la derecha, para que puedas revisar una frase sin perder la que querías decir. Si ese texto tiene que quedarse en el Mac, instala Hy-MT2 una vez con Ollama (unos 4,6 GB). A partir de ahí, una traducción puede terminar sin red. Si ya tienes una clave de OpenRouter, Groq o Cerebras, la misma ventana puede enviar el párrafo allí.",
+    h1: "Un sustituto gratis de la ventana de DeepL.",
+    lead: "Te acostumbraste a tener tus palabras a un lado y la traducción al otro. La suscripción la puedes dejar. La ventana, no. DeepL-oFM es una aplicación gratis para el Mac, y es otro programa, no es DeepL. No creas una cuenta.",
+    lead2: "Si solo buscabas un traductor, la diferencia es práctica. El párrafo puede quedarse en este Mac, y la traducción puede terminar sin internet. Un traductor en el navegador manda el párrafo al servidor de otro en cuanto lo pegas. Aquí el párrafo sale del Mac solo cuando eliges un servicio para el que ya tienes una clave.",
     note: "Gratis, y firmado. Necesita macOS 14 o posterior en Apple silicon, y no creas una cuenta.",
     board_hint: "Estos saludos ya están escritos, así que el tablero gira sin esperar a un modelo. Tu propio texto es lo que traduce la app.",
     play: "Reproducir", pause: "Pausa",
@@ -623,11 +630,12 @@ const I18N = {
     foot: "Licencia MIT. No afiliado a DeepL SE."
   },
   pl: {
-    title: "DeepL-oFM — twoje słowa i tłumaczenie w jednym oknie",
+    title: "DeepL-oFM — darmowy zamiennik okna DeepL",
     nav_how: "Okno", nav_watch: "Obejrzyj", nav_get: "Instalacja", menu: "Menu",
     download_short: "Pobierz", download: "Pobierz na Maca", github: "Kod",
-    h1: "Twoje słowa i tłumaczenie w jednym oknie.",
-    lead: "Wklej akapit, maila, którego jeszcze piszesz, albo stronę w Markdown. DeepL-oFM zostawia to, co napisane, po lewej i stawia tłumaczenie po prawej, żeby dało się sprawdzić zdanie i nie zgubić tego, o które ci chodziło. Jeśli ten tekst ma zostać na Macu, zainstaluj Hy-MT2 raz przez Ollama (około 4,6 GB). Potem tłumaczenie może dojść do końca bez sieci. Jeśli masz już klucz do OpenRouter, Groq albo Cerebras, to samo okno może wysłać akapit tam.",
+    h1: "Darmowy zamiennik okna DeepL.",
+    lead: "Słowa po jednej stronie, tłumaczenie po drugiej — do takiego okna łatwo przywyknąć. Abonament możesz odpuścić. Okna nie. DeepL-oFM to darmowa aplikacja na Maca, i jest innym programem, nie DeepL. Konta nie zakładasz.",
+    lead2: "Jeśli szukasz po prostu tłumacza, różnica jest praktyczna. Akapit może zostać na tym Macu, a tłumaczenie może dojść do końca bez internetu. Tłumacz w przeglądarce wysyła akapit na cudzy serwer, gdy tylko go wkleisz. Tutaj akapit schodzi z komputera dopiero wtedy, gdy wybierzesz usługę, do której masz już klucz.",
     note: "Za darmo i podpisane. Potrzebuje macOS 14 albo nowszego na Apple silicon, a konta nie zakładasz.",
     board_hint: "Te powitania są już napisane, więc tablica przerzuca się bez czekania na model. Własny tekst tłumaczy aplikacja.",
     play: "Start", pause: "Pauza",
@@ -667,11 +675,12 @@ const I18N = {
     foot: "Licencja MIT. Bez powiązania z DeepL SE."
   },
   pt: {
-    title: "DeepL-oFM — as tuas palavras e a tradução na mesma janela",
+    title: "DeepL-oFM — um substituto gratuito da janela do DeepL",
     nav_how: "A janela", nav_watch: "Ver", nav_get: "Instalação", menu: "Menu",
     download_short: "Descarregar", download: "Descarregar para Mac", github: "Código",
-    h1: "As tuas palavras e a tradução na mesma janela.",
-    lead: "Cola um parágrafo, uma mensagem que ainda estás a escrever, ou uma página em Markdown. O DeepL-oFM deixa o que escreveste à esquerda e põe a tradução à direita, para poderes rever uma frase sem perderes a que querias dizer. Se esse texto tem de ficar no Mac, instala o Hy-MT2 uma vez pelo Ollama (cerca de 4,6 GB). A partir daí, uma tradução pode acabar sem rede. Se já tens uma chave da OpenRouter, Groq ou Cerebras, a mesma janela pode enviar o parágrafo para lá.",
+    h1: "Um substituto gratuito da janela do DeepL.",
+    lead: "Habituaste-te a ter as tuas palavras de um lado e a tradução do outro. Podes largar a subscrição. A janela, não. O DeepL-oFM é uma aplicação gratuita para o Mac, e é outro programa, não o DeepL. Não crias uma conta.",
+    lead2: "Se procuravas apenas um tradutor, a diferença é prática. O parágrafo pode ficar neste Mac, e a tradução pode acabar sem internet. Um tradutor no navegador manda o parágrafo para o servidor de outra pessoa assim que o colas. Aqui o parágrafo só sai do Mac quando escolhes um serviço para o qual já tens uma chave.",
     note: "Grátis, e assinado. Precisa de macOS 14 ou posterior em Apple silicon, e não crias uma conta.",
     board_hint: "Estes cumprimentos já estão escritos, por isso o painel vira sem esperar por um modelo. O teu próprio texto é o que a aplicação traduz.",
     play: "Reproduzir", pause: "Pausa",
@@ -711,11 +720,12 @@ const I18N = {
     foot: "Licença MIT. Sem afiliação à DeepL SE."
   },
   it: {
-    title: "DeepL-oFM — le tue parole e la traduzione nella stessa finestra",
+    title: "DeepL-oFM — un sostituto gratuito della finestra di DeepL",
     nav_how: "La finestra", nav_watch: "Guarda", nav_get: "Installazione", menu: "Menu",
     download_short: "Scarica", download: "Scarica per Mac", github: "Codice",
-    h1: "Le tue parole e la traduzione nella stessa finestra.",
-    lead: "Incolla un paragrafo, un messaggio che stai ancora scrivendo, o una pagina in Markdown. DeepL-oFM lascia quello che hai scritto a sinistra e mette la traduzione a destra, così puoi controllare una frase senza perdere quella che volevi dire. Se quel testo deve restare sul Mac, installa Hy-MT2 una volta con Ollama (circa 4,6 GB). Da lì, una traduzione può finire anche senza rete. Se hai già una chiave per OpenRouter, Groq o Cerebras, la stessa finestra può mandare il paragrafo lì.",
+    h1: "Un sostituto gratuito della finestra di DeepL.",
+    lead: "Le tue parole da una parte, la traduzione dall'altra: a questa finestra ci si abitua. L'abbonamento puoi lasciarlo. La finestra, no. DeepL-oFM è un'applicazione gratuita per il Mac, ed è un altro programma, non DeepL. Non crei un account.",
+    lead2: "Se cercavi solo un traduttore, la differenza è pratica. Il paragrafo può restare su questo Mac, e la traduzione può finire senza internet. Un traduttore nel browser manda il paragrafo sul server di qualcun altro appena lo incolli. Qui il paragrafo esce dal Mac solo quando scegli un servizio per cui hai già una chiave.",
     note: "Gratis, e firmato. Serve macOS 14 o successivo su Apple silicon, e non crei un account.",
     board_hint: "Questi saluti sono già scritti, quindi il tabellone gira senza aspettare un modello. Il tuo testo è quello che traduce l'app.",
     play: "Avvia", pause: "Pausa",
