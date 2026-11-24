@@ -1009,9 +1009,10 @@
     emit(Object.assign({ type: "write" }, clone(state.write)));
   }
 
+  // Mirrors `AppEvent::FileJob { value: Option<Box<FileJob>> }`: clearing the
+  // tab emits `value: null`, never a populated object with empty strings.
   function emitFileJob() {
-    if (!state.fileJob) emit({ type: "fileJob", fileJob: null });
-    else emit(Object.assign({ type: "fileJob" }, clone(state.fileJob)));
+    emit({ type: "fileJob", value: state.fileJob ? clone(state.fileJob) : null });
   }
 
   function promptPreview(style, tone, targetCode) {

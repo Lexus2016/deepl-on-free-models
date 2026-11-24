@@ -442,7 +442,7 @@ impl HotkeyManager {
                     let stop = Arc::clone(&stop);
                     let sender = pressed_tx.clone();
                     match thread::Builder::new()
-                        .name("ofm-hotkeys".to_string())
+                        .name("ofm-hotkeys-events".to_string())
                         .spawn(move || poll_events(sender, actions, stop))
                     {
                         Ok(handle) => worker = Some(handle),
@@ -568,6 +568,220 @@ impl Drop for HotkeyManager {
         if let Some(worker) = self.worker.take() {
             let _ = worker.join();
         }
+    }
+}
+
+// --------------------------------------------------------------------------- //
+// Dispatch loop
+// --------------------------------------------------------------------------- //
+
+/// How often the owning thread pumps messages and polls for presses.
+const POLL_INTERVAL: Duration = Duration::from_millis(60);
+
+/// Ticks between heartbeat lines (five minutes at [`POLL_INTERVAL`]).
+///
+/// A log that stops beating proves the loop is blocked; a log that keeps
+/// beating while a press has no "finished" line proves the capture is blocked.
+const HEARTBEAT_TICKS: u64 = 5_000;
+
+/// The manager operations the dispatch loop needs.
+///
+/// [`HotkeyManager`] is the real implementation; tests use a fake so a
+/// panicking or blocking action can be delivered without a window or an event
+/// loop.
+pub trait HotkeyBackend {
+    /// Remove every registered shortcut.
+    fn unregister_all(&mut self);
+    /// Register `action` for `combo`, replacing an existing binding.
+    fn register(&mut self, action: &str, combo: &KeyCombo) -> Result<(), HotkeyError>;
+    /// Actions pressed since the previous call.
+    fn poll(&mut self) -> Vec<String>;
+}
+
+impl HotkeyBackend for HotkeyManager {
+    fn unregister_all(&mut self) {
+        HotkeyManager::unregister_all(self);
+    }
+
+    fn register(&mut self, action: &str, combo: &KeyCombo) -> Result<(), HotkeyError> {
+        HotkeyManager::register(self, action, combo)
+    }
+
+    fn poll(&mut self) -> Vec<String> {
+        HotkeyManager::poll(self)
+    }
+}
+
+/// Why [`run_hotkey_loop`] returned.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LoopExit {
+    /// The caller's stop flag was set (tests only; the shell never sets it).
+    Stopped,
+}
+
+/// Clears the one-capture flag even when the worker unwinds.
+struct CaptureGuard {
+    active: Arc<AtomicBool>,
+}
+
+impl Drop for CaptureGuard {
+    fn drop(&mut self) {
+        self.active.store(false, Ordering::SeqCst);
+    }
+}
+
+/// The polling and dispatch body of the hotkey thread.
+///
+/// This is separate from [`run_hotkey_loop`] so tests can drive it
+/// deterministically with a fake [`HotkeyBackend`].  The body never performs a
+/// capture itself: every action is handed to a worker thread, so a slow or
+/// panicking capture cannot stop registration or later presses.
+pub struct HotkeyLoop<B, D, R> {
+    backend: B,
+    dispatch: Arc<D>,
+    report: R,
+    applied: Option<(KeyCombo, KeyCombo)>,
+    capture: Arc<AtomicBool>,
+}
+
+impl<B, D, R> HotkeyLoop<B, D, R>
+where
+    B: HotkeyBackend,
+    D: Fn(&str) + Send + Sync + 'static,
+    R: FnMut(&str, &KeyCombo, Result<(), HotkeyError>),
+{
+    /// Wrap a backend and the two callbacks the loop drives.
+    ///
+    /// `dispatch` runs on a worker thread for each accepted press; `report`
+    /// receives the outcome of every registration attempt.
+    pub fn new(backend: B, dispatch: D, report: R) -> Self {
+        Self {
+            backend,
+            dispatch: Arc::new(dispatch),
+            report,
+            applied: None,
+            capture: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Apply queued settings changes and start workers for pressed actions.
+    ///
+    /// Returns `false` when the settings channel is closed; the loop keeps
+    /// polling presses in that case, it only loses the ability to re-register.
+    pub fn tick(&mut self, changes: &Receiver<(KeyCombo, KeyCombo)>) -> bool {
+        let mut connected = true;
+        loop {
+            match changes.try_recv() {
+                Ok((clipboard, selection)) => self.apply(&clipboard, &selection),
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    connected = false;
+                    break;
+                }
+            }
+        }
+        for action in self.backend.poll() {
+            self.start(action);
+        }
+        connected
+    }
+
+    /// Register a new pair, unless it is the one already applied.
+    fn apply(&mut self, clipboard: &KeyCombo, selection: &KeyCombo) {
+        let pair = (clipboard.clone(), selection.clone());
+        if self.applied.as_ref() == Some(&pair) {
+            // Every settings change emits the whole snapshot; re-registering an
+            // unchanged pair opens a window in which another process can take
+            // the combination, after which registration fails permanently.
+            log::debug!("hotkey combinations unchanged; keeping the existing registration");
+            return;
+        }
+
+        self.backend.unregister_all();
+        let mut registered = true;
+        for (action, combo) in [("clipboard", clipboard), ("selection", selection)] {
+            let result = self.backend.register(action, combo);
+            match &result {
+                Ok(()) => log::info!("registered the {action} shortcut: {}", combo.display()),
+                Err(error) => log::warn!(
+                    "could not register the {action} shortcut {}: {error}",
+                    combo.display()
+                ),
+            }
+            registered &= result.is_ok();
+            (self.report)(action, combo, result);
+        }
+        // A failed attempt is retried on the next identical event: the other
+        // process holding the combination may have exited by then.
+        self.applied = registered.then_some(pair);
+    }
+
+    /// Hand one action to its own worker thread.
+    fn start(&mut self, action: String) {
+        log::info!("global hotkey pressed: {action}");
+        if self.capture.swap(true, Ordering::SeqCst) {
+            // A repeat while a capture is still running must not start a second
+            // one: two captures fight over the clipboard and the source text.
+            log::warn!("ignoring the {action} shortcut: the previous capture is still running");
+            return;
+        }
+        let guard = CaptureGuard {
+            active: Arc::clone(&self.capture),
+        };
+        let dispatch = Arc::clone(&self.dispatch);
+        let worker_action = action.clone();
+        let name = format!("ofm-hotkey-{action}");
+        let spawned = thread::Builder::new().name(name).spawn(move || {
+            // Dropped on normal return and on unwind, releasing the gate.
+            let _guard = guard;
+            dispatch(&worker_action);
+            log::info!("the {worker_action} shortcut finished");
+        });
+        if let Err(error) = spawned {
+            log::error!("could not start the {action} shortcut worker: {error}");
+        }
+    }
+}
+
+/// Own the manager on one thread: pump Win32 messages, apply settings, poll and
+/// dispatch presses until `stop` is set (tests) or the process exits.
+///
+/// Pass `None` from the shell: the loop then runs for the lifetime of the
+/// process, and any return is an error the caller must log.
+pub fn run_hotkey_loop<B, D, R>(
+    backend: B,
+    changes: &Receiver<(KeyCombo, KeyCombo)>,
+    dispatch: D,
+    report: R,
+    stop: Option<&AtomicBool>,
+) -> LoopExit
+where
+    B: HotkeyBackend,
+    D: Fn(&str) + Send + Sync + 'static,
+    R: FnMut(&str, &KeyCombo, Result<(), HotkeyError>),
+{
+    let mut state = HotkeyLoop::new(backend, dispatch, report);
+    let mut warned = false;
+    let mut ticks: u64 = 0;
+    loop {
+        // On Windows the manager's hidden window only dispatches `WM_HOTKEY`
+        // while its owning thread pumps the message queue.
+        pump_messages();
+        if !state.tick(changes) && !warned {
+            log::error!(
+                "the hotkey settings channel closed; shortcuts keep working but will not \
+                 follow settings changes"
+            );
+            warned = true;
+        }
+        ticks += 1;
+        if ticks % HEARTBEAT_TICKS == 0 {
+            log::info!("hotkey loop alive; shortcuts are still being polled");
+        }
+        if stop.is_some_and(|flag| flag.load(Ordering::Relaxed)) {
+            return LoopExit::Stopped;
+        }
+        thread::sleep(POLL_INTERVAL);
     }
 }
 
@@ -770,5 +984,225 @@ mod tests {
         assert_eq!((MOD_ALT, MOD_CONTROL, MOD_SHIFT), (0x0001, 0x0002, 0x0004));
         assert_eq!(MOD_NOREPEAT, 0x4000);
         assert_eq!(WM_HOTKEY, 0x0312);
+    }
+
+    // ------------------------------------------------------------- loop tests
+
+    use std::collections::VecDeque;
+    use std::sync::atomic::AtomicUsize;
+    use std::time::Instant;
+
+    /// A manager that records calls and serves queued actions, so the loop can
+    /// be tested without a window, a message pump or a real shortcut.
+    struct FakeBackend {
+        pressed: Arc<Mutex<VecDeque<Vec<String>>>>,
+        unregisters: Arc<AtomicUsize>,
+        registrations: Arc<AtomicUsize>,
+    }
+
+    impl FakeBackend {
+        fn new() -> Self {
+            Self {
+                pressed: Arc::new(Mutex::new(VecDeque::new())),
+                unregisters: Arc::new(AtomicUsize::new(0)),
+                registrations: Arc::new(AtomicUsize::new(0)),
+            }
+        }
+    }
+
+    impl HotkeyBackend for FakeBackend {
+        fn unregister_all(&mut self) {
+            self.unregisters.fetch_add(1, Ordering::SeqCst);
+        }
+
+        fn register(&mut self, _action: &str, _combo: &KeyCombo) -> Result<(), HotkeyError> {
+            self.registrations.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+
+        fn poll(&mut self) -> Vec<String> {
+            self.pressed
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner())
+                .pop_front()
+                .unwrap_or_default()
+        }
+    }
+
+    fn default_pair() -> (KeyCombo, KeyCombo) {
+        (KeyCombo::standard(), KeyCombo::selection())
+    }
+
+    /// Queue one poll's actions from the test thread.
+    fn push_actions(pressed: &Arc<Mutex<VecDeque<Vec<String>>>>, actions: &[&str]) {
+        let actions = actions.iter().map(|action| action.to_string()).collect();
+        pressed
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .push_back(actions);
+    }
+
+    #[test]
+    fn identical_settings_events_do_not_unregister_the_shortcuts() {
+        let (updates, changes) = mpsc::channel();
+        let backend = FakeBackend::new();
+        let unregisters = Arc::clone(&backend.unregisters);
+        let registrations = Arc::clone(&backend.registrations);
+        let mut hotkeys = HotkeyLoop::new(backend, |_| {}, |_, _, _| {});
+
+        updates.send(default_pair()).expect("send settings");
+        assert!(hotkeys.tick(&changes));
+        assert_eq!(unregisters.load(Ordering::SeqCst), 1);
+        assert_eq!(registrations.load(Ordering::SeqCst), 2);
+
+        // Two further events with the same combinations are what every
+        // settings save emits; they must not touch the registration.
+        unregisters.store(0, Ordering::SeqCst);
+        registrations.store(0, Ordering::SeqCst);
+        updates.send(default_pair()).expect("send settings");
+        updates.send(default_pair()).expect("send settings");
+        assert!(hotkeys.tick(&changes));
+        assert_eq!(
+            unregisters.load(Ordering::SeqCst),
+            0,
+            "an unchanged pair must not unregister the working shortcuts"
+        );
+        assert_eq!(
+            registrations.load(Ordering::SeqCst),
+            0,
+            "an unchanged pair must not register again"
+        );
+    }
+
+    #[test]
+    fn a_changed_pair_is_registered_again() {
+        let (updates, changes) = mpsc::channel();
+        let backend = FakeBackend::new();
+        let unregisters = Arc::clone(&backend.unregisters);
+        let registrations = Arc::clone(&backend.registrations);
+        let mut hotkeys = HotkeyLoop::new(backend, |_| {}, |_, _, _| {});
+
+        updates.send(default_pair()).expect("send settings");
+        assert!(hotkeys.tick(&changes));
+        unregisters.store(0, Ordering::SeqCst);
+        registrations.store(0, Ordering::SeqCst);
+
+        let mut changed = KeyCombo::selection();
+        changed.key = "f".to_string();
+        updates
+            .send((KeyCombo::standard(), changed))
+            .expect("send settings");
+        assert!(hotkeys.tick(&changes));
+        assert_eq!(unregisters.load(Ordering::SeqCst), 1);
+        assert_eq!(registrations.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn a_panicking_capture_does_not_stop_later_presses() {
+        let (_updates, changes) = mpsc::channel();
+        let backend = FakeBackend::new();
+        let pressed = Arc::clone(&backend.pressed);
+        let (started, events) = mpsc::channel();
+        let running = Arc::new(AtomicBool::new(false));
+        let stop = Arc::clone(&running);
+        let loop_thread = thread::spawn(move || {
+            run_hotkey_loop(
+                backend,
+                &changes,
+                move |action| {
+                    let _ = started.send(action.to_string());
+                    if action == "panic" {
+                        panic!("expected panic from a hotkey worker");
+                    }
+                },
+                |_, _, _| {},
+                Some(&stop),
+            )
+        });
+
+        push_actions(&pressed, &["panic"]);
+        assert_eq!(
+            events.recv_timeout(Duration::from_secs(2)),
+            Ok("panic".to_string()),
+            "the panicking action never started"
+        );
+        // The worker unwinds and drops its capture guard; retry the next press
+        // until it is accepted so a loaded CI box cannot lose the race.
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            push_actions(&pressed, &["later"]);
+            match events.recv_timeout(Duration::from_millis(50)) {
+                Ok(action) => {
+                    assert_eq!(action, "later");
+                    break;
+                }
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    assert!(
+                        Instant::now() < deadline,
+                        "the loop died with the panicking worker"
+                    );
+                }
+                Err(error) => panic!("the event channel closed: {error}"),
+            }
+        }
+
+        running.store(true, Ordering::SeqCst);
+        assert_eq!(loop_thread.join().expect("loop thread"), LoopExit::Stopped);
+    }
+
+    #[test]
+    fn a_blocked_capture_skips_repeats_and_accepts_a_later_press() {
+        let (_updates, changes) = mpsc::channel();
+        let backend = FakeBackend::new();
+        let pressed = Arc::clone(&backend.pressed);
+        let (started, events) = mpsc::channel();
+        let (release, released) = mpsc::channel::<()>();
+        let released = Arc::new(Mutex::new(released));
+        let running = Arc::new(AtomicBool::new(false));
+        let stop = Arc::clone(&running);
+        let loop_thread = thread::spawn(move || {
+            run_hotkey_loop(
+                backend,
+                &changes,
+                move |action| {
+                    let _ = started.send(format!("start:{action}"));
+                    if action == "block" {
+                        if let Ok(released) = released.lock() {
+                            let _ = released.recv();
+                        }
+                        let _ = started.send("end:block".to_string());
+                    }
+                },
+                |_, _, _| {},
+                Some(&stop),
+            )
+        });
+
+        push_actions(&pressed, &["block"]);
+        assert_eq!(
+            events.recv_timeout(Duration::from_secs(2)),
+            Ok("start:block".to_string())
+        );
+        push_actions(&pressed, &["repeat"]);
+        assert_eq!(
+            events.recv_timeout(Duration::from_millis(250)),
+            Err(mpsc::RecvTimeoutError::Timeout),
+            "a queued repeat must not run a second capture concurrently"
+        );
+
+        release.send(()).expect("release the capture");
+        assert_eq!(
+            events.recv_timeout(Duration::from_secs(2)),
+            Ok("end:block".to_string())
+        );
+        push_actions(&pressed, &["later"]);
+        assert_eq!(
+            events.recv_timeout(Duration::from_secs(2)),
+            Ok("start:later".to_string()),
+            "a press after the blocked capture must still arrive"
+        );
+
+        running.store(true, Ordering::SeqCst);
+        assert_eq!(loop_thread.join().expect("loop thread"), LoopExit::Stopped);
     }
 }
