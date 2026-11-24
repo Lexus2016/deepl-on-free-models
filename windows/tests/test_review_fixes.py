@@ -436,6 +436,54 @@ def test_action_payload_round_trips_every_startup_action():
         assert getattr(restored, name) == getattr(args, name)
 
 
+def test_second_launch_applies_every_action(qapp, tmp_path):
+    """Every action of a launch payload must reach the window and controller.
+
+    This is the logic under test, without the socket: the transport below is
+    Qt's, and failing here would point at the wrong layer.
+    """
+    window = _FakeWindow()
+    write_view = _FakeWriteView()
+    window.pages["write"] = write_view
+    controller = _FakeController()
+    target = tmp_path / "report.pdf"
+    args = app_module._parse_args(
+        [
+            "--prefill",
+            "Bonjour",
+            "--open-file",
+            str(target),
+            "--write-text",
+            "draft",
+            "--translate-clipboard",
+            "--connect",
+            "--catalog",
+            "--load-fallback-models",
+        ]
+    )
+    payload = app_module._action_payload(args)
+    app_module._handle_instance_message(
+        window, controller, json.dumps(payload).encode("utf-8")
+    )
+    assert wait_until(lambda: bool(controller.files), timeout=5.0), "open file"
+    assert wait_until(lambda: bool(controller.clipboard), timeout=5.0), "clipboard"
+    assert wait_until(lambda: bool(controller.connected), timeout=5.0), "connect"
+    assert wait_until(lambda: bool(controller.fallback_loaded), timeout=5.0), (
+        "fallback models"
+    )
+    assert wait_until(lambda: bool(window.catalog_opened), timeout=5.0), "catalog"
+    assert wait_until(lambda: bool(write_view.texts), timeout=5.0), "write text"
+    assert window.prefills == [("Bonjour", True)]
+    assert controller.files == [str(target)]
+    assert controller.clipboard == 1
+    assert controller.connected == 1
+    assert controller.fallback_loaded == 1
+    assert window.catalog_opened == 1
+    assert write_view.texts == ["draft"]
+    assert "write" in window.tabs
+    assert "files" in window.tabs  # --open-file switches to the Files tab
+
+
 def test_second_launch_applies_its_actions(qapp, tmp_path, monkeypatch):
     monkeypatch.setattr(app_module, "SINGLE_INSTANCE_KEY", f"deepl-ofm-test-{uuid.uuid4()}")
     window = _FakeWindow()
@@ -492,8 +540,11 @@ def test_second_launch_applies_its_actions(qapp, tmp_path, monkeypatch):
         # slow on CI runners, hence the generous timeout.
         arrived = wait_until(lambda: bool(window.prefills), timeout=10.0)
         assert arrived, (
-            "prefill: received=" + repr(received) + " payload="
-            + repr(app_module._action_payload(args))
+            "prefill: received=" + repr(received)
+            + " listening=" + repr(server.isListening())
+            + " pending=" + repr(server.hasPendingConnections())
+            + " presented=" + repr(window.presented)
+            + " payload=" + repr(app_module._action_payload(args))
         )
         assert wait_until(lambda: bool(controller.files), timeout=10.0), "open file"
         assert wait_until(lambda: bool(controller.clipboard), timeout=10.0), "clipboard"
