@@ -452,7 +452,9 @@ fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
-            if !left_click_opens {
+            // `cfg!` is a compile-time literal, so the closure captures nothing;
+            // a local `bool` here would have to live for 'static.
+            if !cfg!(windows) {
                 return;
             }
             // Windows reports both the press and the release; acting on both
