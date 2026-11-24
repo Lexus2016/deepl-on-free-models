@@ -159,11 +159,21 @@
 
   function debounce(fn, wait) {
     let timer = 0;
-    return function debounced() {
+    function debounced() {
       const args = arguments;
       clearTimeout(timer);
-      timer = setTimeout(() => fn.apply(null, args), wait);
+      timer = setTimeout(() => {
+        timer = 0;
+        fn.apply(null, args);
+      }, wait);
+    }
+    // A programmatic update must be able to drop a send scheduled just before
+    // it, or the pre-shortcut text would be written back a moment later.
+    debounced.cancel = function cancel() {
+      if (timer) clearTimeout(timer);
+      timer = 0;
     };
+    return debounced;
   }
 
   function formatTemplate(template, args) {
@@ -566,12 +576,19 @@
   function normalizeFileJob(raw) {
     if (!raw || typeof raw !== "object") return null;
     const path = asString(pick(raw, ["path"], ""), "");
+    const state = asString(pick(raw, ["state"], ""), "");
+    // Rust used to clear the Files tab with `FileJob::default()`; a populated
+    // object of empty strings is not a job, and treating it as one hides the
+    // drop zone with neither a progress panel nor a result card behind it.
+    // A job without a path is unusable for retry/save/reveal, so reject every
+    // such payload, not only the completely empty one.
+    if (!path) return null;
     return {
       path: path,
       name: asString(pick(raw, ["name"], basename(path)), basename(path)),
       kind: asString(pick(raw, ["kind"], ""), ""),
       size: asNumber(pick(raw, ["size"], 0), 0),
-      state: asString(pick(raw, ["state"], "reading"), "reading"),
+      state: state || "reading",
       completed: Math.max(0, Math.round(asNumber(pick(raw, ["completed"], 0), 0))),
       total: Math.max(0, Math.round(asNumber(pick(raw, ["total"], 0), 0))),
       percent: Math.max(0, Math.min(100, Math.round(asNumber(pick(raw, ["percent"], 0), 0)))),
@@ -802,6 +819,11 @@
     copyFeedbackTimer: 0,
     toastTimer: 0,
     sourcePreview: false,
+    // Text the debounced sender last handed to the backend. Its echo is not a
+    // reason to overwrite keystrokes typed after the send.
+    sentSource: null,
+    // Cancels the pending debounced `set_source_text`; installed in bindEvents.
+    sendSourceDebounced: null,
     writeText: "",
     writeTarget: "",
     writeTargetChosen: false,
@@ -1393,7 +1415,10 @@
     syncCompactControls();
     setSegment(els.viewSwitch, "view", state.resultView);
 
-    // Never clobber the textarea while the user is typing in it.
+    // This is the full-state refresh path: never clobber the editor while the
+    // user is typing in it. Event-driven updates (a captured selection) go
+    // through `applyProgrammaticSourceText`, which writes the textarea even
+    // when it has focus.
     if (document.activeElement !== els.sourceInput && els.sourceInput.value !== state.sourceText) {
       els.sourceInput.value = state.sourceText;
     }
@@ -3006,7 +3031,9 @@
   }
 
   function commitSourceText(text) {
+    if (local.sendSourceDebounced) local.sendSourceDebounced.cancel();
     state.sourceText = String(text === null || text === undefined ? "" : text);
+    local.sentSource = state.sourceText;
     els.sourceInput.value = state.sourceText;
     if (!state.sourceText.trim()) local.sourcePreview = false;
     els.sourceCounter.textContent = state.sourceText
@@ -3015,6 +3042,33 @@
     els.translateNowBtn.disabled = !state.sourceText.trim();
     els.againBtn.disabled = !state.sourceText.trim();
     send("set_source_text", { text: state.sourceText });
+    renderTranslate();
+  }
+
+  /**
+   * Apply source text that did not come from this editor.
+   *
+   * The selection/clipboard shortcut and a restored history entry replace the
+   * source pane. This updates the textarea directly even while it has focus: a
+   * hidden or background window keeps `document.activeElement` on the editor,
+   * so the focus guard in `renderTranslate` (which protects full-state
+   * refreshes) must not swallow the update. A pending debounced send is
+   * cancelled so the pre-shortcut text cannot be written back afterwards.
+   */
+  function applyProgrammaticSourceText(value) {
+    if (local.sendSourceDebounced) local.sendSourceDebounced.cancel();
+    state.sourceText = String(value);
+    if (!state.sourceText.trim()) local.sourcePreview = false;
+    if (els.sourceInput.value !== state.sourceText) {
+      els.sourceInput.value = state.sourceText;
+    }
+    if (document.activeElement === els.sourceInput) {
+      try {
+        els.sourceInput.setSelectionRange(state.sourceText.length, state.sourceText.length);
+      } catch (error) {
+        /* the editor may be hidden behind the Markdown preview */
+      }
+    }
     renderTranslate();
   }
 
@@ -3420,7 +3474,11 @@
     // payload is a struct (Settings, FileJob, Write) is serialised by merging
     // that struct's fields next to `type`, not under `value`.
     if (type === "settings") return event.settings || event;
-    if (type === "filejob") return event.fileJob || event;
+    // `fileJob: null` is the old merged-payload clear; `|| event` would turn it
+    // back into an object and resurrect the empty-job bug.
+    if (type === "filejob") {
+      return event.fileJob !== undefined ? event.fileJob : event;
+    }
     if (type === "write") return event.write || event;
     // A newtype variant of a primitive cannot be serialised at all (serde
     // rejects it); tolerate a variant-named or camelCase field in case the Rust
@@ -3484,10 +3542,22 @@
         if (value !== undefined && value !== null) state.translatedText = String(value);
         renderTranslate();
         return;
-      case "sourcetext":
-        if (value !== undefined && value !== null) state.sourceText = String(value);
-        renderTranslate();
+      case "sourcetext": {
+        if (value === undefined || value === null) return;
+        // A snapshot requested before the capture is older than this event;
+        // discarding it keeps it from restoring the pre-shortcut source.
+        if (local.firstStateLoaded) refreshSequence += 1;
+        const next = String(value);
+        // The backend echoes the debounced send. Ignoring exactly that value
+        // keeps a keystroke typed after the send from being overwritten; any
+        // other value wins even while the editor keeps focus.
+        if (local.sentSource !== null && next === local.sentSource) {
+          local.sentSource = null;
+          return;
+        }
+        applyProgrammaticSourceText(next);
         return;
+      }
       case "languages": {
         const payload = value && typeof value === "object" ? value : event;
         const source = pick(payload, ["source"], null);
@@ -3604,6 +3674,10 @@
         scheduleRefresh(30);
         return;
       case "filejob":
+        // A snapshot already in flight may still contain the previous job (a
+        // clear or retry can race the 5 s poll); the event is newer, so do not
+        // let that snapshot resurrect a cleared card or the failed job.
+        if (local.firstStateLoaded) refreshSequence += 1;
         state.fileJob = normalizeFileJob(value);
         renderFiles();
         return;
@@ -3756,8 +3830,10 @@
     });
 
     const sourceInput = debounce(() => {
+      local.sentSource = state.sourceText;
       send("set_source_text", { text: state.sourceText });
     }, 90);
+    local.sendSourceDebounced = sourceInput;
     els.sourceInput.addEventListener("input", () => {
       state.sourceText = els.sourceInput.value;
       if (!state.sourceText.trim()) local.sourcePreview = false;

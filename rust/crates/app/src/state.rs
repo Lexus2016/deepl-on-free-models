@@ -406,10 +406,10 @@ pub enum AppEvent {
     },
     /// History changed.
     History,
-    /// The Files job changed.
+    /// The Files job changed, or was cleared (`None`).
     FileJob {
-        /// The current job.
-        value: Box<FileJob>,
+        /// The current job; `None` serialises as `"value": null`.
+        value: Option<Box<FileJob>>,
     },
     /// A short confirmation ("Translation copied").
     CopyFeedback {
@@ -519,8 +519,9 @@ mod tests {
                 value: "enabled".to_string(),
             },
             AppEvent::FileJob {
-                value: Box::new(FileJob::default()),
+                value: Some(Box::new(FileJob::default())),
             },
+            AppEvent::FileJob { value: None },
             AppEvent::CopyFeedback {
                 value: "copied".to_string(),
             },
@@ -550,6 +551,22 @@ mod tests {
                 "{event:?} has no `type` tag: {json}"
             );
         }
+    }
+
+    /// Clearing the Files tab must be `null`, not a `FileJob::default()` object
+    /// with empty strings: the frontend treats any object as a real job and
+    /// hides the drop zone with nothing to replace it.
+    #[test]
+    fn a_cleared_file_job_serialises_as_null() {
+        let json = serde_json::to_value(AppEvent::FileJob { value: None }).expect("serialise");
+        assert_eq!(
+            json.get("type").and_then(|value| value.as_str()),
+            Some("fileJob")
+        );
+        assert!(
+            json.get("value").is_some_and(|value| value.is_null()),
+            "a cleared job must serialise as `value: null`: {json}"
+        );
     }
 
     /// The snapshot the frontend renders must be JSON with camelCase keys.

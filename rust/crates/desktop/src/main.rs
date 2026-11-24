@@ -11,7 +11,6 @@
 mod commands;
 
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use ofm_app::{AppController, AppEvent};
 use tauri::{Emitter, Manager};
@@ -130,12 +129,17 @@ fn main() {
         return;
     };
     let debug = arguments.iter().any(|argument| argument == "--debug");
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(if debug {
-        "debug"
-    } else {
-        "info"
-    }))
-    .init();
+    let console =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(if debug {
+            "debug"
+        } else {
+            "info"
+        }))
+        .build();
+    let max_level = console.filter();
+    let log_path = ofm_platform::logging::install(console, max_level);
+    ofm_platform::logging::install_panic_hook(&log_path);
+    log::info!("DeepL-oFM starting; log file: {}", log_path.display());
 
     let controller = Arc::new(AppController::new());
 
@@ -298,8 +302,8 @@ fn main() {
 /// Register both global shortcuts and dispatch them from a polling thread.
 fn install_hotkeys(app: &tauri::AppHandle, controller: Arc<AppController>) {
     use ofm_config::KeyCombo;
-    use ofm_platform::hotkeys::HotkeyManager;
-    use std::sync::mpsc::{channel, Sender};
+    use ofm_platform::hotkeys::{run_hotkey_loop, HotkeyManager};
+    use std::sync::mpsc::channel;
 
     if !HotkeyManager::is_supported() {
         controller.set_hotkey_message(
@@ -311,8 +315,10 @@ fn install_hotkeys(app: &tauri::AppHandle, controller: Arc<AppController>) {
 
     // `GlobalHotKeyManager` owns a message window and is neither `Send` nor
     // `Sync`, so it cannot be shared: one thread owns it and everything else
-    // reaches it through a channel. Registration, polling and dispatch all
-    // happen on that thread, which is also where the OS expects them.
+    // reaches it through a channel. Registration and polling happen on that
+    // thread, which is also where the OS expects them.  The captures
+    // themselves run on worker threads: a slow clipboard read or a panicking
+    // conversion must never stop the loop that keeps the shortcuts alive.
     let (updates, changes) = channel::<(KeyCombo, KeyCombo)>();
     let settings = controller.state().settings;
     let _ = updates.send((settings.hot_key.clone(), settings.selection_hot_key.clone()));
@@ -320,7 +326,7 @@ fn install_hotkeys(app: &tauri::AppHandle, controller: Arc<AppController>) {
     // Forward every settings change to the owning thread.
     let mut events = controller.subscribe();
     let watch_controller = Arc::clone(&controller);
-    let settings_updates: Sender<(KeyCombo, KeyCombo)> = updates.clone();
+    let settings_updates = updates.clone();
     tauri::async_runtime::spawn(async move {
         loop {
             match events.recv().await {
@@ -330,6 +336,7 @@ fn install_hotkeys(app: &tauri::AppHandle, controller: Arc<AppController>) {
                         .send((settings.hot_key.clone(), settings.selection_hot_key.clone()))
                         .is_err()
                     {
+                        log::warn!("the hotkey thread is gone; shortcut changes cannot be applied");
                         break;
                     }
                 }
@@ -337,76 +344,79 @@ fn install_hotkeys(app: &tauri::AppHandle, controller: Arc<AppController>) {
                 // the watcher, or shortcut changes would stop registering.
                 Ok(_) => continue,
                 Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    log::warn!("the controller event stream closed; shortcut changes stop here");
+                    break;
+                }
             }
         }
     });
 
     let dispatch_controller = Arc::clone(&controller);
     let dispatch_app = app.clone();
-    std::thread::spawn(move || {
-        let mut manager = HotkeyManager::new();
+    let report_controller = Arc::clone(&controller);
+    let spawned = std::thread::Builder::new()
+        .name("ofm-hotkeys-loop".to_string())
+        .spawn(move || {
+            log::info!("global hotkey thread started");
+            let manager = HotkeyManager::new();
 
-        loop {
-            // Windows posts `WM_HOTKEY` to a hidden window created on this
-            // thread by `HotkeyManager::new`; the window procedure (which fills
-            // the channel read by `poll`) only runs while this thread pumps its
-            // message queue.  `poll` itself just drains that channel, so without
-            // the pump the shortcuts register but never fire.  Pumping here is
-            // the correct fix for `global-hotkey`: the crate only requires the
-            // manager and a Win32 message loop to share a thread (not the main
-            // thread), and this thread already owns registration, the settings
-            // channel and dispatch.  Moving the manager to Tauri's main loop
-            // would need an extra timer to poll it and would split that
-            // ownership.  The pump is a no-op on other platforms.
-            ofm_platform::hotkeys::pump_messages();
+            // The loop returns only when the stop flag is set (tests); the
+            // shell passes `None`, so reaching the line after it is itself a
+            // bug worth an error line in the log.
+            let exit = run_hotkey_loop(
+                manager,
+                &changes,
+                move |action| {
+                    // Capture before activating our own window.  "Translate
+                    // selection" synthesises Ctrl+C into whatever is focused, so
+                    // showing and focusing DeepL-oFM first would make the
+                    // capture copy our own UI (or nothing).  The window is
+                    // brought forward afterwards so the result is visible.
+                    match action {
+                        "clipboard" => dispatch_controller.translate_clipboard(),
+                        "selection" => dispatch_controller.translate_selection(),
+                        other => log::debug!("unhandled hotkey action: {other}"),
+                    }
+                    show_main_window(&dispatch_app);
+                },
+                move |action, combo, result| {
+                    report_controller.set_hotkey_message(
+                        action,
+                        result
+                            .err()
+                            .map(|error| error.message_key.replace("%@", &combo.display())),
+                    );
+                },
+                None,
+            );
+            log::error!(
+                "global hotkey loop exited ({exit:?}); global shortcuts are no longer registered"
+            );
+        });
 
-            // Apply pending shortcut changes first, then dispatch presses.
-            while let Ok((clipboard, selection)) = changes.try_recv() {
-                apply_shortcuts(&mut manager, &dispatch_controller, &clipboard, &selection);
-            }
-            for action in manager.poll() {
-                // Capture before activating our own window.  "Translate
-                // selection" synthesises Ctrl+C into whatever is focused, so
-                // showing and focusing DeepL-oFM first would make the capture
-                // copy our own UI (or nothing).  `translate_selection` blocks
-                // until the capture and clipboard wait finish; the window is
-                // brought forward afterwards so the result is visible.
-                match action.as_str() {
-                    "clipboard" => dispatch_controller.translate_clipboard(),
-                    "selection" => dispatch_controller.translate_selection(),
-                    other => log::debug!("unhandled hotkey action: {other}"),
-                }
-                if let Some(window) = dispatch_app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            }
-            std::thread::sleep(Duration::from_millis(60));
-        }
-    });
+    if let Err(error) = spawned {
+        log::error!("could not start the global hotkey thread: {error}");
+        controller.set_hotkey_message(
+            "clipboard",
+            Some("Global shortcuts could not be started.".to_string()),
+        );
+        controller.set_hotkey_message(
+            "selection",
+            Some("Global shortcuts could not be started.".to_string()),
+        );
+    }
 }
 
-/// Register both shortcuts on the owning thread, reporting failures to the UI.
-fn apply_shortcuts(
-    manager: &mut ofm_platform::hotkeys::HotkeyManager,
-    controller: &Arc<AppController>,
-    clipboard: &ofm_config::KeyCombo,
-    selection: &ofm_config::KeyCombo,
-) {
-    manager.unregister_all();
-
-    let clipboard_error = manager.register("clipboard", clipboard).err();
-    controller.set_hotkey_message(
-        "clipboard",
-        clipboard_error.map(|error| error.message_key.replace("%@", &clipboard.display())),
-    );
-
-    let selection_error = manager.register("selection", selection).err();
-    controller.set_hotkey_message(
-        "selection",
-        selection_error.map(|error| error.message_key.replace("%@", &selection.display())),
-    );
+/// Show and focus the main window.
+///
+/// Shared by the tray menu and the tray left-click handler so the two cannot
+/// drift apart.
+fn show_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
 
 /// Show or hide the tray icon to match the setting.
@@ -419,25 +429,44 @@ fn sync_tray_visibility(app: &tauri::AppHandle, controller: &Arc<AppController>)
 /// Menu-bar icon with "Show" and "Quit", mirroring the macOS app.
 fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::menu::{Menu, MenuItem};
-    use tauri::tray::TrayIconBuilder;
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
     let show = MenuItem::with_id(app, "show", "Show DeepL-oFM", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit DeepL-oFM", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
+    // The Windows convention - left click opens the window, right click opens
+    // the menu - is not the macOS one: a menu-bar icon there is expected to
+    // drop its menu on any click, which is what the Swift original does.  Linux
+    // sits with macOS: libappindicator does not deliver click events at all, so
+    // the menu is the only way in.
+    let left_click_opens = cfg!(windows);
+
     let mut builder = TrayIconBuilder::with_id("main")
         .menu(&menu)
         .tooltip("DeepL-oFM")
-        .show_menu_on_left_click(true)
+        .show_menu_on_left_click(!left_click_opens)
         .on_menu_event(|app, event| match event.id().as_ref() {
-            "show" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            }
+            "show" => show_main_window(app),
             "quit" => app.exit(0),
             _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if !left_click_opens {
+                return;
+            }
+            // Windows reports both the press and the release; acting on both
+            // would open the window twice per click.  A double click emits the
+            // click pair first and then its own event, which is deliberately
+            // ignored so the window cannot be shown and then hidden again.
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
         });
 
     if let Some(icon) = app.default_window_icon() {

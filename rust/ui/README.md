@@ -86,6 +86,29 @@ google-chrome --headless=new --disable-gpu --no-sandbox --hide-scrollbars \
   "file:///path/to/rust/ui/index.html?still=1#translate"
 ```
 
+## Browser probes
+
+```bash
+./probe.sh
+```
+
+`probe.sh` loads `probe-defects.html` in headless Chrome (with file access for
+the same-origin iframe) and fails unless every assertion passes. The probe runs
+`index.html?still=1&mock=1` in an iframe and drives `app.js` through the real
+event and command paths exposed by `mock.js`:
+
+- a `sourceText` event arriving while the source editor has focus must replace
+  the textarea and the UI state;
+- a pending debounced send must be cancelled by that update, and a late echo of
+  the value we sent must not overwrite newer typing;
+- clearing a Files job (`value: null`) must bring the drop zone back, and an
+  empty or path-less job payload must never masquerade as a real job;
+- retrying a failed job must start the next one, and clearing it while it is
+  starting must leave no ghost card.
+
+The probe is also a regression guard for the old `FileJob::default()` payload,
+which normalised into a truthy job and left the Files tab unusable.
+
 Screenshots and hashes are listed in the table above; `docs-uk-*.png` are the
 Ukrainian pass (`?lang=uk`).
 

@@ -57,6 +57,12 @@ struct Inner {
 
     // translate tab
     cancel: Mutex<Option<CancelFlag>>,
+    /// Serializes starting and cancelling a translation.
+    ///
+    /// Lock order: `translate_lock` is outermost, and the job lock `cancel` is
+    /// never held while `state`, `settings` or `cache` is taken.  Callbacks
+    /// take `cancel` and then `state`, the same outermost-first order.
+    translate_lock: Mutex<()>,
     generation: AtomicU64,
     debounce: AtomicU64,
     cache: Mutex<Option<CacheKey>>,
@@ -157,6 +163,7 @@ impl AppController {
                 events,
                 speaker: Mutex::new(Speaker::new()),
                 cancel: Mutex::new(None),
+                translate_lock: Mutex::new(()),
                 generation: AtomicU64::new(0),
                 debounce: AtomicU64::new(0),
                 cache: Mutex::new(None),
@@ -691,9 +698,18 @@ impl AppController {
 
     /// Cancel the running translation.
     pub fn cancel(&self) {
-        let mut cancel = self.inner.cancel.lock().unwrap_or_else(|p| p.into_inner());
-        if let Some(flag) = cancel.take() {
-            flag.store(true, Ordering::SeqCst);
+        // Same outer lock as `translate_now`, so a start cannot interleave with
+        // this cancel.  The job lock is released before `state` is taken.
+        let _start = self
+            .inner
+            .translate_lock
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        {
+            let mut cancel = self.inner.cancel.lock().unwrap_or_else(|p| p.into_inner());
+            if let Some(flag) = cancel.take() {
+                flag.store(true, Ordering::SeqCst);
+            }
         }
         self.inner.generation.fetch_add(1, Ordering::SeqCst);
         self.inner.debounce.fetch_add(1, Ordering::SeqCst);
@@ -1357,7 +1373,7 @@ impl AppController {
             state.file_job = Some(job.clone());
         }
         self.emit(AppEvent::FileJob {
-            value: Box::new(job),
+            value: Some(Box::new(job)),
         });
 
         let inner = Arc::clone(&self.inner);
@@ -1525,7 +1541,7 @@ impl AppController {
         let job = self.state_guard().file_job.clone();
         if let Some(job) = job {
             self.emit(AppEvent::FileJob {
-                value: Box::new(job),
+                value: Some(Box::new(job)),
             });
         }
     }
@@ -1586,9 +1602,7 @@ impl AppController {
             let mut state = self.inner.state.write().unwrap_or_else(|p| p.into_inner());
             state.file_job = None;
         }
-        self.emit(AppEvent::FileJob {
-            value: Box::default(),
-        });
+        self.emit(AppEvent::FileJob { value: None });
     }
 
     fn discard_staging(&self) {
@@ -1614,7 +1628,7 @@ impl AppController {
             job.clone()
         };
         self.emit(AppEvent::FileJob {
-            value: Box::new(job),
+            value: Some(Box::new(job)),
         });
     }
 
@@ -2219,7 +2233,7 @@ fn file_update(inner: &Arc<Inner>, generation: u64, mutate: impl FnOnce(&mut Fil
     send(
         inner,
         AppEvent::FileJob {
-            value: Box::new(job),
+            value: Some(Box::new(job)),
         },
     );
 }
@@ -2274,10 +2288,16 @@ fn file_cancelled(inner: &Arc<Inner>, generation: u64) {
 
 /// Start a translation for `inner`. Shared by the command and the debounce timer.
 fn translate_now(inner: &Arc<Inner>, force: bool) {
-    // Serialize job replacement with callbacks publishing to the state and UI.
-    let mut current_job = inner.cancel.lock().unwrap_or_else(|p| p.into_inner());
-    // Take the two locks in sequence, never nested: another path takes them in
-    // the opposite order and `std::sync::RwLock` would deadlock.
+    // Lock order: `translate_lock` is always outermost, and the job lock is
+    // never held while `state`, `settings` or `cache` is acquired.  The old
+    // version held `cancel` across all of them (and across every cache probe),
+    // so any path that took `state` first would deadlock; serializing starts
+    // with this lock removes that class instead of relying on the current call
+    // graph staying in one order.
+    let _start = inner
+        .translate_lock
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
     let (text, source_code, target_code, style_value, tone_value) = {
         let state = inner.state.read().unwrap_or_else(|p| p.into_inner());
         (
@@ -2333,11 +2353,18 @@ fn translate_now(inner: &Arc<Inner>, force: bool) {
         return;
     }
 
-    // Cancel the previous job before its flag is replaced.
-    if let Some(flag) = current_job.take() {
-        flag.store(true, Ordering::SeqCst);
+    // Cancel the previous job before its flag is replaced.  Only the job lock
+    // is held here; the state write below happens after it is released.
+    let cancel: CancelFlag = Arc::new(AtomicBool::new(false));
+    let generation;
+    {
+        let mut current_job = inner.cancel.lock().unwrap_or_else(|p| p.into_inner());
+        if let Some(flag) = current_job.take() {
+            flag.store(true, Ordering::SeqCst);
+        }
+        generation = inner.generation.fetch_add(1, Ordering::SeqCst) + 1;
+        *current_job = Some(Arc::clone(&cancel));
     }
-    let generation = inner.generation.fetch_add(1, Ordering::SeqCst) + 1;
     let error = config
         .model
         .trim()
@@ -2360,8 +2387,6 @@ fn translate_now(inner: &Arc<Inner>, force: bool) {
         return;
     }
 
-    let cancel: CancelFlag = Arc::new(AtomicBool::new(false));
-    *current_job = Some(Arc::clone(&cancel));
     send(inner, AppEvent::Translating { value: true });
     send(
         inner,
@@ -2370,7 +2395,6 @@ fn translate_now(inner: &Arc<Inner>, force: bool) {
             total: 0,
         },
     );
-    drop(current_job);
 
     let source_explicit = source_code != "auto";
     let source = if source_explicit {
@@ -3301,6 +3325,50 @@ mod concurrency_tests {
             "a cleared pane must not be served from the cache"
         );
     }
+
+    /// A start and a cancel racing must not wedge: both take the outer
+    /// `translate_lock`, and neither holds the job lock while taking `state`.
+    #[test]
+    fn cancelling_while_a_translation_starts_does_not_deadlock() {
+        let fixture = Fixture::new("cancel-start");
+        let controller = fixture.controller.clone();
+        let mut settings = controller.settings().clone();
+        settings.model = "hy-mt2:7b".to_string();
+        settings.auto_translate = false;
+        settings.base_url = "http://127.0.0.1:1".to_string();
+        controller.save_settings(settings);
+        controller.set_source_text("Hello");
+
+        let (done_sender, done) = std::sync::mpsc::channel();
+        let starter = controller.clone();
+        let starter_done = done_sender.clone();
+        std::thread::spawn(move || {
+            for round in 0..40 {
+                starter.set_source_text(&format!("Round {round}"));
+                starter.translate(true);
+            }
+            let _ = starter_done.send(());
+        });
+        let canceller = controller.clone();
+        std::thread::spawn(move || {
+            for _ in 0..40 {
+                canceller.cancel();
+            }
+            let _ = done_sender.send(());
+        });
+
+        for index in 0..2 {
+            done.recv_timeout(Duration::from_secs(30))
+                .unwrap_or_else(|_| {
+                    panic!(
+                        "worker {index} timed out: cancelling while a translation starts \
+                     deadlocked"
+                    )
+                });
+        }
+        controller.cancel();
+        controller.clear_source();
+    }
 }
 
 #[cfg(all(test, unix, not(target_os = "macos")))]
@@ -3943,5 +4011,149 @@ mod file_tests {
             !shutdown_staging.exists(),
             "dropping the controller must delete the staging folder"
         );
+    }
+
+    /// The next `FileJob` event, or a panic when none arrives.
+    fn next_file_job(
+        events: &mut tokio::sync::broadcast::Receiver<AppEvent>,
+    ) -> Option<Box<FileJob>> {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            match events.try_recv() {
+                Ok(AppEvent::FileJob { value }) => return value,
+                Ok(_) => continue,
+                Err(tokio::sync::broadcast::error::TryRecvError::Empty) => {
+                    assert!(Instant::now() < deadline, "no FileJob event arrived");
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => panic!("the event stream ended: {error}"),
+            }
+        }
+    }
+
+    /// Clearing a finished job must emit `null`, not an empty `FileJob` object:
+    /// the frontend treats any object as a job and hides the drop zone with no
+    /// card to replace it.
+    #[test]
+    fn clearing_a_finished_job_emits_null_and_empties_the_snapshot() {
+        let fixture = Fixture::new("clear-event");
+        let staging = fixture.directory.join("staging");
+        std::fs::create_dir_all(&staging).expect("create the staging folder");
+        let staged = staging.join("report_uk.pdf");
+        std::fs::write(&staged, b"translated document").expect("write the staged file");
+        stage_job(&fixture.controller, &staged, "report_uk.pdf");
+
+        let before = serde_json::to_value(fixture.controller.state()).expect("serialise");
+        assert!(
+            before["fileJob"].is_object(),
+            "the finished job must be in the snapshot: {before}"
+        );
+
+        let mut events = fixture.controller.subscribe();
+        fixture.controller.clear_file_job();
+
+        assert!(
+            fixture.controller.state().file_job.is_none(),
+            "the in-memory job must be cleared"
+        );
+        assert!(
+            next_file_job(&mut events).is_none(),
+            "clearing must emit `null`, not an empty job"
+        );
+        let after = serde_json::to_value(fixture.controller.state()).expect("serialise");
+        assert!(
+            after["fileJob"].is_null(),
+            "the snapshot must carry a null job: {after}"
+        );
+    }
+
+    /// Clearing a running job cancels its worker and deletes its staging, so it
+    /// cannot publish a ghost job after the drop zone is back.
+    #[test]
+    fn clearing_a_running_job_cancels_it_and_leaves_no_ghost() {
+        let fixture = Fixture::new("clear-running");
+        let cancel: CancelFlag = Arc::new(AtomicBool::new(false));
+        *fixture
+            .controller
+            .inner
+            .file_cancel
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner()) = Some(Arc::clone(&cancel));
+        {
+            let mut state = fixture
+                .controller
+                .inner
+                .state
+                .write()
+                .unwrap_or_else(|poison| poison.into_inner());
+            state.file_job = Some(FileJob {
+                path: "report.pdf".to_string(),
+                state: FileJobState::Reading.value().to_string(),
+                ..FileJob::default()
+            });
+        }
+        let staging = fixture.directory.join("running-staging");
+        std::fs::create_dir_all(&staging).expect("create the staging folder");
+        *fixture
+            .controller
+            .inner
+            .file_staging
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner()) = Some(staging.clone());
+
+        let mut events = fixture.controller.subscribe();
+        fixture.controller.clear_file_job();
+
+        assert!(
+            cancel.load(Ordering::SeqCst),
+            "the running worker must be cancelled"
+        );
+        assert!(fixture.controller.state().file_job.is_none());
+        assert!(
+            !staging.exists(),
+            "the staged output must be deleted on clear"
+        );
+        assert!(next_file_job(&mut events).is_none());
+    }
+
+    /// A failed job must not block the next document: the retry path replaces
+    /// the card instead of leaving the Files tab stuck on the error.
+    #[test]
+    fn a_failed_job_is_replaced_by_the_next_document() {
+        let backend = fake_backend::FakeBackend::start("Hallo.");
+        let fixture = Fixture::new("replace-failed");
+        fixture.use_backend(&backend, "test-model");
+        {
+            let mut state = fixture
+                .controller
+                .inner
+                .state
+                .write()
+                .unwrap_or_else(|poison| poison.into_inner());
+            state.file_job = Some(FileJob {
+                path: "old.pdf".to_string(),
+                state: FileJobState::Failed.value().to_string(),
+                message: Some("No selectable text found.".to_string()),
+                ..FileJob::default()
+            });
+        }
+
+        let path = fixture.directory.join("second.txt");
+        std::fs::write(&path, "Hello.").expect("write the second document");
+        fixture.controller.start_file_translation(&path, Some("de"));
+
+        let job = fixture.controller.state().file_job.expect("a new job");
+        assert_eq!(
+            job.path,
+            path.to_string_lossy(),
+            "the failed job must be replaced by the new document"
+        );
+        assert_ne!(
+            job.state,
+            FileJobState::Failed.value(),
+            "the new job must not inherit the failure"
+        );
+        fixture.controller.cancel_file_translation();
+        fixture.controller.clear_file_job();
     }
 }

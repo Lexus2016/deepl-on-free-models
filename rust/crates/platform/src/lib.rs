@@ -14,6 +14,7 @@
 #![warn(missing_docs)]
 
 pub mod hotkeys;
+pub mod logging;
 pub mod markdown;
 pub mod pasteboard;
 pub mod selection;
