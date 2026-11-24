@@ -4,6 +4,18 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>DeepL-oFM</title>
         <item>
+            <title>2.0.5</title>
+            <pubDate>Tue, 24 Nov 2026 13:16:33 GMT</pubDate>
+            <link>https://github.com/Lexus2016/deepl-on-free-models</link>
+            <sparkle:version>18</sparkle:version>
+            <sparkle:shortVersionString>2.0.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description><![CDATA[<p>The macOS and Windows desktop packages now share the same release source. This Mac update uses the signed and notarized installer.</p>
+<p>Пакети macOS і Windows зібрано з одного коміту. Оновлення Mac містить підписаний і нотаризований інсталятор.</p>]]></description>
+            <enclosure url="https://github.com/Lexus2016/deepl-on-free-models/releases/download/v2.0.5/DeepL-oFM-2.0.5.dmg" length="5141897" type="application/octet-stream" sparkle:edSignature="7t2+98SJewgJrnP0qahz05q8MVPtispDZssznkokj0mQSXoBW+DvAVslSVwkNwzXo6go5VTFd3IJ1cldkECLAQ=="/>
+        </item>
+        <item>
             <title>2.0.4</title>
             <pubDate>Tue, 24 Nov 2026 12:24:04 GMT</pubDate>
             <link>https://github.com/Lexus2016/deepl-on-free-models</link>
@@ -197,6 +209,6 @@ If you are on 1.0.6, this is the first update delivered through Sparkle.
     </channel>
 </rss>
 <!-- sparkle-signatures:
-edSignature: P3VoUWMNeqavdMF2iPCRFWG+Js4/SBE6mJ1vg/IOC7KMpd4r7PrFxmFzbV3Z4PVX96mXvTkiVgfjYG3uOnQYCg==
-length: 16374
+edSignature: hjqT0e0jm2iJDxw3zDi+g2Dj4yZGI2hEQvBRd9wQ0u/LSQw+q5iJz2uA+Hkh4P4qns1G3IoACEeV6oATUxeJBA==
+length: 17524
 -->

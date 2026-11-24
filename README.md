@@ -215,10 +215,10 @@ disk image is signed and notarized; it contains the app and an Applications
 shortcut, so installation is the usual drag-and-drop. Gatekeeper accepts the app
 without a right-click workaround.
 
-### Windows preview
+### Windows
 
 Download the Windows x64 installer from the [Windows download page](https://lexus2016.github.io/deepl-on-free-models/#windows).
-The preview has no Windows publisher signature, so SmartScreen may display an
+The installer has no Windows publisher signature, so SmartScreen may display an
 unrecognized-app warning. The release provides the SHA-256 checksum.
 
 ### From source
