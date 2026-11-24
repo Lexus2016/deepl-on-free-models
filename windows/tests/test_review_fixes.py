@@ -469,7 +469,24 @@ def test_second_launch_applies_its_actions(qapp, tmp_path, monkeypatch):
                 "--load-fallback-models",
             ]
         )
-        assert app_module._notify_running_instance(app_module._action_payload(args))
+        # The server lives in this process, so a blocking `waitForReadyRead` in
+        # the same thread would starve it: on Windows a named pipe discards data
+        # the reader has not consumed before the writer closes.  In production
+        # the two sides are separate processes; here the sender needs its own
+        # thread while the main thread pumps the server's event loop.
+        outcome: dict[str, bool] = {}
+        sender = threading.Thread(
+            target=lambda: outcome.update(
+                sent=app_module._notify_running_instance(
+                    app_module._action_payload(args)
+                )
+            ),
+            daemon=True,
+        )
+        sender.start()
+        assert wait_until(lambda: not sender.is_alive(), timeout=10.0), "sender"
+        sender.join()
+        assert outcome.get("sent") is True
         # Wait for each effect separately so a failure names the effect that did
         # not arrive instead of reporting an opaque `assert []`.  The window is
         # slow on CI runners, hence the generous timeout.
