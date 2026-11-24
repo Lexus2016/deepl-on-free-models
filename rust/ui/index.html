@@ -430,6 +430,11 @@
 
           <p class="warning-line" id="fileFormatNote" hidden></p>
           <div class="file-actions" id="fileActions" hidden>
+            <label class="inline-label" for="fileSource" data-i18n="Source language"></label>
+            <div class="select-wrap">
+              <select id="fileSource"></select>
+              <svg class="icon select-chevron" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+            </div>
             <label class="inline-label" for="fileTarget" data-i18n="Translate to"></label>
             <div class="select-wrap">
               <select id="fileTarget"></select>
@@ -438,7 +443,7 @@
             <span class="spacer"></span>
             <button class="btn btn-primary" type="button" id="translateFileBtn">
               <svg class="icon" aria-hidden="true"><use href="#i-translate"></use></svg>
-              <span data-i18n="Translate"></span>
+              <span data-i18n="Translate now"></span>
             </button>
           </div>
 
@@ -1024,6 +1029,7 @@
             <div class="about-links">
               <button class="btn btn-secondary btn-sm" type="button" data-url="https://github.com/Lexus2016/deepl-on-free-models" data-i18n="DeepL-oFM on GitHub"></button>
               <button class="btn btn-secondary btn-sm" type="button" data-url="https://huggingface.co/tencent/Hy-MT2-7B" data-i18n="Model on Hugging Face"></button>
+              <button class="btn btn-secondary btn-sm" type="button" data-url="https://buymeacoffee.com/tiberiy201y" data-i18n="Buy the developer a coffee"></button>
             </div>
             <div class="about-paths">
               <div class="about-path-row">
@@ -1038,6 +1044,28 @@
                 <span class="about-path-label" data-i18n="Key storage"></span>
                 <span class="about-path-value" id="aboutSecretBackend"></span>
               </div>
+            </div>
+          </section>
+          <section class="card settings-card" id="updateCard" hidden>
+            <h3 data-i18n="Updates"></h3>
+            <label class="switch-row">
+              <span class="switch-row-text" data-i18n="Automatically check for updates"></span>
+              <span class="switch">
+                <input id="updateCheckToggle" type="checkbox" checked>
+                <span class="switch-track" aria-hidden="true"></span>
+              </span>
+            </label>
+            <label class="switch-row">
+              <span class="switch-row-text" data-i18n="Automatically download and install updates"></span>
+              <span class="switch">
+                <input id="updateInstallToggle" type="checkbox">
+                <span class="switch-track" aria-hidden="true"></span>
+              </span>
+            </label>
+            <p class="hint" data-i18n="Downloaded updates are installed when you quit the app."></p>
+            <div class="about-links">
+              <button class="btn btn-secondary btn-sm" id="updateAction" type="button"></button>
+              <span class="hint" id="updateStatus" role="status" aria-live="polite"></span>
             </div>
           </section>
         </section>

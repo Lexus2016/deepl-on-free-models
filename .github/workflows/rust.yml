@@ -79,3 +79,23 @@ jobs:
           name: Windows-installer-diagnostics
           path: ${{ runner.temp }}/deepl-smoke/**/DeepL-oFM/deepl-ofm.log
           if-no-files-found: ignore
+
+  updater:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: updater
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject tampered updates and install the next signed version
+        shell: pwsh
+        run: ./rust/packaging/windows/smoke-update.ps1

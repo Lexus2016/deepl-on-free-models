@@ -43,6 +43,8 @@ impl BackendStatus {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FileJobState {
+    /// Selected and waiting for the user to choose languages.
+    Ready,
     /// Reading and parsing the document.
     Reading,
     /// Translating paragraphs.
@@ -61,6 +63,7 @@ impl FileJobState {
     /// Stable wire value.
     pub fn value(self) -> &'static str {
         match self {
+            Self::Ready => "ready",
             Self::Reading => "reading",
             Self::Translating => "translating",
             Self::Writing => "writing",
@@ -86,6 +89,8 @@ pub struct FileJob {
     pub name: String,
     /// `txt`, `md`, `pdf`, `docx`.
     pub kind: String,
+    /// Language inferred from the file when no source override was given.
+    pub detected_source: Option<String>,
     /// Size in bytes.
     pub size: u64,
     /// Lifecycle state.

@@ -1271,6 +1271,10 @@
       emit({ type: "probeMessage", value: state.probeMessage });
       return true;
     },
+    configure_updater() { return true; },
+    check_for_updates() { return { version: "2.1.0", ready: false }; },
+    download_update() { return { version: "2.1.0", ready: true }; },
+    install_update() { return true; },
     get_diagnostics() {
       return {
         settingsPath: "~/.config/deepl-ofm/settings.json",
@@ -1333,6 +1337,13 @@
     pick_save_path(args) {
       const suggested = (args && args.suggestedName) || "translation.pdf";
       return "~/Documents/" + suggested;
+    },
+    select_file(args) {
+      stopFileJob();
+      const path = args.path;
+      state.fileJob = { path: path, state: "ready", kind: path.split(".").pop().toLowerCase() };
+      emitFileJob();
+      return true;
     },
     translate_file(args) {
       startFile(

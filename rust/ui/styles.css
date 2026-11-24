@@ -1706,6 +1706,7 @@ body.has-compact-controls .chips-bar {
 
 .file-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 0 2px;
@@ -1719,7 +1720,7 @@ body.has-compact-controls .chips-bar {
 }
 
 .file-actions .select-wrap select {
-  width: 190px;
+  width: 164px;
 }
 
 .file-progress {

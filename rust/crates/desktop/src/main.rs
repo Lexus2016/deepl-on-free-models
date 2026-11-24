@@ -9,6 +9,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod updates;
 
 use std::sync::{Arc, Mutex};
 
@@ -20,6 +21,7 @@ pub struct Shared {
     pub controller: Arc<AppController>,
     /// Command-line actions awaiting consumption by the frontend.
     pub startup: Mutex<Startup>,
+    pub updates: updates::Updates,
 }
 
 /// Command-line actions the window applies after it has loaded.
@@ -42,6 +44,8 @@ fn parse_arguments(arguments: &[String]) -> Option<Startup> {
         let argument = arguments[index].as_str();
         let next = || arguments.get(index + 1).cloned();
         match argument {
+            #[cfg(feature = "updater-smoke")]
+            "--updater-smoke=install" | "--updater-smoke=reject" => {}
             "--prefill" | "--open-file" | "--translate-file" | "--write-text" | "--tab" => {
                 let Some(value) = next() else {
                     eprintln!("{argument} needs a value");
@@ -143,7 +147,13 @@ fn main() {
 
     let controller = Arc::new(AppController::new());
 
-    tauri::Builder::default()
+    let context = tauri::generate_context!();
+    let mut builder = tauri::Builder::default();
+    if updates::enabled(context.config()) {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             let arguments = argv.get(1..).unwrap_or_default();
             let Some(startup) = parse_arguments(arguments) else {
@@ -174,6 +184,7 @@ fn main() {
         .manage(Shared {
             controller: Arc::clone(&controller),
             startup: Mutex::new(startup),
+            updates: updates::Updates::default(),
         })
         .setup(move |app| {
             install_tray(&app.handle().clone())?;
@@ -208,6 +219,8 @@ fn main() {
             controller.check_connection();
             controller.warm_up();
             apply_startup_actions(&controller, &arguments);
+            #[cfg(feature = "updater-smoke")]
+            updates::run_smoke(app.handle(), &arguments);
             sync_tray_visibility(&app.handle().clone(), &controller);
             Ok(())
         })
@@ -219,12 +232,19 @@ fn main() {
                 if controller.show_in_menu_bar() || cfg!(target_os = "macos") {
                     api.prevent_close();
                     let _ = window.hide();
+                } else if cfg!(windows) {
+                    api.prevent_close();
+                    updates::quit(window.app_handle());
                 }
             }
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
             commands::get_startup,
+            commands::configure_updater,
+            commands::check_for_updates,
+            commands::download_update,
+            commands::install_update,
             commands::translate_text,
             commands::cancel,
             commands::set_source_text,
@@ -256,6 +276,7 @@ fn main() {
             commands::set_interface_language,
             commands::set_tab,
             commands::translate_file,
+            commands::select_file,
             commands::cancel_file_translation,
             commands::save_translated_file,
             commands::clear_file_job,
@@ -277,7 +298,7 @@ fn main() {
             commands::pick_file,
             commands::get_translations,
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("failed to build DeepL-oFM")
         .run(|app, event| {
             // macOS: clicking the Dock icon with no window reopens it.
@@ -444,7 +465,7 @@ fn install_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>
         .show_menu_on_left_click(!left_click_opens)
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => show_main_window(app),
-            "quit" => app.exit(0),
+            "quit" => updates::quit(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {

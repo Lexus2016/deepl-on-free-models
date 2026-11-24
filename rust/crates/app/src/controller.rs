@@ -1361,12 +1361,45 @@ impl AppController {
 
     // --------------------------------------------------------------- files
 
+    /// Select a file without sending it to the configured provider.
+    pub fn select_file(&self, path: &Path) -> Result<(), String> {
+        let kind =
+            DocumentKind::from_path(path).ok_or_else(|| t("This file type is not supported."))?;
+        let metadata = std::fs::metadata(path)
+            .ok()
+            .filter(|metadata| metadata.is_file())
+            .ok_or_else(|| t("The file could not be read."))?;
+        self.clear_file_job();
+        let mut job = FileJob::new(path, kind.value(), metadata.len());
+        job.state = FileJobState::Ready.value().to_owned();
+        self.inner
+            .state
+            .write()
+            .unwrap_or_else(|p| p.into_inner())
+            .file_job = Some(job.clone());
+        self.emit(AppEvent::FileJob {
+            value: Some(Box::new(job)),
+        });
+        Ok(())
+    }
+
     /// Start translating a document.
     ///
     /// `target_code` is the Files tab's own choice; when it is `None` the
     /// Translate tab's target is used. The Files tab keeps its selection local
     /// so choosing German there does not silently change the other tab.
     pub fn start_file_translation(&self, path: &Path, target_code: Option<&str>) {
+        self.translate_document(path, None, target_code);
+    }
+
+    /// Translate with source and target chosen in the Files tab.
+    /// Перекладає з мовами, які вибрано у вкладці файлів.
+    pub fn translate_document(
+        &self,
+        path: &Path,
+        source_code: Option<&str>,
+        target_code: Option<&str>,
+    ) {
         let Some(kind) = DocumentKind::from_path(path) else {
             self.report_error(t("This file type is not supported."));
             return;
@@ -1412,15 +1445,10 @@ impl AppController {
             .and_then(LanguageTable::get)
             .copied()
             .unwrap_or_else(|| *self.target_language());
-        // A document owns its source language. Only an explicit pick is taken
-        // from the Translate tab; with Auto the document's own text decides,
-        // never the detection of unrelated text in the other tab.
-        let selection = self.state_guard().source_language.clone();
-        let explicit_source = if selection == "auto" {
-            None
-        } else {
-            LanguageTable::get(&selection).copied()
-        };
+        let explicit_source = source_code
+            .filter(|code| *code != "auto")
+            .and_then(LanguageTable::get)
+            .copied();
         let source_explicit = explicit_source.is_some();
         let ui_language = self.settings().interface_language;
         let style = self.style();
@@ -1458,6 +1486,8 @@ impl AppController {
 
             file_update(&inner, generation, |job| {
                 job.state = FileJobState::Translating.value().to_string();
+                job.detected_source =
+                    (!source_explicit && source.code != "auto").then(|| source.code.to_owned());
             });
 
             let out_path = staging.join(

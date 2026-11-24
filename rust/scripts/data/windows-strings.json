@@ -76,7 +76,18 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "Не вдалося прочитати виділення. Скопіюйте текст вручну й виберіть «Перекласти буфер обміну».",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Виділіть текст у сумісній програмі та натисніть комбінацію. Вміст буфера обміну збережеться.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "Експортований PDF зберігає оригінальний текстовий шар. Для сканованих сторінок спершу розпізнайте текст.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Колонтитули, виноски та коментарі залишаються мовою оригіналу."
+    "Headers, footers, footnotes and comments stay in the original language.": "Колонтитули, виноски та коментарі залишаються мовою оригіналу.",
+    "Updates": "Оновлення",
+    "Downloaded updates are installed when you quit the app.": "Завантажені оновлення встановлюються після виходу з програми.",
+    "Install and restart": "Встановити й перезапустити",
+    "Download update": "Завантажити оновлення",
+    "Update is ready to install.": "Оновлення готове до встановлення.",
+    "Downloading and verifying the update…": "Завантаження й перевірка оновлення…",
+    "Installing the update…": "Встановлення оновлення…",
+    "Could not complete the update. Try again.": "Не вдалося завершити оновлення. Спробуйте ще раз.",
+    "Update preferences could not be saved.": "Не вдалося зберегти налаштування оновлень.",
+    "Wait for the current job to finish before installing.": "Дочекайтеся завершення поточного завдання перед встановленням.",
+    "Restarting can discard unsaved work. Install the update now?": "Після перезапуску незбережені зміни можуть зникнути. Встановити оновлення зараз?"
   },
   "ru": {
     "%.1f s": "%.1f с",
@@ -155,7 +166,18 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "Не удалось прочитать выделение. Скопируйте текст вручную и выберите «Перевести буфер обмена».",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Выделите текст в поддерживаемой программе и нажмите сочетание. Буфер обмена сохранится.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "Экспортированный PDF сохраняет исходный текстовый слой. Для сканов сначала распознайте текст.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Колонтитулы, сноски и комментарии остаются на языке оригинала."
+    "Headers, footers, footnotes and comments stay in the original language.": "Колонтитулы, сноски и комментарии остаются на языке оригинала.",
+    "Updates": "Обновления",
+    "Downloaded updates are installed when you quit the app.": "Загруженные обновления устанавливаются после выхода из программы.",
+    "Install and restart": "Установить и перезапустить",
+    "Download update": "Загрузить обновление",
+    "Update is ready to install.": "Обновление готово к установке.",
+    "Downloading and verifying the update…": "Загрузка и проверка обновления…",
+    "Installing the update…": "Установка обновления…",
+    "Could not complete the update. Try again.": "Не удалось завершить обновление. Попробуйте ещё раз.",
+    "Update preferences could not be saved.": "Не удалось сохранить настройки обновлений.",
+    "Wait for the current job to finish before installing.": "Дождитесь завершения текущей задачи перед установкой.",
+    "Restarting can discard unsaved work. Install the update now?": "После перезапуска несохранённые изменения могут исчезнуть. Установить обновление сейчас?"
   },
   "de": {
     "%.1f s": "%.1f s",
@@ -234,7 +256,18 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "Die Auswahl konnte nicht gelesen werden. Kopiere den Text und wähle „Zwischenablage übersetzen“.",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Wähle Text in einer unterstützten App und drücke das Kürzel. Die Zwischenablage bleibt unverändert.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "Im exportierten PDF bleibt die ursprüngliche Textebene erhalten. Gescannte Seiten benötigen zuvor eine Texterkennung.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Kopf- und Fußzeilen, Fußnoten und Kommentare bleiben in der Originalsprache."
+    "Headers, footers, footnotes and comments stay in the original language.": "Kopf- und Fußzeilen, Fußnoten und Kommentare bleiben in der Originalsprache.",
+    "Updates": "Updates",
+    "Downloaded updates are installed when you quit the app.": "Heruntergeladene Updates werden beim Beenden installiert.",
+    "Install and restart": "Installieren und neu starten",
+    "Download update": "Update herunterladen",
+    "Update is ready to install.": "Das Update kann installiert werden.",
+    "Downloading and verifying the update…": "Update wird heruntergeladen und geprüft…",
+    "Installing the update…": "Update wird installiert…",
+    "Could not complete the update. Try again.": "Das Update konnte nicht abgeschlossen werden. Versuche es erneut.",
+    "Update preferences could not be saved.": "Die Update-Einstellungen konnten nicht gespeichert werden.",
+    "Wait for the current job to finish before installing.": "Warte vor der Installation auf den Abschluss der aktuellen Aufgabe.",
+    "Restarting can discard unsaved work. Install the update now?": "Beim Neustart können ungespeicherte Änderungen verloren gehen. Jetzt installieren?"
   },
   "fr": {
     "%.1f s": "%.1f s",
@@ -313,7 +346,18 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "Impossible de lire la sélection. Copiez le texte et choisissez « Traduire le presse-papiers ».",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Sélectionnez du texte dans une application compatible et utilisez le raccourci. Le presse-papiers reste intact.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "Le PDF exporté conserve la couche de texte originale. Les pages numérisées nécessitent une reconnaissance de texte.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Les en-têtes, pieds de page, notes et commentaires restent dans la langue d’origine."
+    "Headers, footers, footnotes and comments stay in the original language.": "Les en-têtes, pieds de page, notes et commentaires restent dans la langue d’origine.",
+    "Updates": "Mises à jour",
+    "Downloaded updates are installed when you quit the app.": "Les mises à jour téléchargées sont installées à la fermeture de l’application.",
+    "Install and restart": "Installer et redémarrer",
+    "Download update": "Télécharger la mise à jour",
+    "Update is ready to install.": "La mise à jour est prête à être installée.",
+    "Downloading and verifying the update…": "Téléchargement et vérification de la mise à jour…",
+    "Installing the update…": "Installation de la mise à jour…",
+    "Could not complete the update. Try again.": "La mise à jour a échoué. Réessayez.",
+    "Update preferences could not be saved.": "Impossible d’enregistrer les paramètres de mise à jour.",
+    "Wait for the current job to finish before installing.": "Attendez la fin de la tâche en cours avant d’installer.",
+    "Restarting can discard unsaved work. Install the update now?": "Le redémarrage peut supprimer les modifications non enregistrées. Installer maintenant ?"
   },
   "es": {
     "%.1f s": "%.1f s",
@@ -392,7 +436,18 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "No se pudo leer la selección. Copia el texto y elige «Traducir portapapeles».",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Selecciona texto en una aplicación compatible y pulsa el atajo. El portapapeles no cambia.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "El PDF exportado conserva la capa de texto original. Las páginas escaneadas requieren reconocimiento de texto.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Los encabezados, pies de página, notas y comentarios se conservan en el idioma original."
+    "Headers, footers, footnotes and comments stay in the original language.": "Los encabezados, pies de página, notas y comentarios se conservan en el idioma original.",
+    "Updates": "Actualizaciones",
+    "Downloaded updates are installed when you quit the app.": "Las actualizaciones descargadas se instalan al cerrar la aplicación.",
+    "Install and restart": "Instalar y reiniciar",
+    "Download update": "Descargar actualización",
+    "Update is ready to install.": "La actualización está lista para instalarse.",
+    "Downloading and verifying the update…": "Descargando y verificando la actualización…",
+    "Installing the update…": "Instalando la actualización…",
+    "Could not complete the update. Try again.": "No se pudo completar la actualización. Inténtalo de nuevo.",
+    "Update preferences could not be saved.": "No se pudieron guardar los ajustes de actualización.",
+    "Wait for the current job to finish before installing.": "Espera a que termine la tarea actual antes de instalar.",
+    "Restarting can discard unsaved work. Install the update now?": "Al reiniciar, podrían perderse los cambios sin guardar. ¿Instalar ahora?"
   },
   "pl": {
     "%.1f s": "%.1f s",
@@ -471,7 +526,18 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "Nie udało się odczytać zaznaczenia. Skopiuj tekst i wybierz „Przetłumacz schowek”.",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Zaznacz tekst w obsługiwanej aplikacji i naciśnij skrót. Zawartość schowka pozostanie bez zmian.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "Wyeksportowany PDF zachowuje oryginalną warstwę tekstową. Zeskanowane strony wymagają rozpoznania tekstu.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Nagłówki, stopki, przypisy i komentarze pozostają w języku oryginału."
+    "Headers, footers, footnotes and comments stay in the original language.": "Nagłówki, stopki, przypisy i komentarze pozostają w języku oryginału.",
+    "Updates": "Aktualizacje",
+    "Downloaded updates are installed when you quit the app.": "Pobrane aktualizacje są instalowane po zamknięciu aplikacji.",
+    "Install and restart": "Zainstaluj i uruchom ponownie",
+    "Download update": "Pobierz aktualizację",
+    "Update is ready to install.": "Aktualizacja jest gotowa do instalacji.",
+    "Downloading and verifying the update…": "Pobieranie i weryfikowanie aktualizacji…",
+    "Installing the update…": "Instalowanie aktualizacji…",
+    "Could not complete the update. Try again.": "Nie udało się zakończyć aktualizacji. Spróbuj ponownie.",
+    "Update preferences could not be saved.": "Nie udało się zapisać ustawień aktualizacji.",
+    "Wait for the current job to finish before installing.": "Przed instalacją zaczekaj na zakończenie bieżącego zadania.",
+    "Restarting can discard unsaved work. Install the update now?": "Ponowne uruchomienie może usunąć niezapisane zmiany. Zainstalować teraz?"
   },
   "pt": {
     "%.1f s": "%.1f s",
@@ -550,7 +616,18 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "Não foi possível ler a seleção. Copie o texto e escolha «Traduzir área de transferência».",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Selecione texto numa aplicação compatível e use o atalho. A área de transferência não é alterada.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "O PDF exportado mantém a camada de texto original. As páginas digitalizadas exigem reconhecimento de texto.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Cabeçalhos, rodapés, notas e comentários permanecem no idioma original."
+    "Headers, footers, footnotes and comments stay in the original language.": "Cabeçalhos, rodapés, notas e comentários permanecem no idioma original.",
+    "Updates": "Atualizações",
+    "Downloaded updates are installed when you quit the app.": "As atualizações descarregadas são instaladas ao sair da aplicação.",
+    "Install and restart": "Instalar e reiniciar",
+    "Download update": "Descarregar atualização",
+    "Update is ready to install.": "A atualização está pronta para ser instalada.",
+    "Downloading and verifying the update…": "A descarregar e verificar a atualização…",
+    "Installing the update…": "A instalar a atualização…",
+    "Could not complete the update. Try again.": "Não foi possível concluir a atualização. Tente novamente.",
+    "Update preferences could not be saved.": "Não foi possível guardar as preferências de atualização.",
+    "Wait for the current job to finish before installing.": "Aguarde a conclusão da tarefa atual antes de instalar.",
+    "Restarting can discard unsaved work. Install the update now?": "Ao reiniciar, poderá perder alterações não guardadas. Instalar agora?"
   },
   "it": {
     "%.1f s": "%.1f s",
@@ -629,6 +706,17 @@
     "Could not read the selection. Copy it manually and use Translate clipboard.": "Impossibile leggere la selezione. Copia il testo e scegli «Traduci appunti».",
     "Select text in a supported app, then press the shortcut. Your clipboard stays unchanged.": "Seleziona del testo in un'app compatibile e usa la scorciatoia. Gli appunti rimangono invariati.",
     "The exported PDF retains the original text layer. Scanned pages require text recognition first.": "Il PDF esportato conserva il livello di testo originale. Le pagine scansionate richiedono il riconoscimento del testo.",
-    "Headers, footers, footnotes and comments stay in the original language.": "Intestazioni, piè di pagina, note e commenti restano nella lingua originale."
+    "Headers, footers, footnotes and comments stay in the original language.": "Intestazioni, piè di pagina, note e commenti restano nella lingua originale.",
+    "Updates": "Aggiornamenti",
+    "Downloaded updates are installed when you quit the app.": "Gli aggiornamenti scaricati vengono installati alla chiusura dell’app.",
+    "Install and restart": "Installa e riavvia",
+    "Download update": "Scarica aggiornamento",
+    "Update is ready to install.": "L’aggiornamento è pronto per l’installazione.",
+    "Downloading and verifying the update…": "Download e verifica dell’aggiornamento…",
+    "Installing the update…": "Installazione dell’aggiornamento…",
+    "Could not complete the update. Try again.": "Impossibile completare l’aggiornamento. Riprova.",
+    "Update preferences could not be saved.": "Impossibile salvare le preferenze di aggiornamento.",
+    "Wait for the current job to finish before installing.": "Attendi la fine dell’attività in corso prima di installare.",
+    "Restarting can discard unsaved work. Install the update now?": "Il riavvio può eliminare le modifiche non salvate. Installare ora?"
   }
 }

@@ -587,6 +587,7 @@
       path: path,
       name: asString(pick(raw, ["name"], basename(path)), basename(path)),
       kind: asString(pick(raw, ["kind"], ""), ""),
+      detectedSource: pick(raw, ["detectedSource"], null),
       size: asNumber(pick(raw, ["size"], 0), 0),
       state: state || "reading",
       completed: Math.max(0, Math.round(asNumber(pick(raw, ["completed"], 0), 0))),
@@ -852,6 +853,7 @@
     capture: null,
     menuOpen: false,
     fileTarget: "",
+    fileSource: "auto",
     fileJobTarget: "",
     firstStateLoaded: false,
     translateBarWidth: 0,
@@ -998,6 +1000,7 @@
       "removeFileBtn",
       "fileActions",
       "fileTarget",
+      "fileSource",
       "translateFileBtn",
       "fileProgress",
       "fileProgressName",
@@ -1113,6 +1116,11 @@
       "hotkeyError",
       "hotkeyExample",
       "aboutVersion",
+      "updateCard",
+      "updateCheckToggle",
+      "updateInstallToggle",
+      "updateAction",
+      "updateStatus",
       "aboutSettingsPath",
       "aboutHistoryPath",
       "aboutSecretBackend",
@@ -1159,6 +1167,7 @@
       els.targetLang,
       languageOptions.filter((item) => item.value !== "auto")
     );
+    fillSelect(els.fileSource, [{ value: "auto", label: tr("Auto-detect") }].concat(languageOptions));
     fillSelect(els.fileTarget, languageOptions);
     fillSelect(els.writeTarget, languageOptions);
     fillSelect(els.promptTarget, languageOptions);
@@ -1598,6 +1607,10 @@
     const wanted = local.fileTarget;
     ensureSelectOption(els.fileTarget, wanted, languageName(wanted));
     if (els.fileTarget.value !== wanted) els.fileTarget.value = wanted;
+    const auto = els.fileSource.options[0];
+    auto.textContent = tr("Auto-detect") + (job.detectedSource ? " · " + languageName(job.detectedSource) : "");
+    els.fileSource.value = local.fileSource;
+    els.fileSource.disabled = running;
     els.fileTarget.disabled = running;
     els.translateFileBtn.disabled = running;
     els.removeFileBtn.disabled = running;
@@ -1869,6 +1882,7 @@
       renderLoginItem();
       renderInstallHint();
       renderAboutDiagnostics();
+      renderUpdater();
       if (local.settingsDraft) updateProviderDetails(local.settingsDraft);
       els.revealKeyBtn.textContent = tr(els.apiKeyInput.type === "text" ? "Hide" : "Show");
     }
@@ -2327,6 +2341,145 @@
       : "";
     els.settingsVersion.textContent =
       "DeepL-oFM" + (diagnosticsVersion() ? " " + diagnosticsVersion() : "");
+  }
+
+  const updatePreferencesKey = "deepl-ofm.updates";
+  const updateDay = 24 * 60 * 60 * 1000;
+  const updateHour = updateDay / 24;
+  const updater = {
+    enabled: false, check: true, install: false, lastCheck: 0, lastAttempt: 0,
+    busy: false, changing: false, status: "", version: null, ready: false,
+  };
+
+  function saveUpdatePreferences() {
+    try {
+      localStorage.setItem(updatePreferencesKey, JSON.stringify({
+        check: updater.check, install: updater.install, lastCheck: updater.lastCheck,
+      }));
+    } catch (error) {
+      // Storage can be unavailable in the standalone preview or on a read-only profile.
+    }
+  }
+
+  function renderUpdater() {
+    els.updateCard.hidden = !updater.enabled;
+    if (!updater.enabled) return;
+    els.updateCheckToggle.checked = updater.check;
+    els.updateInstallToggle.checked = updater.install;
+    els.updateCheckToggle.disabled = updater.changing;
+    els.updateInstallToggle.disabled = !updater.check || updater.changing;
+    els.updateAction.disabled = updater.busy;
+    const action = updater.ready ? "Install and restart"
+      : updater.version ? "Download update" : "Check for Updates…";
+    els.updateAction.textContent = tr(action);
+    const status = updater.status || (updater.ready ? "Update is ready to install."
+      : updater.version ? "Update available: %@" : "");
+    els.updateStatus.textContent = status ? tr(status, updater.version) : "";
+  }
+
+  async function initializeUpdater() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(updatePreferencesKey) || "{}") || {};
+      updater.check = saved.check !== false;
+      updater.install = saved.install === true;
+      updater.lastCheck = Number.isFinite(saved.lastCheck) ? saved.lastCheck : 0;
+    } catch (error) {
+      // Retain the defaults when storage cannot be read.
+    }
+    try {
+      updater.enabled = await invoke("configure_updater", { automaticInstall: updater.check && updater.install });
+    } catch (error) {
+      updater.enabled = false;
+    }
+    renderUpdater();
+    if (!updater.enabled) return;
+    if (!NATIVE) return;
+    window.setTimeout(scheduledUpdateCheck, 10000);
+    window.setInterval(scheduledUpdateCheck, updateHour);
+    window.addEventListener("focus", scheduledUpdateCheck);
+  }
+
+  function scheduledUpdateCheck() {
+    if (!updater.check || updater.busy) return;
+    const now = Date.now();
+    const sinceCheck = now - updater.lastCheck;
+    const sinceAttempt = now - updater.lastAttempt;
+    if ((sinceCheck >= 0 && sinceCheck < updateDay)
+      || (sinceAttempt >= 0 && sinceAttempt < updateHour)) return;
+    void runUpdate("check", false);
+  }
+
+  async function changeUpdatePreference() {
+    const before = { check: updater.check, install: updater.install };
+    const check = els.updateCheckToggle.checked;
+    const install = els.updateInstallToggle.checked;
+    updater.changing = true;
+    els.updateCheckToggle.disabled = true;
+    els.updateInstallToggle.disabled = true;
+    try {
+      if (!(await invoke("configure_updater", { automaticInstall: check && install }))) {
+        throw new Error("updater unavailable");
+      }
+      updater.check = check;
+      updater.install = install;
+      saveUpdatePreferences();
+      renderUpdater();
+      if (!check || updater.busy) return;
+      if (install && updater.version && !updater.ready) await runUpdate("download", false);
+      else if (!before.check) await runUpdate("check", false);
+    } catch (error) {
+      Object.assign(updater, before);
+      updater.status = "Update preferences could not be saved.";
+    } finally {
+      updater.changing = false;
+      renderUpdater();
+    }
+  }
+
+  function updateWouldDiscardWork() {
+    return Boolean(els.sourceInput.value.trim() || local.writeText.trim()
+      || state.translatedText.trim() || state.write.output.trim()
+      || (state.fileJob?.output && !state.fileJob.savedPath));
+  }
+
+  async function runUpdate(action, manual) {
+    if (!updater.enabled || updater.busy) return;
+    if (action === "install" && updateWouldDiscardWork()
+      && !window.confirm(tr("Restarting can discard unsaved work. Install the update now?"))) return;
+
+    updater.busy = true;
+    updater.status = action === "check" ? "Checking for updates…"
+      : action === "download" ? "Downloading and verifying the update…" : "Installing the update…";
+    renderUpdater();
+    try {
+      if (action === "install") {
+        await invoke("install_update");
+        return;
+      }
+      if (action === "check") {
+        updater.lastAttempt = Date.now();
+        Object.assign(updater, await invoke("check_for_updates"));
+        // Offers are held in memory. Recheck after a restart until the update is installed.
+        updater.lastCheck = updater.version ? 0 : updater.lastAttempt;
+        saveUpdatePreferences();
+        updater.status = manual && !updater.version ? "You're up to date." : "";
+        if (!manual && updater.version && !updater.ready && !(updater.check && updater.install)) {
+          showToast(tr("Update available: %@", updater.version));
+        }
+        if (!(updater.version && !updater.ready && updater.check && updater.install)) return;
+        updater.status = "Downloading and verifying the update…";
+        renderUpdater();
+      }
+      Object.assign(updater, await invoke("download_update"));
+      updater.status = "";
+      if (!manual && updater.ready) showToast(tr("Update is ready to install."));
+    } catch (error) {
+      updater.status = String(error) === "busy" ? "Wait for the current job to finish before installing."
+        : "Could not complete the update. Try again.";
+    } finally {
+      updater.busy = false;
+      renderUpdater();
+    }
   }
 
   async function loadDiagnostics() {
@@ -3158,7 +3311,7 @@
     invoke("pick_file")
       .then((value) => {
         const path = unwrapPath(value);
-        if (path) startFileTranslation(path, defaultFileTarget());
+        if (path) selectFile(path);
         else showToast(tr("No file was chosen."));
       })
       .catch((error) => {
@@ -3175,7 +3328,7 @@
     local.fileJobTarget = code;
     // The Files tab owns its language: pass it as `target` instead of mutating
     // the Translate tab through set_target_language.
-    send("translate_file", { path: path, target: code }).then(() => {
+    send("translate_file", { path: path, source: local.fileSource, target: code }).then(() => {
       scheduleRefresh(60);
       pollState(
         () => !!state.fileJob && RUNNING_FILE_STATES.includes(state.fileJob.state),
@@ -3194,9 +3347,13 @@
     startFileTranslation(job.path, local.fileJobTarget || local.fileTarget);
   }
 
+  function selectFile(path) {
+    local.fileSource = "auto";
+    send("select_file", { path: path }).then(() => scheduleRefresh(60));
+  }
+
   function handleDroppedPath(path) {
-    if (!path) return;
-    startFileTranslation(path);
+    if (path) selectFile(path);
   }
 
   async function saveTranslatedFile() {
@@ -3912,6 +4069,9 @@
       handleDroppedPath(path);
     });
     els.removeFileBtn.addEventListener("click", () => send("clear_file_job"));
+    els.fileSource.addEventListener("change", () => {
+      local.fileSource = els.fileSource.value;
+    });
     els.fileTarget.addEventListener("change", () => {
       // Scoped to the Files tab; the Translate tab keeps its own language.
       local.fileTarget = els.fileTarget.value;
@@ -4154,6 +4314,11 @@
       void cancelSettings();
     });
     els.settingsSave.addEventListener("click", saveSettings);
+    els.updateCheckToggle.addEventListener("change", () => void changeUpdatePreference());
+    els.updateInstallToggle.addEventListener("change", () => void changeUpdatePreference());
+    els.updateAction.addEventListener("click", () => {
+      void runUpdate(updater.ready ? "install" : updater.version ? "download" : "check", true);
+    });
     els.connectBtn.addEventListener("click", connectProvider);
     els.fallbackLoadBtn.addEventListener("click", loadFallbackModels);
 
@@ -4508,6 +4673,7 @@
       showToast(errorText(error));
     }
     await refreshCatalogue();
+    void initializeUpdater();
     void ensureCatalogEntries();
     // WriteState has no `text` field (the draft lives only in the webview), so
     // the standalone demo seeds the editor from the mock instead of AppState.

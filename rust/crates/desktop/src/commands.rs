@@ -9,7 +9,7 @@ use ofm_app::AppController;
 use serde_json::{json, Value};
 use tauri::State;
 
-use crate::Shared;
+use crate::{updates, Shared};
 
 fn controller<'a>(state: &'a State<'_, Shared>) -> &'a AppController {
     state.controller.as_ref()
@@ -35,6 +35,36 @@ pub fn get_startup(state: State<'_, Shared>) -> Result<Value, String> {
         .lock()
         .unwrap_or_else(|poison| poison.into_inner());
     Ok(serde_json::to_value(std::mem::take(&mut *startup)).unwrap_or_else(|_| json!({})))
+}
+
+#[tauri::command]
+pub fn configure_updater(
+    app: tauri::AppHandle,
+    state: State<'_, Shared>,
+    automatic_install: bool,
+) -> Result<bool, String> {
+    Ok(state.updates.configure(&app, automatic_install))
+}
+
+#[tauri::command]
+pub async fn check_for_updates(
+    app: tauri::AppHandle,
+    state: State<'_, Shared>,
+) -> Result<updates::Status, String> {
+    if !updates::enabled(app.config()) {
+        return Err("unavailable".to_owned());
+    }
+    state.updates.check(&app).await
+}
+
+#[tauri::command]
+pub async fn download_update(state: State<'_, Shared>) -> Result<updates::Status, String> {
+    state.updates.download().await
+}
+
+#[tauri::command]
+pub fn install_update(state: State<'_, Shared>) -> Result<(), String> {
+    state.updates.install(&state.controller, true)
 }
 
 #[tauri::command]
@@ -224,12 +254,18 @@ pub fn set_tab(state: State<'_, Shared>, tab: String) -> Result<(), String> {
 // ---------------------------------------------------------------- files
 
 #[tauri::command]
+pub fn select_file(state: State<'_, Shared>, path: String) -> Result<(), String> {
+    controller(&state).select_file(Path::new(&path))
+}
+
+#[tauri::command]
 pub fn translate_file(
     state: State<'_, Shared>,
     path: String,
+    source: Option<String>,
     target: Option<String>,
 ) -> Result<(), String> {
-    controller(&state).start_file_translation(Path::new(&path), target.as_deref());
+    controller(&state).translate_document(Path::new(&path), source.as_deref(), target.as_deref());
     Ok(())
 }
 
@@ -439,6 +475,8 @@ pub fn apply_model(state: State<'_, Shared>, model_id: String) -> Result<(), Str
 
 /// Paths, versions and the secret-store backend for the About section.
 #[tauri::command]
-pub fn get_diagnostics(state: State<'_, Shared>) -> Result<Value, String> {
-    Ok(controller(&state).diagnostics_json())
+pub fn get_diagnostics(app: tauri::AppHandle, state: State<'_, Shared>) -> Result<Value, String> {
+    let mut data = controller(&state).diagnostics_json();
+    data["version"] = json!(app.package_info().version.to_string());
+    Ok(data)
 }
