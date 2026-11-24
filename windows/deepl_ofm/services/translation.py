@@ -41,6 +41,9 @@ _STOP_SEQUENCES = [
     "<｜hy_place▁holder▁no▁2｜>",
 ]
 _SHORT_BLOCK_LIMIT = 80
+#: A short block ending with one of these is a sentence, not a heading.
+_TERMINAL_PUNCTUATION = frozenset(".!?\u2026\u3002\uFF01\uFF1F")
+_TRAILING_CLOSERS = "\"'”’»)]"
 
 _REWRITE_INSTRUCTION = (
     "You are an editor. Rewrite the following text in {language}. Improve clarity, "
@@ -332,11 +335,35 @@ def _markdown_structure(text: str) -> list[str]:
     return structure
 
 
-def _with_source_language(prompt: str, source: Language | None) -> str:
-    """Port of ``TranslationService.withSourceLanguage``."""
-    if source is None or getattr(source, "is_auto", False):
+def _with_source_language(
+    prompt: str, source: Language | None, explicit: bool = True
+) -> str:
+    """Port of ``TranslationService.withSourceLanguage``.
+
+    The hint is only appended for a language the user picked themselves.  A
+    script-based guess (Arabic for Persian, for example) must not be asserted
+    to the model as a fact.
+    """
+    if not explicit or source is None or getattr(source, "is_auto", False):
         return prompt
     return f"The source language is {source.english_name}. " + prompt
+
+
+def _is_structural_heading(text: str, is_heading: bool) -> bool:
+    """True when a block is a heading, not merely short.
+
+    The chunker already flags Markdown ``#`` headings.  A short line without
+    terminal punctuation is a title/list fragment and keeps the heading prompt;
+    a short sentence (``Could you send me the report?``) must use the normal
+    style and tone ladder, because style and register matter there too.
+    """
+    if is_heading:
+        return True
+    body = text.strip()
+    if len(body) > _SHORT_BLOCK_LIMIT:
+        return False
+    tail = body.rstrip().rstrip(_TRAILING_CLOSERS).rstrip()
+    return bool(tail) and tail[-1] not in _TERMINAL_PUNCTUATION
 
 
 def _watch_cancel(cancel: threading.Event, response: object, done: threading.Event) -> None:
@@ -373,6 +400,7 @@ class Translator:
         tone: TranslationTone,
         config: BackendConfig,
         fallback: BackendConfig | None = None,
+        source_explicit: bool = True,
         on_progress: Callable[[int, int], None] | None = None,
         on_partial: Callable[[str], None] | None = None,
         cancel: threading.Event | None = None,
@@ -391,6 +419,7 @@ class Translator:
                 style=style,
                 tone=tone,
                 config=config,
+                source_explicit=source_explicit,
                 on_progress=on_progress,
                 on_partial=on_partial,
                 cancel=cancel,
@@ -415,6 +444,7 @@ class Translator:
                 style=style,
                 tone=tone,
                 config=fallback,
+                source_explicit=source_explicit,
                 on_progress=on_progress,
                 on_partial=on_partial,
                 cancel=cancel,
@@ -613,6 +643,7 @@ class Translator:
         style: TranslationStyle,
         tone: TranslationTone,
         config: BackendConfig,
+        source_explicit: bool,
         on_progress: Callable[[int, int], None] | None,
         on_partial: Callable[[str], None] | None,
         cancel: threading.Event | None,
@@ -656,8 +687,10 @@ class Translator:
                     tone=tone,
                     config=config,
                     source=source,
+                    source_explicit=source_explicit,
                     cancel=cancel,
                     preserve_markdown=_contains_markdown(line),
+                    is_heading=chunk.is_heading,
                 )
             except TranslationError as exc:
                 if exc.kind != "empty":
@@ -709,20 +742,22 @@ class Translator:
         tone: TranslationTone,
         config: BackendConfig,
         source: Language | None,
+        source_explicit: bool,
         cancel: threading.Event | None,
         preserve_markdown: bool,
+        is_heading: bool = False,
     ) -> _BlockResult:
         """Choose the prompt ladder for one line and translate it."""
         body = text.strip()
-        neutral_heading = PromptBuilder.heading_prompt(
-            body,
-            TranslationStyle.AUTO,
-            TranslationTone.STANDARD,
-            target.english_name,
-            preserve_markdown=False,
-        )
         plain_fallback = PromptBuilder.plain_prompt(body, target.english_name)
-        if len(body) <= _SHORT_BLOCK_LIMIT:
+        if _is_structural_heading(body, is_heading):
+            neutral_heading = PromptBuilder.heading_prompt(
+                body,
+                TranslationStyle.AUTO,
+                TranslationTone.STANDARD,
+                target.english_name,
+                preserve_markdown=False,
+            )
             prompts = [neutral_heading, plain_fallback]
         else:
             styled = PromptBuilder.prompt(
@@ -755,6 +790,7 @@ class Translator:
             config,
             cancel,
             source_language=source,
+            source_explicit=source_explicit,
             preserve_line_breaks=False,
             requires_markdown_structure=False,
         )
@@ -768,6 +804,7 @@ class Translator:
         cancel: threading.Event | None,
         *,
         source_language: Language | None = None,
+        source_explicit: bool = True,
         preserve_line_breaks: bool = False,
         requires_markdown_structure: bool = False,
     ) -> _BlockResult:
@@ -785,7 +822,7 @@ class Translator:
                         config, temperature=min(config.temperature, 0.3)
                     )
                 raw = self._collect_candidate(
-                    _with_source_language(prompt, source_language),
+                    _with_source_language(prompt, source_language, source_explicit),
                     retry_config,
                     max_bytes,
                     cancel,
@@ -823,6 +860,7 @@ class Translator:
                 config,
                 cancel,
                 source_language=source_language,
+                source_explicit=source_explicit,
             )
             if segmented is not None:
                 return segmented
@@ -836,6 +874,7 @@ class Translator:
         cancel: threading.Event | None,
         *,
         source_language: Language | None,
+        source_explicit: bool = True,
     ) -> _BlockResult | None:
         """Translate sentence by sentence when the whole block keeps failing."""
         if "http" in source or "](" in source or "`" in source:
@@ -872,7 +911,7 @@ class Translator:
                 )
                 max_bytes = max(200, len(piece) * 4 + 100) * 4
                 raw = self._collect_candidate(
-                    _with_source_language(prompt, source_language),
+                    _with_source_language(prompt, source_language, source_explicit),
                     retry_config,
                     max_bytes,
                     cancel,

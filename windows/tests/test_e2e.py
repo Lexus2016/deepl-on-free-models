@@ -121,7 +121,9 @@ def test_controller_translates_against_local_server(qapp, provider, tmp_path):
     controller.translate(force=True)
 
     deadline = time.monotonic() + 8
-    while time.monotonic() < deadline and not controller.translated_text:
+    # Streamed partials now fill translated_text while the job is still
+    # running, so completion (not non-empty text) is the end signal.
+    while time.monotonic() < deadline and controller.is_translating:
         QApplication.processEvents()
         time.sleep(0.01)
 

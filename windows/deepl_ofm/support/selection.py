@@ -23,6 +23,7 @@ import ctypes
 import logging
 import sys
 import time
+from ctypes import wintypes
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,45 @@ CF_UNICODETEXT = 13
 _MODIFIERS = (VK_SHIFT, VK_CONTROL, VK_MENU, VK_LWIN, VK_RWIN)
 
 
+def _declare(library: object, name: str, restype: object, argtypes: tuple[object, ...]) -> None:
+    """Give one imported Win32 function an exact prototype.
+
+    ``ctypes`` assumes a C ``int`` return value for functions without a
+    ``restype``.  On Windows x64 that truncates the 64-bit clipboard handle and
+    the pointer returned by ``GlobalLock`` to 32 bits, so reading the selection
+    either faults or returns garbage instead of the copied text.
+    """
+    function = getattr(library, name)
+    function.restype = restype  # type: ignore[attr-defined]
+    function.argtypes = list(argtypes)  # type: ignore[attr-defined]
+
+
+def _install_prototypes(user32: object, kernel32: object) -> None:
+    """Declare every Win32 signature this module calls (64-bit safe)."""
+    _declare(user32, "OpenClipboard", wintypes.BOOL, (wintypes.HWND,))
+    _declare(user32, "GetClipboardData", wintypes.HANDLE, (wintypes.UINT,))
+    _declare(user32, "CloseClipboard", wintypes.BOOL, ())
+    _declare(user32, "GetClipboardSequenceNumber", wintypes.DWORD, ())
+    _declare(user32, "GetAsyncKeyState", wintypes.SHORT, (ctypes.c_int,))
+    _declare(
+        user32,
+        "keybd_event",
+        None,
+        (wintypes.BYTE, wintypes.BYTE, wintypes.DWORD, ctypes.c_size_t),
+    )
+    _declare(kernel32, "GlobalLock", wintypes.LPVOID, (wintypes.HGLOBAL,))
+    _declare(kernel32, "GlobalUnlock", wintypes.BOOL, (wintypes.HGLOBAL,))
+
+
+if _WINDOWS:  # pragma: no cover - exercised on Windows only
+    _USER32: object | None = ctypes.WinDLL("user32", use_last_error=True)
+    _KERNEL32: object | None = ctypes.WinDLL("kernel32", use_last_error=True)
+    _install_prototypes(_USER32, _KERNEL32)
+else:
+    _USER32 = None
+    _KERNEL32 = None
+
+
 def is_supported() -> bool:
     """Selected-text translation is implemented for Windows only."""
     return _WINDOWS
@@ -50,14 +90,10 @@ def capture_selection(*, timeout_ms: int = 700, modifier_wait_ms: int = 300) -> 
     Blocks for at most ``modifier_wait_ms + timeout_ms``; call it from the GUI
     thread before the window is shown, so nothing visibly freezes.
     """
-    if not _WINDOWS:
+    if not _WINDOWS or _USER32 is None:
         return ""
     try:
-        user32 = ctypes.windll.user32
-    except Exception:  # pragma: no cover - only on non-Windows
-        return ""
-    try:
-        user32.GetClipboardSequenceNumber.restype = ctypes.c_uint32
+        user32 = _USER32
         before = int(user32.GetClipboardSequenceNumber())
     except Exception:
         before = -1
@@ -90,9 +126,9 @@ def _modifier_is_down(user32: object, key: int) -> bool:
 
 def _wait_for_modifier_release(timeout_ms: int) -> bool:
     """Wait until the user lets go of the hotkey modifiers."""
-    if not _WINDOWS:
+    if not _WINDOWS or _USER32 is None:
         return True
-    user32 = ctypes.windll.user32
+    user32 = _USER32
     deadline = time.monotonic() + timeout_ms / 1000.0
     while time.monotonic() < deadline:
         if not any(_modifier_is_down(user32, key) for key in _MODIFIERS):
@@ -110,7 +146,9 @@ def _wait_for_modifier_release(timeout_ms: int) -> bool:
 
 
 def _send_ctrl_c() -> None:
-    user32 = ctypes.windll.user32
+    if _USER32 is None:
+        return
+    user32 = _USER32
     try:
         user32.keybd_event(VK_CONTROL, 0, 0, 0)
         time.sleep(0.01)
@@ -125,10 +163,10 @@ def _send_ctrl_c() -> None:
 
 def _clipboard_text() -> str:
     """Read CF_UNICODETEXT without Qt, so this works off the GUI thread too."""
-    if not _WINDOWS:
+    if not _WINDOWS or _USER32 is None or _KERNEL32 is None:
         return ""
-    user32 = ctypes.windll.user32
-    kernel32 = ctypes.windll.kernel32
+    user32 = _USER32
+    kernel32 = _KERNEL32
     handle = None
     try:
         if not user32.OpenClipboard(None):

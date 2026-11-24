@@ -6,6 +6,7 @@ Counterpart of ``Sources/HyMT/DeepL-oFMApp.swift``.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -126,32 +127,117 @@ def _configure_logging(debug: bool) -> None:
 
 SINGLE_INSTANCE_KEY = "DeepL-oFM-instance"
 
+#: Command-line actions a second launch forwards to the running instance.
+_ACTION_FIELDS = (
+    "prefill",
+    "tab",
+    "open_file",
+    "translate_file",
+    "write_text",
+    "translate_clipboard",
+    "connect",
+    "catalog",
+    "load_fallback_models",
+)
+_ACTION_DEFAULTS: dict[str, object] = {
+    "prefill": "",
+    "tab": None,
+    "open_file": None,
+    "translate_file": None,
+    "write_text": None,
+    "translate_clipboard": False,
+    "connect": False,
+    "catalog": False,
+    "load_fallback_models": False,
+}
 
-def _notify_running_instance() -> bool:
-    """Return True when another copy is already running (and ask it to show up)."""
+
+def _action_payload(args: argparse.Namespace) -> dict[str, object]:
+    """The startup actions of *args*, ready to travel over the socket."""
+    return {name: getattr(args, name, _ACTION_DEFAULTS[name]) for name in _ACTION_FIELDS}
+
+
+def _actions_from_payload(payload: dict[str, object]) -> argparse.Namespace:
+    """Rebuild an argparse-like namespace from a second-instance message."""
+    values = dict(_ACTION_DEFAULTS)
+    for name in _ACTION_FIELDS:
+        if name in payload:
+            values[name] = payload[name]
+    return argparse.Namespace(**values)
+
+
+def _notify_running_instance(payload: dict[str, object]) -> bool:
+    """Return True when another copy is running; hand it this launch's actions."""
     socket = QLocalSocket()
     socket.connectToServer(SINGLE_INSTANCE_KEY)
     if not socket.waitForConnected(250):
         return False
-    socket.write(b"show")
+    message = json.dumps({"show": True, **payload}, ensure_ascii=False)
+    socket.write(message.encode("utf-8") + b"\n")
     socket.flush()
     socket.waitForBytesWritten(250)
     socket.disconnectFromServer()
     return True
 
 
-def _install_instance_server(window) -> QLocalServer:
-    """Listen for a second launch and bring the existing window forward."""
+def _apply_startup_state(window, args) -> None:
+    """Prefill and tab selection, shared by a first and a second launch."""
+    if args.prefill:
+        window.set_source_text(args.prefill, translate=True)
+    if args.tab:
+        window.select_tab(args.tab)
+
+
+def _apply_actions(window, controller: AppController, args) -> None:
+    """Apply a launch's actions to an already running window."""
+    _apply_startup_state(window, args)
+    _schedule_startup_actions(window, controller, args)
+
+
+def _handle_instance_message(window, controller: AppController, raw: bytes) -> None:
+    """Apply one newline-framed JSON message from a second launch."""
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        log.warning("ignoring a malformed second-instance message")
+        return
+    if not isinstance(payload, dict):
+        log.warning("ignoring a non-object second-instance message")
+        return
+    try:
+        _apply_actions(window, controller, _actions_from_payload(payload))
+    except Exception:  # noqa: BLE001 - a bad payload must not kill the server
+        log.exception("could not apply second-instance actions")
+
+
+def _install_instance_server(window, controller: AppController) -> QLocalServer:
+    """Listen for a second launch and apply the actions it brought along."""
     QLocalServer.removeServer(SINGLE_INSTANCE_KEY)
     server = QLocalServer(window)
     server.listen(SINGLE_INSTANCE_KEY)
+    buffers: dict[int, bytes] = {}
 
     def on_connection() -> None:
         connection = server.nextPendingConnection()
         if connection is None:
             return
-        connection.readyRead.connect(lambda: connection.readAll())
-        connection.disconnected.connect(connection.deleteLater)
+        key = id(connection)
+        buffers[key] = b""
+
+        def read_message() -> None:
+            data = buffers.get(key, b"") + bytes(connection.readAll())
+            while b"\n" in data:
+                line, data = data.split(b"\n", 1)
+                if line.strip():
+                    _handle_instance_message(window, controller, line)
+            buffers[key] = data
+
+        def closed() -> None:
+            buffers.pop(key, None)
+            connection.deleteLater()
+
+        connection.readyRead.connect(read_message)
+        connection.disconnected.connect(closed)
         window.present()
 
     server.newConnection.connect(on_connection)
@@ -295,8 +381,8 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationVersion(__version__)
     app.setDesktopFileName(APP_ID)
 
-    if _notify_running_instance():
-        log.info("another DeepL-oFM instance is running; asked it to show the window")
+    if _notify_running_instance(_action_payload(args)):
+        log.info("another DeepL-oFM instance is running; sent it this launch's actions")
         return 0
 
     Theme.apply(app)
@@ -306,7 +392,7 @@ def main(argv: list[str] | None = None) -> int:
 
     controller = AppController()
     window = MainWindow(controller)
-    instance_server = _install_instance_server(window)  # noqa: F841 - kept alive by Qt
+    instance_server = _install_instance_server(window, controller)  # noqa: F841 - kept alive by Qt
 
     tray = None
     try:
@@ -339,10 +425,7 @@ def main(argv: list[str] | None = None) -> int:
 
     controller.windowRequested.connect(window.present)
 
-    if args.prefill:
-        window.set_source_text(args.prefill, translate=True)
-    if args.tab:
-        window.select_tab(args.tab)
+    _apply_startup_state(window, args)
 
     window.show()
     window.focus_translate()

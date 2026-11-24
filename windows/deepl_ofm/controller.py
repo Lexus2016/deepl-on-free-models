@@ -13,6 +13,7 @@ import os
 import shutil
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -51,6 +52,8 @@ log = logging.getLogger(__name__)
 
 TABS = ("translate", "files", "write", "history")
 RESULT_VIEWS = ("preview", "text", "markdown")
+#: Minimum distance between two streamed pane updates (seconds).
+_PARTIAL_MIN_INTERVAL = 0.05
 
 
 class _JobSignals(QObject):
@@ -138,6 +141,7 @@ class AppController(QObject):
     # --- state notifications -------------------------------------------------
     sourceTextChanged = Signal(str)
     translatedTextChanged = Signal(str)
+    partialTranslationChanged = Signal(str)
     progressChanged = Signal(int, int)
     translatingChanged = Signal(bool)
     warningCountChanged = Signal(int)
@@ -246,6 +250,7 @@ class AppController(QObject):
         self._last_completed_key: tuple[str, str, str] | None = None
         self._suppress_auto = False
         self._capturing_selection = False
+        self._last_partial_at = 0.0
 
         self._detect_timer = QTimer(self)
         self._detect_timer.setSingleShot(True)
@@ -367,13 +372,16 @@ class AppController(QObject):
         self.translate(force=True)
 
     def _retranslate_if_possible(self) -> None:
-        """Directions and styles invalidate the result even with auto-translate off."""
+        """A direction, style or tone choice supersedes any pending or active job.
+
+        These are deliberate setting changes, not typing: they must not wait for
+        the keystroke debounce (the timer would fire while the old job is still
+        running and the new request would be dropped), and they must cancel the
+        old job so its result can never overwrite the new one.
+        """
         if not self.source_text.strip():
             return
-        if self.settings.auto_translate:
-            self._schedule_translation()
-        else:
-            self.translate(force=True)
+        self.translate(force=True)
 
     def _schedule_detection(self) -> None:
         self._detect_timer.start()
@@ -388,7 +396,10 @@ class AppController(QObject):
     def _resolved_source(self) -> Language:
         if not self.source_language.is_auto:
             return self.source_language
-        return self.detected_language or detect_language(self.source_text) or get_language("en")
+        # Never reuse ``detected_language``: the debounce may not have run for
+        # the current text yet, and the previous text's guess would be wrong.
+        detected = detect_language(self.source_text, self.settings.interface_language)
+        return detected or get_language("en")
 
     # ------------------------------------------------------------- text state
     def set_source_text(self, text: str, *, from_user: bool = True) -> None:
@@ -483,11 +494,21 @@ class AppController(QObject):
             return
         if self.is_translating and not force:
             return
+        # A forced run also supersedes the pending keystroke timer.
+        if force:
+            self._auto_timer.stop()
 
-        source = self._resolved_source()
+        if self.source_language.is_auto:
+            detected = detect_language(text, self.settings.interface_language)
+            self._detect_timer.stop()
+            self.detected_language = detected
+            self.detectedLanguageChanged.emit(detected.code if detected else "")
+            source = detected or get_language("en")
+        else:
+            source = self.source_language
+        # The target is exactly what the user picked.  Auto-detection must never
+        # silently redirect the translation to a different language.
         target = self.target_language
-        if source.code == target.code:
-            target = self._alternative_target(source)
         config = self.settings.snapshot()
         if not config.model:
             self._emit_error(t("Choose a model in Settings."))
@@ -512,12 +533,14 @@ class AppController(QObject):
         self.completed = self.total = 0
         self.progressChanged.emit(0, 0)
         self.using_fallback = False
+        self._last_partial_at = 0.0
 
         style, tone = self.style, self.tone
         fallback = self.settings.fallback_config()
         if fallback is not None and fallback.uses_same_endpoint(config):
             fallback = None  # retrying the same endpoint would just fail twice
         translator = self.translator
+        source_explicit = not self.source_language.is_auto
 
         def job(signals: _JobSignals) -> TranslationOutput:
             return translator.translate(
@@ -528,6 +551,7 @@ class AppController(QObject):
                 tone=tone,
                 config=config,
                 fallback=fallback,
+                source_explicit=source_explicit,
                 on_progress=lambda done, total: signals.progress.emit(done, total),
                 on_partial=lambda partial: signals.partial.emit(partial),
                 cancel=cancel,
@@ -548,21 +572,32 @@ class AppController(QObject):
             on_done=done,
             on_error=failed,
             on_progress=lambda completed, total: self._on_progress(completed, total, generation),
+            on_partial=lambda partial: self._on_partial(partial, generation),
         )
-
-    def _alternative_target(self, source: Language) -> Language:
-        interface = self.settings.interface_language.resolved
-        if interface.value not in (source.code, "system"):
-            candidate = get_language(interface.value)
-            if candidate is not None:
-                return candidate
-        return get_language("en") if source.code != "en" else get_language("uk")
 
     def _on_progress(self, completed: int, total: int, generation: int | None = None) -> None:
         if generation is not None and generation != self._generation:
             return
         self.completed, self.total = completed, total
         self.progressChanged.emit(completed, total)
+
+    def _on_partial(self, text: str, generation: int) -> None:
+        """Preview streamed text in the pane without finalising the job.
+
+        Only the current generation may paint the pane (a cancelled job can
+        still deliver queued signals) and updates are throttled so a fast
+        stream does not repaint the Markdown view for every token.  The pane
+        text is updated, but history, warnings and metrics are written by
+        ``_finish_translation`` from the final output alone.
+        """
+        if generation != self._generation:
+            return
+        now = time.monotonic()
+        if now - self._last_partial_at < _PARTIAL_MIN_INTERVAL:
+            return
+        self._last_partial_at = now
+        self.translated_text = text
+        self.partialTranslationChanged.emit(text)
 
     def _finish_translation(
         self, result: TranslationOutput, text: str, source: Language, target: Language
@@ -1002,6 +1037,7 @@ class AppController(QObject):
                 tone=tone,
                 config=config,
                 fallback=fallback,
+                source_explicit=not source.is_auto,
                 cancel=cancel,
             )
             counters["warnings"] += int(result.warnings or 0)
@@ -1115,10 +1151,22 @@ class AppController(QObject):
         try:
             destination = Path(destination)
             # Copy next to the target and rename, so a failure never truncates
-            # an existing file the user chose.
-            staging = destination.with_name(destination.name + ".part")
-            shutil.copyfile(self._file_output, staging)
-            os.replace(staging, destination)
+            # an existing file the user chose.  The temporary name must be
+            # unique (mkstemp), otherwise a neighbouring "<name>.part" would be
+            # overwritten and two concurrent saves would collide.
+            handle, temp_name = tempfile.mkstemp(
+                prefix=f".{destination.name}.", suffix=".part", dir=destination.parent
+            )
+            os.close(handle)
+            staging = Path(temp_name)
+            try:
+                shutil.copyfile(self._file_output, staging)
+                os.replace(staging, destination)
+            finally:
+                try:
+                    staging.unlink()
+                except OSError:
+                    pass  # os.replace consumes it; a failed copy is best-effort
         except OSError as exc:
             log.exception("could not save translated file")
             self._update_file_job(save_error=str(exc))
@@ -1243,6 +1291,7 @@ class AppController(QObject):
         on_error: Callable[[BaseException], None],
         on_progress: Callable[[int, int], None] | None = None,
         on_state: Callable[[str], None] | None = None,
+        on_partial: Callable[[str], None] | None = None,
     ) -> _JobSignals:
         # A strong reference keeps the QObject alive for the whole job: a
         # Python-only reference would be collected while the worker still emits,
@@ -1252,6 +1301,7 @@ class AppController(QObject):
         signals.on_failed = on_error
         signals.on_progress = on_progress
         signals.on_state = on_state
+        signals.on_partial = on_partial
         self._jobs.add(signals)
 
         signals.finished.connect(lambda _value: self._jobs.discard(signals))

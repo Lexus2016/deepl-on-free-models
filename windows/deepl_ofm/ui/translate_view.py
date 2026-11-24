@@ -387,6 +387,8 @@ class TranslateView(QWidget):
         self._source_previewing = False
         self._minimal_menus = False
         self._error_text = controller.error_message or ""
+        # Streamed text shown while a job is running; never the committed result.
+        self._partial_text = ""
         self._role_labels: dict[str, list[QLabel]] = {
             "muted": [],
             "faint": [],
@@ -819,6 +821,7 @@ class TranslateView(QWidget):
         c = self.controller
         c.sourceTextChanged.connect(self._on_source_text)
         c.translatedTextChanged.connect(self._on_translated_text)
+        c.partialTranslationChanged.connect(self._on_partial_text)
         c.progressChanged.connect(self._on_progress)
         c.translatingChanged.connect(self._on_translating)
         c.languagesChanged.connect(self._on_languages)
@@ -860,6 +863,7 @@ class TranslateView(QWidget):
     # --------------------------------------------------------------- sync
     def _sync_all(self) -> None:
         c = self.controller
+        self._partial_text = ""
         self._set_editor_text(c.source_text)
         self._result_view.set_markdown(c.translated_text)
         self._result_view.set_mode(c.result_view)
@@ -915,6 +919,18 @@ class TranslateView(QWidget):
         self._refresh_result_state()
 
     def _on_translated_text(self, text: str) -> None:
+        self._partial_text = ""
+        self._result_view.set_markdown(text)
+        self._refresh_header()
+        self._refresh_result_state()
+
+    def _on_partial_text(self, text: str) -> None:
+        """Paint streamed text; the controller commits the final result later."""
+        if not self.controller.is_translating:
+            return
+        if not text.strip():
+            return
+        self._partial_text = text
         self._result_view.set_markdown(text)
         self._refresh_header()
         self._refresh_result_state()
@@ -935,6 +951,7 @@ class TranslateView(QWidget):
     def _on_translating(self, translating: bool) -> None:
         if translating:
             self._error_text = ""
+        self._partial_text = ""
         self._refresh_result_state()
 
     def _on_languages(self, source: str, target: str) -> None:
@@ -1043,7 +1060,7 @@ class TranslateView(QWidget):
             self._set_source_preview(False)
         self._speak_source_button.setEnabled(has_source)
         self._copy_source_button.setEnabled(has_source)
-        self._again_button.setEnabled(has_source and not self.controller.is_translating)
+        self._again_button.setEnabled(has_source)
         self._clear_button.setEnabled(has_source)
         self._speak_result_button.setEnabled(
             has_result or self.controller.speaking == "translation"
@@ -1055,13 +1072,14 @@ class TranslateView(QWidget):
         c = self.controller
         error = self._error_text or c.error_message or ""
         has_result = bool(c.translated_text.strip())
+        has_partial = bool(self._partial_text.strip())
 
-        if c.is_translating:
+        if c.is_translating and not has_partial:
             self._stack.setCurrentWidget(self._progress_page)
-        elif error and not has_result:
+        elif error and not has_result and not has_partial:
             self._error_label.setText(error)
             self._stack.setCurrentWidget(self._error_page)
-        elif not has_result:
+        elif not has_result and not has_partial:
             self._stack.setCurrentWidget(self._empty_page)
         else:
             self._stack.setCurrentWidget(self._result_view)

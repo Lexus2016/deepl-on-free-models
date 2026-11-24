@@ -350,9 +350,10 @@ def test_empty_output_runs_the_retry_ladder_and_counts_a_warning():
         for request in session.requests
         if "Другий рядочок." in request["json"]["messages"][0]["content"]
     ]
-    # Prompt 0 gets three attempts, prompt 1 gets two; the sentence fallback
-    # cannot help a one-sentence block.
-    assert len(first_block) == 5
+    # A short sentence (terminal punctuation) now uses the normal three-prompt
+    # ladder: 3 attempts for prompt 0, 2 for each fallback.  The sentence
+    # fallback cannot help a one-sentence block.
+    assert len(first_block) == 7
     assert len(second_block) == 1
     assert first_block[1]["json"]["options"]["temperature"] == pytest.approx(0.3)
     assert session_config.temperature == pytest.approx(0.7)
@@ -686,3 +687,101 @@ def test_output_budget_flags_a_marker_past_the_cap():
     assert exact.append("ééHY_END") is False
     assert exact.exceeded_limit is False
     assert exact.text == "éé"
+
+
+# --------------------------------------------------------------------------- #
+# 7-8. Prompt selection: structural headings and explicit source language
+# --------------------------------------------------------------------------- #
+
+
+def _first_prompt(session: FakeSession) -> str:
+    return session.requests[0]["json"]["messages"][0]["content"]
+
+
+def test_short_sentence_keeps_the_style_and_tone_prompt():
+    """A short sentence is not a heading: style and tone stay in the prompt."""
+    session = FakeSession(
+        lambda url, kwargs: FakeResponse(
+            ollama_lines("Könnten Sie mir den Bericht schicken?")
+        )
+    )
+    result = translate_with(
+        session,
+        "Could you send me the report?",
+        source=language("en"),
+        target=language("de"),
+        style=TranslationStyle.LITERAL,
+        tone=TranslationTone.FORMAL,
+        source_explicit=False,
+    )
+
+    prompt = _first_prompt(session)
+    assert prompt.startswith("Please translate the following text into German.")
+    assert "[literal, word for word; formal and professional]" in prompt
+    assert "Translate this heading" not in prompt
+    assert result.text == "Könnten Sie mir den Bericht schicken?"
+
+
+def test_markdown_heading_keeps_the_heading_prompt():
+    session = FakeSession(
+        lambda url, kwargs: FakeResponse(ollama_lines("Bericht"))
+    )
+    translate_with(
+        session,
+        "# Report",
+        source=language("en"),
+        target=language("de"),
+        style=TranslationStyle.LITERAL,
+        tone=TranslationTone.FORMAL,
+        source_explicit=False,
+    )
+
+    prompt = _first_prompt(session)
+    assert prompt.startswith("Translate this heading into German.")
+    assert prompt.endswith("\n\nReport")
+    assert "literal, word for word" not in prompt
+
+
+def test_short_title_without_terminal_punctuation_is_a_heading():
+    session = FakeSession(
+        lambda url, kwargs: FakeResponse(ollama_lines("Bericht"))
+    )
+    translate_with(
+        session,
+        "Report",
+        source=language("en"),
+        target=language("de"),
+        style=TranslationStyle.LITERAL,
+        tone=TranslationTone.FORMAL,
+        source_explicit=False,
+    )
+
+    assert _first_prompt(session).startswith("Translate this heading into German.")
+
+
+def test_explicit_source_language_is_asserted_to_the_model():
+    session = FakeSession(lambda url, kwargs: FakeResponse(ollama_lines("Hello.")))
+    translate_with(
+        session,
+        "مرحبا بالعالم.",
+        source=language("ar"),
+        target=language("en"),
+        source_explicit=True,
+    )
+
+    assert _first_prompt(session).startswith("The source language is Arabic. ")
+
+
+def test_detected_source_language_is_not_asserted_to_the_model():
+    session = FakeSession(lambda url, kwargs: FakeResponse(ollama_lines("Hello.")))
+    translate_with(
+        session,
+        "مرحبا بالعالم.",
+        source=language("ar"),
+        target=language("en"),
+        source_explicit=False,
+    )
+
+    prompt = _first_prompt(session)
+    assert "The source language is" not in prompt
+    assert prompt.startswith("Translate the following text into English.")
