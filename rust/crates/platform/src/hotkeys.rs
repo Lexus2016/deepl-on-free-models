@@ -21,7 +21,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, Once};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use global_hotkey::hotkey::{Code, HotKey, Modifiers};
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
@@ -578,6 +578,21 @@ impl Drop for HotkeyManager {
 /// How often the owning thread pumps messages and polls for presses.
 const POLL_INTERVAL: Duration = Duration::from_millis(60);
 
+/// Whether a failed registration is due for another attempt.
+///
+/// Kept pure so a test can move the clock instead of sleeping for half a minute.
+fn retry_due(failed_at: Instant, now: Instant) -> bool {
+    now.saturating_duration_since(failed_at) >= REGISTRATION_RETRY
+}
+
+/// How long to wait before retrying a registration that failed.
+///
+/// A shortcut is refused while another process holds it - two copies of the
+/// application, or a tool that owns the same combination - and that conflict
+/// usually disappears. Retrying only on the next settings event left the
+/// shortcuts dead for the rest of the session.
+const REGISTRATION_RETRY: Duration = Duration::from_secs(30);
+
 /// Ticks between heartbeat lines (five minutes at [`POLL_INTERVAL`]).
 ///
 /// A log that stops beating proves the loop is blocked; a log that keeps
@@ -641,6 +656,8 @@ pub struct HotkeyLoop<B, D, R> {
     dispatch: Arc<D>,
     report: R,
     applied: Option<(KeyCombo, KeyCombo)>,
+    /// The pair whose registration failed, and when, so it can be retried.
+    last_attempt: Option<((KeyCombo, KeyCombo), Instant)>,
     capture: Arc<AtomicBool>,
 }
 
@@ -660,6 +677,7 @@ where
             dispatch: Arc::new(dispatch),
             report,
             applied: None,
+            last_attempt: None,
             capture: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -680,6 +698,19 @@ where
                 }
             }
         }
+        // Retry a pair that could not be registered, roughly twice a minute.
+        if let Some((pair, failed_at)) = &self.last_attempt {
+            if retry_due(*failed_at, Instant::now()) {
+                let (clipboard, selection) = pair.clone();
+                log::info!(
+                    "retrying the hotkey registration: {} and {}",
+                    clipboard.display(),
+                    selection.display()
+                );
+                self.applied = None;
+                self.apply(&clipboard, &selection);
+            }
+        }
         for action in self.backend.poll() {
             self.start(action);
         }
@@ -697,6 +728,20 @@ where
             return;
         }
 
+        // Never trade a working registration for one that cannot exist. A
+        // settings event carrying an empty combo would otherwise unregister both
+        // shortcuts and fail to install replacements, leaving the application
+        // without any until it is restarted.
+        if !clipboard.is_valid() || !selection.is_valid() {
+            log::warn!(
+                "hotkey combinations are not registrable (clipboard {}, selection {}); \
+                 keeping the existing registration",
+                clipboard.display(),
+                selection.display()
+            );
+            return;
+        }
+
         self.backend.unregister_all();
         let mut registered = true;
         for (action, combo) in [("clipboard", clipboard), ("selection", selection)] {
@@ -711,9 +756,17 @@ where
             registered &= result.is_ok();
             (self.report)(action, combo, result);
         }
-        // A failed attempt is retried on the next identical event: the other
-        // process holding the combination may have exited by then.
-        self.applied = registered.then_some(pair);
+        // A failed attempt leaves `applied` empty, so the same pair is retried
+        // on the next settings event - but that event may never come, and the
+        // other process holding the combination may well have exited by then.
+        // `tick` therefore retries this pair on a timer as well.
+        if registered {
+            self.applied = Some(pair);
+            self.last_attempt = None;
+        } else {
+            self.applied = None;
+            self.last_attempt = Some((pair, Instant::now()));
+        }
     }
 
     /// Hand one action to its own worker thread.
@@ -998,6 +1051,9 @@ mod tests {
         pressed: Arc<Mutex<VecDeque<Vec<String>>>>,
         unregisters: Arc<AtomicUsize>,
         registrations: Arc<AtomicUsize>,
+        /// How many upcoming registrations to refuse, to model a combination
+        /// another process is holding.
+        fail_next: Arc<AtomicUsize>,
     }
 
     impl FakeBackend {
@@ -1006,6 +1062,7 @@ mod tests {
                 pressed: Arc::new(Mutex::new(VecDeque::new())),
                 unregisters: Arc::new(AtomicUsize::new(0)),
                 registrations: Arc::new(AtomicUsize::new(0)),
+                fail_next: Arc::new(AtomicUsize::new(0)),
             }
         }
     }
@@ -1017,6 +1074,15 @@ mod tests {
 
         fn register(&mut self, _action: &str, _combo: &KeyCombo) -> Result<(), HotkeyError> {
             self.registrations.fetch_add(1, Ordering::SeqCst);
+            if self
+                .fail_next
+                .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |left| {
+                    left.checked_sub(1)
+                })
+                .is_ok()
+            {
+                return Err(HotkeyError::new("This shortcut needs Ctrl or Alt."));
+            }
             Ok(())
         }
 
@@ -1072,6 +1138,66 @@ mod tests {
             0,
             "an unchanged pair must not register again"
         );
+    }
+
+    #[test]
+    fn an_empty_pair_never_replaces_a_working_registration() {
+        // The failure from the field: a settings event arrived with an empty
+        // shortcut, the working ones were unregistered, both registrations then
+        // failed with "This shortcut needs Ctrl or Alt", and the application had
+        // no shortcuts until it was restarted.
+        let (updates, changes) = mpsc::channel();
+        let backend = FakeBackend::new();
+        let unregisters = Arc::clone(&backend.unregisters);
+        let registrations = Arc::clone(&backend.registrations);
+        let mut hotkeys = HotkeyLoop::new(backend, |_| {}, |_, _, _| {});
+
+        updates.send(default_pair()).expect("send settings");
+        assert!(hotkeys.tick(&changes));
+        unregisters.store(0, Ordering::SeqCst);
+        registrations.store(0, Ordering::SeqCst);
+
+        updates
+            .send((KeyCombo::default(), KeyCombo::default()))
+            .expect("send settings");
+        assert!(hotkeys.tick(&changes));
+        assert_eq!(
+            unregisters.load(Ordering::SeqCst),
+            0,
+            "an unusable pair must not unregister the working shortcuts"
+        );
+        assert_eq!(
+            registrations.load(Ordering::SeqCst),
+            0,
+            "an unusable pair must not be registered"
+        );
+        assert_eq!(
+            hotkeys.applied,
+            Some(default_pair()),
+            "the working pair stays the applied one"
+        );
+    }
+
+    #[test]
+    fn a_failed_registration_is_scheduled_for_a_retry() {
+        let (updates, changes) = mpsc::channel();
+        let backend = FakeBackend::new();
+        backend.fail_next.store(2, Ordering::SeqCst);
+        let mut hotkeys = HotkeyLoop::new(backend, |_| {}, |_, _, _| {});
+
+        updates.send(default_pair()).expect("send settings");
+        assert!(hotkeys.tick(&changes));
+        assert!(
+            hotkeys.applied.is_none(),
+            "a pair that did not register is not remembered as applied"
+        );
+        let (pair, failed_at) = hotkeys
+            .last_attempt
+            .clone()
+            .expect("the failed pair is kept for a retry");
+        assert_eq!(pair, default_pair());
+        assert!(!retry_due(failed_at, Instant::now()));
+        assert!(retry_due(failed_at, failed_at + REGISTRATION_RETRY));
     }
 
     #[test]

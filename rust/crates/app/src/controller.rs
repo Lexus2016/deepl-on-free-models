@@ -1294,13 +1294,33 @@ impl AppController {
                 target.insert(key.clone(), incoming_value.clone());
             }
         }
-        let updated = match serde_json::from_value::<AppSettings>(merged) {
+        let mut updated = match serde_json::from_value::<AppSettings>(merged) {
             Ok(settings) => settings,
             Err(error) => {
                 warn!("ignoring a malformed settings payload: {error}");
                 return;
             }
         };
+        // A payload that carries an unusable shortcut - no key, or no Ctrl/Alt -
+        // must not replace the working one: the hotkey loop unregisters the old
+        // combination before it tries the new one, so an empty value leaves the
+        // application with no shortcuts at all until it is restarted.
+        if !updated.hot_key.is_valid() {
+            warn!(
+                "ignoring the unregistrable clipboard shortcut {:?}; keeping {}",
+                updated.hot_key,
+                current.hot_key.display()
+            );
+            updated.hot_key = current.hot_key.clone();
+        }
+        if !updated.selection_hot_key.is_valid() {
+            warn!(
+                "ignoring the unregistrable selection shortcut {:?}; keeping {}",
+                updated.selection_hot_key,
+                current.selection_hot_key.display()
+            );
+            updated.selection_hot_key = current.selection_hot_key.clone();
+        }
         self.save_settings(updated);
     }
 
