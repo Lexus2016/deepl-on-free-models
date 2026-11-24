@@ -442,6 +442,16 @@ def test_second_launch_applies_its_actions(qapp, tmp_path, monkeypatch):
     write_view = _FakeWriteView()
     window.pages["write"] = write_view
     controller = _FakeController()
+    # Record what actually crossed the socket: when an effect does not arrive,
+    # the failure must say whether the message was wrong or its application was.
+    received: list[bytes] = []
+    original = app_module._handle_instance_message
+
+    def record(window_, controller_, raw):
+        received.append(raw)
+        original(window_, controller_, raw)
+
+    monkeypatch.setattr(app_module, "_handle_instance_message", record)
     server = app_module._install_instance_server(window, controller)
     try:
         target = tmp_path / "report.pdf"
@@ -463,7 +473,11 @@ def test_second_launch_applies_its_actions(qapp, tmp_path, monkeypatch):
         # Wait for each effect separately so a failure names the effect that did
         # not arrive instead of reporting an opaque `assert []`.  The window is
         # slow on CI runners, hence the generous timeout.
-        assert wait_until(lambda: bool(window.prefills), timeout=10.0), "prefill"
+        arrived = wait_until(lambda: bool(window.prefills), timeout=10.0)
+        assert arrived, (
+            "prefill: received=" + repr(received) + " payload="
+            + repr(app_module._action_payload(args))
+        )
         assert wait_until(lambda: bool(controller.files), timeout=10.0), "open file"
         assert wait_until(lambda: bool(controller.clipboard), timeout=10.0), "clipboard"
         assert wait_until(lambda: bool(controller.connected), timeout=10.0), "connect"
